@@ -1,0 +1,1 @@
+export default function PQRS() { return <div className="shell simple-page"><span className="eyebrow">ATENCIÓN AL CLIENTE</span><h1>PQRS</h1><p>El módulo de peticiones, quejas, reclamos y sugerencias se activará cuando la agencia facilite su información legal, los canales oficiales y el flujo de atención. Esta página no recibe solicitudes todavía.</p></div>; }

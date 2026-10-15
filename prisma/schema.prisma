@@ -1,0 +1,372 @@
+generator client {
+  provider = "prisma-client"
+  output = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum UserRole {
+  SUPERADMIN
+  ADMIN
+  ADVISOR
+  CUSTOMER
+}
+enum PublicationStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+enum BookingStatus {
+  REQUESTED
+  PENDING_CONFIRMATION
+  PENDING_PAYMENT
+  PARTIALLY_PAID
+  CONFIRMED
+  PAID
+  CANCELLED
+  REFUNDED
+}
+enum QuoteStatus {
+  NEW
+  ASSIGNED
+  PROPOSAL_SENT
+  ACCEPTED
+  DECLINED
+  CLOSED
+}
+enum PaymentStatus {
+  PENDING
+  SUCCEEDED
+  FAILED
+  REFUNDED
+}
+enum PaymentPlanStatus {
+  ACTIVE
+  COMPLETED
+  CANCELLED
+}
+enum PqrsType {
+  PETITION
+  COMPLAINT
+  CLAIM
+  SUGGESTION
+}
+enum PqrsStatus {
+  RECEIVED
+  IN_REVIEW
+  WAITING_FOR_CUSTOMER
+  ANSWERED
+  CLOSED
+}
+
+model User {
+  id String @id @default(uuid()) @db.Uuid
+  email String @unique @db.VarChar(254)
+  passwordHash String? @map("password_hash")
+  role UserRole @default(CUSTOMER)
+  name String @db.VarChar(120)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  customer Customer?
+  assignedQuotes Quote[] @relation("quote_assignee")
+  auditLogs AuditLog[]
+  @@map("users")
+}
+
+model Customer {
+  id String @id @default(uuid()) @db.Uuid
+  userId String? @unique @db.Uuid @map("user_id")
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+  name String @db.VarChar(120)
+  email String @db.VarChar(254)
+  phone String @db.VarChar(25)
+  createdAt DateTime @default(now()) @map("created_at")
+  bookings Booking[]
+  savingsPlans SavingsPlan[]
+  pqrsTickets PqrsTicket[]
+  @@index([email])
+  @@map("customers")
+}
+
+model Destination {
+  id String @id @default(uuid()) @db.Uuid
+  slug String @unique @db.VarChar(140)
+  name String @db.VarChar(140)
+  country String @db.VarChar(100)
+  region String? @db.VarChar(100)
+  description String? @db.Text
+  status PublicationStatus @default(DRAFT)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  packages TourPackage[]
+  @@index([status, country])
+  @@map("destinations")
+}
+
+model TourPackage {
+  id String @id @default(uuid()) @db.Uuid
+  destinationId String @db.Uuid @map("destination_id")
+  destination Destination @relation(fields: [destinationId], references: [id])
+  slug String @unique @db.VarChar(160)
+  title String @db.VarChar(160)
+  summary String? @db.Text
+  description String? @db.Text
+  durationDays Int? @map("duration_days")
+  basePrice Decimal? @db.Decimal(14, 2) @map("base_price")
+  currency String @default("COP") @db.VarChar(3)
+  includes Json?
+  excludes Json?
+  cancellationTerms String? @db.Text @map("cancellation_terms")
+  status PublicationStatus @default(DRAFT)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  images PackageImage[]
+  itinerary ItineraryDay[]
+  departures Departure[]
+  bookings Booking[]
+  @@index([destinationId, status])
+  @@map("tour_packages")
+}
+
+model MediaAsset {
+  id String @id @default(uuid()) @db.Uuid
+  objectKey String @unique @map("object_key")
+  altText String @db.VarChar(250) @map("alt_text")
+  mimeType String @db.VarChar(100) @map("mime_type")
+  createdAt DateTime @default(now()) @map("created_at")
+  packageImages PackageImage[]
+  @@map("media_assets")
+}
+
+model PackageImage {
+  id String @id @default(uuid()) @db.Uuid
+  packageId String @db.Uuid @map("package_id")
+  assetId String @db.Uuid @map("asset_id")
+  sortOrder Int @default(0) @map("sort_order")
+  package TourPackage @relation(fields: [packageId], references: [id], onDelete: Cascade)
+  asset MediaAsset @relation(fields: [assetId], references: [id])
+  @@unique([packageId, assetId])
+  @@map("package_images")
+}
+
+model ItineraryDay {
+  id String @id @default(uuid()) @db.Uuid
+  packageId String @db.Uuid @map("package_id")
+  day Int
+  title String @db.VarChar(160)
+  description String @db.Text
+  package TourPackage @relation(fields: [packageId], references: [id], onDelete: Cascade)
+  @@unique([packageId, day])
+  @@map("itinerary_days")
+}
+
+model Departure {
+  id String @id @default(uuid()) @db.Uuid
+  packageId String @db.Uuid @map("package_id")
+  startsAt DateTime @map("starts_at")
+  endsAt DateTime @map("ends_at")
+  capacity Int
+  heldSeats Int @default(0) @map("held_seats")
+  confirmedSeats Int @default(0) @map("confirmed_seats")
+  price Decimal @db.Decimal(14, 2)
+  currency String @default("COP") @db.VarChar(3)
+  published Boolean @default(false)
+  package TourPackage @relation(fields: [packageId], references: [id])
+  bookings Booking[]
+  @@index([packageId, startsAt, published])
+  @@map("departures")
+}
+
+model Booking {
+  id String @id @default(uuid()) @db.Uuid
+  code String @unique @db.VarChar(24)
+  customerId String @db.Uuid @map("customer_id")
+  packageId String @db.Uuid @map("package_id")
+  departureId String @db.Uuid @map("departure_id")
+  travelersCount Int @map("travelers_count")
+  totalAmount Decimal @db.Decimal(14, 2) @map("total_amount")
+  currency String @default("COP") @db.VarChar(3)
+  acceptedTermsSnapshot Json @map("accepted_terms_snapshot")
+  status BookingStatus @default(REQUESTED)
+  holdExpiresAt DateTime? @map("hold_expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  customer Customer @relation(fields: [customerId], references: [id])
+  package TourPackage @relation(fields: [packageId], references: [id])
+  departure Departure @relation(fields: [departureId], references: [id])
+  travelers BookingTraveler[]
+  paymentPlan PaymentPlan?
+  payments Payment[]
+  acceptances AgreementAcceptance[]
+  pqrsTickets PqrsTicket[]
+  @@index([departureId, status])
+  @@index([customerId, createdAt])
+  @@map("bookings")
+}
+
+model BookingTraveler {
+  id String @id @default(uuid()) @db.Uuid
+  bookingId String @db.Uuid @map("booking_id")
+  name String @db.VarChar(120)
+  booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  @@map("booking_travelers")
+}
+
+model Quote {
+  id String @id @default(uuid()) @db.Uuid
+  reference String @unique @db.VarChar(24)
+  name String @db.VarChar(120)
+  email String @db.VarChar(254)
+  phone String @db.VarChar(25)
+  destination String? @db.VarChar(120)
+  travelDate DateTime? @map("travel_date")
+  travelers Int
+  budget String? @db.VarChar(80)
+  notes String? @db.Text
+  dataConsentAt DateTime @map("data_consent_at")
+  marketingConsentAt DateTime? @map("marketing_consent_at")
+  status QuoteStatus @default(NEW)
+  assignedToId String? @db.Uuid @map("assigned_to_id")
+  assignedTo User? @relation("quote_assignee", fields: [assignedToId], references: [id])
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  @@index([status, createdAt])
+  @@index([email])
+  @@map("quotes")
+}
+
+model PaymentPlan {
+  id String @id @default(uuid()) @db.Uuid
+  bookingId String @unique @db.Uuid @map("booking_id")
+  deposit Decimal @db.Decimal(14, 2)
+  status PaymentPlanStatus @default(ACTIVE)
+  booking Booking @relation(fields: [bookingId], references: [id])
+  installments Installment[]
+  @@map("payment_plans")
+}
+
+model Installment {
+  id String @id @default(uuid()) @db.Uuid
+  paymentPlanId String @db.Uuid @map("payment_plan_id")
+  dueAt DateTime @map("due_at")
+  amount Decimal @db.Decimal(14, 2)
+  paymentPlan PaymentPlan @relation(fields: [paymentPlanId], references: [id])
+  @@index([paymentPlanId, dueAt])
+  @@map("installments")
+}
+
+model SavingsPlan {
+  id String @id @default(uuid()) @db.Uuid
+  customerId String @db.Uuid @map("customer_id")
+  goalAmount Decimal @db.Decimal(14, 2) @map("goal_amount")
+  currency String @default("COP") @db.VarChar(3)
+  status PaymentPlanStatus @default(ACTIVE)
+  customer Customer @relation(fields: [customerId], references: [id])
+  movements SavingsMovement[]
+  @@map("savings_plans")
+}
+
+model SavingsMovement {
+  id String @id @default(uuid()) @db.Uuid
+  savingsPlanId String @db.Uuid @map("savings_plan_id")
+  amount Decimal @db.Decimal(14, 2)
+  externalReference String? @unique @map("external_reference")
+  createdAt DateTime @default(now()) @map("created_at")
+  savingsPlan SavingsPlan @relation(fields: [savingsPlanId], references: [id])
+  @@map("savings_movements")
+}
+
+model Payment {
+  id String @id @default(uuid()) @db.Uuid
+  bookingId String @db.Uuid @map("booking_id")
+  provider String @db.VarChar(50)
+  providerReference String @unique @map("provider_reference")
+  idempotencyKey String @unique @map("idempotency_key")
+  amount Decimal @db.Decimal(14, 2)
+  currency String @default("COP") @db.VarChar(3)
+  status PaymentStatus @default(PENDING)
+  createdAt DateTime @default(now()) @map("created_at")
+  booking Booking @relation(fields: [bookingId], references: [id])
+  events PaymentEvent[]
+  @@index([bookingId, status])
+  @@map("payments")
+}
+
+model PaymentEvent {
+  id String @id @default(uuid()) @db.Uuid
+  paymentId String @db.Uuid @map("payment_id")
+  providerEventId String @unique @map("provider_event_id")
+  payload Json
+  receivedAt DateTime @default(now()) @map("received_at")
+  payment Payment @relation(fields: [paymentId], references: [id])
+  @@map("payment_events")
+}
+
+model Agreement {
+  id String @id @default(uuid()) @db.Uuid
+  version String @unique @db.VarChar(40)
+  content String @db.Text
+  publishedAt DateTime @map("published_at")
+  acceptances AgreementAcceptance[]
+  @@map("agreements")
+}
+
+model AgreementAcceptance {
+  id String @id @default(uuid()) @db.Uuid
+  bookingId String @db.Uuid @map("booking_id")
+  agreementId String @db.Uuid @map("agreement_id")
+  acceptedAt DateTime @default(now()) @map("accepted_at")
+  booking Booking @relation(fields: [bookingId], references: [id])
+  agreement Agreement @relation(fields: [agreementId], references: [id])
+  @@unique([bookingId, agreementId])
+  @@map("agreement_acceptances")
+}
+
+model PqrsTicket {
+  id String @id @default(uuid()) @db.Uuid
+  reference String @unique @db.VarChar(24)
+  customerId String @db.Uuid @map("customer_id")
+  bookingId String? @db.Uuid @map("booking_id")
+  type PqrsType
+  status PqrsStatus @default(RECEIVED)
+  subject String @db.VarChar(160)
+  description String @db.Text
+  createdAt DateTime @default(now()) @map("created_at")
+  customer Customer @relation(fields: [customerId], references: [id])
+  booking Booking? @relation(fields: [bookingId], references: [id])
+  messages PqrsMessage[]
+  @@index([status, createdAt])
+  @@map("pqrs_tickets")
+}
+
+model PqrsMessage {
+  id String @id @default(uuid()) @db.Uuid
+  ticketId String @db.Uuid @map("ticket_id")
+  message String @db.Text
+  isStaff Boolean @default(false) @map("is_staff")
+  createdAt DateTime @default(now()) @map("created_at")
+  ticket PqrsTicket @relation(fields: [ticketId], references: [id])
+  @@map("pqrs_messages")
+}
+
+model SiteSetting {
+  key String @id @db.VarChar(100)
+  value Json
+  updatedAt DateTime @updatedAt @map("updated_at")
+  @@map("site_settings")
+}
+
+model AuditLog {
+  id String @id @default(uuid()) @db.Uuid
+  actorId String? @db.Uuid @map("actor_id")
+  action String @db.VarChar(120)
+  entity String @db.VarChar(120)
+  entityId String @db.VarChar(120) @map("entity_id")
+  details Json?
+  createdAt DateTime @default(now()) @map("created_at")
+  actor User? @relation(fields: [actorId], references: [id], onDelete: SetNull)
+  @@index([entity, entityId, createdAt])
+  @@map("audit_logs")
+}
