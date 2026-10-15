@@ -4,8 +4,8 @@ import { SiteFooter } from "@/components/site-footer";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: { default: "Ricaurte Tours | Viajes que se sienten", template: "%s | Ricaurte Tours" },
-  description: "Propuesta digital de Ricaurte Tours. Explora ideas de viaje y solicita una cotización personalizada.",
+  title: { default: "Ricaurte Tours | Viajes que se convierten en historias", template: "%s | Ricaurte Tours" },
+  description: "Explora experiencias realizadas y fotografías de Ricaurte Tours. Nuevas salidas, cotizaciones y reservas requieren confirmación de la agencia.",
   robots: { index: false, follow: false },
 };
 

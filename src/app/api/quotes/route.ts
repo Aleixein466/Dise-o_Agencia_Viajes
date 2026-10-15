@@ -13,20 +13,27 @@ const schema = z.object({
   notes: z.string().trim().max(2000).optional(),
   dataConsent: z.literal("true"),
   marketingConsent: z.string().optional(),
+  website: z.string().optional(),
 });
 
 export async function POST(request: Request) {
   // Intake is deliberately disabled until the agency approves its privacy notice.
-  if (process.env.QUOTE_INTAKE_ENABLED !== "true" || !process.env.DATABASE_URL) {
+  if (process.env.QUOTE_INTAKE_ENABLED !== "true" || process.env.PRIVACY_POLICY_APPROVED !== "true" || !process.env.DATABASE_URL) {
     return NextResponse.json({ message: "Las cotizaciones aún no están habilitadas. La agencia debe aprobar la política de datos y configurar la base de datos." }, { status: 503 });
   }
+  if (Number(request.headers.get("content-length")) > 16_000) return NextResponse.json({ message: "La solicitud es demasiado extensa." }, { status: 413 });
   let body: unknown;
   try { body = await request.json(); } catch { return NextResponse.json({ message: "Solicitud inválida." }, { status: 400 }); }
   const parsed = schema.safeParse(body);
-  if (!parsed.success) return NextResponse.json({ message: "Revisa los datos del formulario." }, { status: 400 });
+  if (!parsed.success) return NextResponse.json({ message: "Revisa los campos señalados.", errors: parsed.error.flatten().fieldErrors }, { status: 400 });
   const data = parsed.data;
+  // Honeypot: acknowledge automated submissions without storing personal data.
+  if (data.website) return NextResponse.json({ message: "Solicitud recibida." }, { status: 202 });
   const travelDate = data.travelDate ? new Date(`${data.travelDate}T12:00:00.000Z`) : null;
-  if (travelDate && Number.isNaN(travelDate.getTime())) return NextResponse.json({ message: "Fecha de viaje inválida." }, { status: 400 });
+  const today = new Date().toLocaleDateString("en-CA", { timeZone: "America/Bogota" });
+  if (data.travelDate && (!/^\d{4}-\d{2}-\d{2}$/.test(data.travelDate) || Number.isNaN(travelDate?.getTime()) || travelDate?.toISOString().slice(0, 10) !== data.travelDate || data.travelDate < today)) {
+    return NextResponse.json({ message: "La fecha tentativa debe ser válida y no anterior a hoy.", errors: { travelDate: ["Elige una fecha válida desde hoy."] } }, { status: 400 });
+  }
   try {
     const quote = await getDb().quote.create({ data: {
       reference: `COT-${crypto.randomUUID().slice(0, 12).toUpperCase()}`,
