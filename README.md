@@ -1,6 +1,6 @@
 # Ricaurte Tours · propuesta inicial
 
-Prototipo responsive en Next.js para explorar viajes anteriores y preparar cotizaciones. El catálogo ahora presenta **viajes documentados** por Ricaurte Tours en publicaciones que el cliente compartió: Eje Cafetero (2026), Atacames (2025) y Excursión Chévere (2024). Esas publicaciones no representan paquetes, tarifas, fechas ni disponibilidad futura. Se incorporó el logo proporcionado por el cliente; los datos de contacto y textos legales siguen pendientes de validación.
+Prototipo responsive en Next.js para explorar viajes anteriores y preparar cotizaciones. El catálogo presenta **viajes documentados** por Ricaurte Tours en publicaciones que el cliente compartió: Eje Cafetero (2026), Atacames (2025), Excursión Chévere (2024), Cartagena (2022), San Andrés (2022) y Parque de las Aguas (2021). Esas publicaciones no representan paquetes, tarifas, fechas ni disponibilidad futura. Se incorporó el logo proporcionado por el cliente; los datos de contacto y textos legales siguen pendientes de validación.
 
 ## Estado
 
@@ -45,4 +45,4 @@ npm audit
 - `prisma/schema.prisma`: modelo de datos inicial.
 - `docs/propuesta.md`: diagnóstico, arquitectura y plan.
 
-Las fotografías de las tarjetas y la galería se obtuvieron de [publicaciones específicas de Ricaurte Tours](https://www.facebook.com/ricaurtetours) compartidas por el cliente, con enlaces a cada publicación original. Las imágenes de portada y cierre se generaron para la propuesta y son ilustrativas. Antes de publicar el sitio, conviene revisar la selección final de fotografías con la agencia.
+Las fotografías de portada, tarjetas, sitios turísticos, galerías y cierre se obtuvieron de [publicaciones específicas de Ricaurte Tours](https://www.facebook.com/ricaurtetours) compartidas por el cliente, con enlaces a cada publicación original. La ficha de cada viaje incluye su propia galería. Cuatro afiches promocionales antiguos aparecen en un archivo plegable y se identifican como no vigentes. Antes de publicar el sitio, conviene revisar la selección final de fotografías con la agencia, incluidas las imágenes de menores y de la interacción con delfines.
