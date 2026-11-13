@@ -12,7 +12,7 @@
   --cream: #faf7f0;
   --sand: #f1e9db;
   --mint: #e9f1ed;
-  --green: #397856;
+  --green: #2f6b4a;
   --line: #d9e1e0;
   --white: #fff;
   --radius-sm: 12px;
@@ -174,7 +174,7 @@ em {
   letter-spacing: -0.06em;
 }
 .section-heading h2 em {
-  color: var(--orange);
+  color: var(--orange-dark);
 }
 .heading-aside {
   width: min(100%, 355px);
@@ -308,7 +308,7 @@ em {
 }
 .hero-copy h1 em {
   display: block;
-  color: var(--orange);
+  color: var(--orange-dark);
   letter-spacing: -0.055em;
 }
 .hero-copy > p {
@@ -791,7 +791,7 @@ em {
 }
 .destinations-band {
   padding: 76px 0;
-  background: var(--green);
+  background: #26593f;
   color: white;
 }
 .destinations-band-grid {
@@ -1352,7 +1352,7 @@ em {
 .page-hero h1 em,
 .simple-page h1 em,
 .form-intro h1 em {
-  color: var(--orange);
+  color: var(--orange-dark);
 }
 .page-hero p {
   max-width: 700px;
@@ -1557,7 +1557,7 @@ em {
   letter-spacing: -0.06em;
 }
 .detail-main h2 em {
-  color: var(--orange);
+  color: var(--orange-dark);
 }
 .detail-lead {
   margin: 0 0 24px;
