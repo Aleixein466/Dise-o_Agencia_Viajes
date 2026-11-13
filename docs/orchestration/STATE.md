@@ -35,7 +35,16 @@ Conflicto esperado al integrar: ninguno entre archivos (conjuntos disjuntos), sa
 - Docker Hub: sin credenciales/CLI; solo inventario público (ningún repo de Ricaurte).
 - Codex: su sandbox no escribe refs git ni accede a npm; F1-03 lo hizo Claude.
 
+## Lote 2 (integrado en integration/f1, revisado por Sonnet: APPROVE)
+
+- F1-07 fix/f1-quotes-hardening: lectura por stream con tope 16 KB (413), 415, 403 por Origin, 429 por IP, /cotizar evalúa flags por petición. Codex introdujo mojibake UTF-8; Claude lo reparó y añadió src/encoding.test.ts.
+- F1-04 feat/f1-env: src/lib/env.ts (Zod), errores sin valores, quoteIntakeOpen() falla cerrado.
+- F1-10 refactor/f1-history: src/content/historical-trips.ts con kind "historical" y tests de integridad.
+- Verificación integration/f1: 38/38 tests, lint 0, tsc OK, build OK, 8 rutas 200, POST /api/quotes 503.
+- Deuda conocida (baja, endpoint cerrado): IP del limitador viene de XFF controlable por cliente; usar IP de proxy confiable + store compartido antes de abrir intake.
+- Codex: su sandbox no ejecuta Vitest ni next build en worktrees con node_modules enlazado; Claude verifica y hace commit.
+
 ## Próximo paso
 
-1. Usuario: aprobar ADR-0001, responder PC-2, `gh auth login` para push/PR.
-2. Tanda 2 (segura): F1-04 env, F1-07 endurecer quotes, F1-10 separar histórico.
+1. Usuario: gh auth login (push + PR de integration/f1 a main + protección en GitHub), PC-2, aprobar ADR-0001, PC-1.
+2. Lote 3 desbloqueado: F1-06 Prettier/Husky/commitlint, F4-02 SEO técnico (noindex), F2-03 máquina de estados pura (dominio, sin BD).

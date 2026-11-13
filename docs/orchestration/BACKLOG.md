@@ -1,4 +1,4 @@
-# Backlog priorizado
+| ✅ || ✅ || ✅ |# Backlog priorizado
 
 Agentes: **C** = Claude (orquestador/arquitectura), **CX** = Codex (implementación; requiere sandbox con red/refs), **R** = revisor distinto al autor. Estado: ✅ hecho en rama · ⏳ siguiente · ⛔ bloqueado.
 
