@@ -1,3 +1,14 @@
 import type { Metadata } from "next";
 export const metadata: Metadata = { alternates: { canonical: "/terminos" }, robots: { index: false, follow: true } };
-export default function Terminos() { return <div className="shell simple-page"><span className="eyebrow">DOCUMENTO PENDIENTE DE APROBACIÓN</span><h1>Términos y condiciones</h1><p>Las condiciones de viaje, cambios, cancelación, abonos y devoluciones requieren aprobación comercial y jurídica de Ricaurte Tours. No se aceptan reservas ni pagos en esta versión.</p></div>; }
+export default function Terminos() {
+  return (
+    <div className="shell simple-page">
+      <span className="eyebrow">DOCUMENTO PENDIENTE DE APROBACIÓN</span>
+      <h1>Términos y condiciones</h1>
+      <p>
+        Las condiciones de viaje, cambios, cancelación, abonos y devoluciones requieren aprobación comercial y jurídica
+        de Ricaurte Tours. No se aceptan reservas ni pagos en esta versión.
+      </p>
+    </div>
+  );
+}

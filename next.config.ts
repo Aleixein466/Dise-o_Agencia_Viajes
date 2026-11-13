@@ -3,7 +3,10 @@ import type { NextConfig } from "next";
 // Baseline security headers (ASVS V3/V14). Script/style CSP with nonces is tracked as backlog F1-09:
 // it needs a proxy-based nonce and is not safe to add blindly to statically rendered pages.
 const securityHeaders = [
-  { key: "Content-Security-Policy", value: "frame-ancestors 'none'; base-uri 'self'; object-src 'none'; form-action 'self'" },
+  {
+    key: "Content-Security-Policy",
+    value: "frame-ancestors 'none'; base-uri 'self'; object-src 'none'; form-action 'self'",
+  },
   { key: "X-Frame-Options", value: "DENY" },
   { key: "X-Content-Type-Options", value: "nosniff" },
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },

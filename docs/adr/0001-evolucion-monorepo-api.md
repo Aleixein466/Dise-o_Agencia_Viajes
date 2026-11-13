@@ -1,6 +1,6 @@
 # ADR-0001 — Evolución incremental hacia monorepo (pnpm + Turborepo) y API NestJS/Fastify
 
-Estado: **Propuesto** (requiere aprobación del usuario) · Fecha: 2026-11-13
+Estado: **Aceptado** por el usuario (2026-11-13) · Fecha: 2026-11-13
 
 ## Contexto
 
@@ -20,11 +20,11 @@ El dominio (pricing, máquina de estados, firmas Wompi) se escribe como **TypeSc
 
 ## Alternativas
 
-| Opción | Pros | Contras |
-| --- | --- | --- |
-| A. Seguir con Next solo (route handlers) | Menos piezas, despliegue único | Contradice §13/§27; guards, módulos y jobs menos estructurados; webhook y panel en el mismo proceso que SSR |
-| **B. Incremental (elegida)** | Cumple el requisito sin romper; cada paso reversible | Dos procesos a desplegar; algo más de infraestructura |
-| C. Big-bang monorepo + API | Llega antes a la estructura final | Alto riesgo, PR enorme, imposible de revisar |
+| Opción                                   | Pros                                                 | Contras                                                                                                     |
+| ---------------------------------------- | ---------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| A. Seguir con Next solo (route handlers) | Menos piezas, despliegue único                       | Contradice §13/§27; guards, módulos y jobs menos estructurados; webhook y panel en el mismo proceso que SSR |
+| **B. Incremental (elegida)**             | Cumple el requisito sin romper; cada paso reversible | Dos procesos a desplegar; algo más de infraestructura                                                       |
+| C. Big-bang monorepo + API               | Llega antes a la estructura final                    | Alto riesgo, PR enorme, imposible de revisar                                                                |
 
 ## Costos y riesgos
 
@@ -38,4 +38,4 @@ Cada paso es un PR; revertir el merge restaura el estado anterior. No hay migrac
 
 ## Aprobación requerida
 
-Confirmar B antes de ejecutar F2-a. Sin aprobación, F1 continúa sin cambiar estructura.
+Aprobado: opción B. F2-a se ejecuta tras integrar el lote 4.

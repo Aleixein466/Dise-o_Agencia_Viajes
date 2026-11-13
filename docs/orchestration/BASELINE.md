@@ -5,28 +5,28 @@ Remoto: `github.com/Aleixein466/Dise-o_Agencia_Viajes`. Requisitos: `docs/requir
 
 ## Entorno verificado
 
-| Herramienta | Estado |
-| --- | --- |
-| Node / npm | v24.15.0 / 11.12.1 |
-| Docker CLI | **No instalado** en este equipo (`docker: command not found`) |
-| GitHub CLI | Instalado, **sin sesión** (`gh auth status`: not logged in) → no se pudo leer Actions, protección de ramas ni PR |
-| GitHub Actions | No existía `.github/` en `main` |
-| Playwright | No está en el proyecto; hay un binario ajeno en otro entorno Python. PC-2 pendiente |
-| Codex CLI | 0.167.2, sesión iniciada; su sandbox bloqueó escritura de refs git y red npm (ver STATE) |
+| Herramienta            | Estado                                                                                                                                                                                                             |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Node / npm             | v24.15.0 / 11.12.1                                                                                                                                                                                                 |
+| Docker CLI             | **No instalado** en este equipo (`docker: command not found`)                                                                                                                                                      |
+| GitHub CLI             | Instalado, **sin sesión** (`gh auth status`: not logged in) → no se pudo leer Actions, protección de ramas ni PR                                                                                                   |
+| GitHub Actions         | No existía `.github/` en `main`                                                                                                                                                                                    |
+| Playwright             | No está en el proyecto; hay un binario ajeno en otro entorno Python. PC-2 pendiente                                                                                                                                |
+| Codex CLI              | 0.167.2, sesión iniciada; su sandbox bloqueó escritura de refs git y red npm (ver STATE)                                                                                                                           |
 | Docker Hub `alexisfer` | API pública: 5 repos públicos (`programita`, `sistema-experto`, `helpdesk-net`, `proyectouno`, `byteshop`). **Ninguno es de Ricaurte Tours.** Tags, digests y vulnerabilidades no auditados (sin CLI/credenciales) |
 
 ## Resultados reproducibles (sin modificar archivos)
 
-| Comando | Resultado |
-| --- | --- |
-| `npm ci` | OK |
-| `npx prisma validate --config prisma7.config.ts` | OK (con `DATABASE_URL` ficticia) |
-| `npm run typecheck` antes de `prisma generate` | **FALLA**: `src/lib/db.ts(2,30)` no encuentra `@/generated/prisma/client` (cliente generado e ignorado por git) |
-| `npm run build` (incluye `prisma generate`) | OK; 16 páginas, 6 fichas SSG, `/api/quotes` dinámica |
-| `npm run typecheck` tras generate | OK |
-| `npm audit` / `--omit=dev` | 1 moderada: `fast-uri` (vía `prisma` → `@prisma/dev` → `ajv`), GHSA-333x-w4r6-6crp. Herramienta de desarrollo; sin alta/crítica |
-| lint / test / E2E | **No existían** en `main` |
-| Migraciones contra PostgreSQL real | **No ejecutado** (sin Docker) |
+| Comando                                          | Resultado                                                                                                                       |
+| ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------- |
+| `npm ci`                                         | OK                                                                                                                              |
+| `npx prisma validate --config prisma7.config.ts` | OK (con `DATABASE_URL` ficticia)                                                                                                |
+| `npm run typecheck` antes de `prisma generate`   | **FALLA**: `src/lib/db.ts(2,30)` no encuentra `@/generated/prisma/client` (cliente generado e ignorado por git)                 |
+| `npm run build` (incluye `prisma generate`)      | OK; 16 páginas, 6 fichas SSG, `/api/quotes` dinámica                                                                            |
+| `npm run typecheck` tras generate                | OK                                                                                                                              |
+| `npm audit` / `--omit=dev`                       | 1 moderada: `fast-uri` (vía `prisma` → `@prisma/dev` → `ajv`), GHSA-333x-w4r6-6crp. Herramienta de desarrollo; sin alta/crítica |
+| lint / test / E2E                                | **No existían** en `main`                                                                                                       |
+| Migraciones contra PostgreSQL real               | **No ejecutado** (sin Docker)                                                                                                   |
 
 Efecto secundario: `npm run build`/`typecheck` reescriben `tsconfig.tsbuildinfo` versionado (corregido en F1-01).
 
@@ -42,9 +42,9 @@ Efecto secundario: `npm run build`/`typecheck` reescriben `tsconfig.tsbuildinfo`
 
 ## Qué funciona realmente vs. qué es esquema/mock
 
-| Funciona | Solo esquema / mock / bloqueado |
-| --- | --- |
+| Funciona                                                                                                   | Solo esquema / mock / bloqueado                                                 |
+| ---------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
 | Sitio público estático: home, catálogo histórico filtrable, fichas con galería accesible, menú con teclado | Catálogo comercial, paquetes, salidas, precios (modelos Prisma sin UI ni datos) |
-| `/cotizar` explora destino/fecha/viajeros sin pedir PII | Cotizaciones: API devuelve 503 (cerrada por 3 condiciones) |
-| `POST /api/quotes` valida con Zod y se mantiene cerrada | Reservas, pagos, abonos, Wompi, auth, panel, PQR, correo: inexistentes |
-| Build y typecheck | Lint, tests, CI, E2E: inexistentes en `main` |
+| `/cotizar` explora destino/fecha/viajeros sin pedir PII                                                    | Cotizaciones: API devuelve 503 (cerrada por 3 condiciones)                      |
+| `POST /api/quotes` valida con Zod y se mantiene cerrada                                                    | Reservas, pagos, abonos, Wompi, auth, panel, PQR, correo: inexistentes          |
+| Build y typecheck                                                                                          | Lint, tests, CI, E2E: inexistentes en `main`                                    |

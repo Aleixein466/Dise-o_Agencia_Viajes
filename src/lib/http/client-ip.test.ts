@@ -2,11 +2,16 @@ import { describe, expect, it } from "vitest";
 import { getClientIp } from "./client-ip";
 
 const headers = (init: Record<string, string>) => new Headers(init);
-const env = (CLIENT_IP_SOURCE: "none" | "x-real-ip" | "cf-connecting-ip" | "x-forwarded-for", TRUSTED_PROXY_HOPS = 1) => ({ CLIENT_IP_SOURCE, TRUSTED_PROXY_HOPS });
+const env = (
+  CLIENT_IP_SOURCE: "none" | "x-real-ip" | "cf-connecting-ip" | "x-forwarded-for",
+  TRUSTED_PROXY_HOPS = 1,
+) => ({ CLIENT_IP_SOURCE, TRUSTED_PROXY_HOPS });
 
 describe("getClientIp", () => {
   it("trusts no header when the source is none", () => {
-    expect(getClientIp(headers({ "x-forwarded-for": "203.0.113.7", "x-real-ip": "203.0.113.7" }), env("none"))).toBeNull();
+    expect(
+      getClientIp(headers({ "x-forwarded-for": "203.0.113.7", "x-real-ip": "203.0.113.7" }), env("none")),
+    ).toBeNull();
   });
 
   it("reads single-value edge headers and validates them", () => {

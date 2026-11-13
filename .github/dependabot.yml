@@ -1,0 +1,40 @@
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      timezone: America/Bogota
+    open-pull-requests-limit: 5
+    target-branch: integration/f1
+    commit-message:
+      prefix: chore(deps)
+    groups:
+      dev-tooling:
+        dependency-type: development
+        update-types: [minor, patch]
+      runtime-patches:
+        dependency-type: production
+        update-types: [patch]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      timezone: America/Bogota
+    target-branch: integration/f1
+    commit-message:
+      prefix: ci(deps)
+    groups:
+      actions:
+        patterns: ["*"]
+
+  - package-ecosystem: docker-compose
+    directory: /
+    schedule:
+      interval: monthly
+    target-branch: integration/f1
+    commit-message:
+      prefix: chore(deps)
