@@ -18,19 +18,19 @@ Actualizado: 2026-11-13. Estados: **Pendiente** · **En desarrollo** · **En rev
 
 ## Lotes funcionales (orden: 2 → 3 → 4 primero, según el usuario)
 
-| #   | Lote                                                                         | Depende de | Estado                              |
-| --- | ---------------------------------------------------------------------------- | ---------- | ----------------------------------- |
-| 1   | Arquitectura backend y contratos (ADR-0001: pnpm, Turborepo, NestJS/Fastify) | Lote 4     | En revisión                         |
-| 2   | Auth, usuarios, roles y permisos                                             | Prisma v2  | Parcial (API; falta PostgreSQL/E2E) |
-| 3   | Estructura del panel administrativo                                          | 2          | En desarrollo (UI recuperada)       |
-| 4   | CRUD de catálogo                                                             | 2, 3       | Pendiente                           |
-| 5   | CRM y asesores                                                               | 2, 3       | Pendiente                           |
-| 6   | Constructor y motor de precios                                               | 4          | Pendiente (datos ficticios; PC-4)   |
-| 7   | Cotizaciones y reservas                                                      | 6          | Pendiente                           |
-| 8   | Portal del cliente                                                           | 2, 7       | Pendiente                           |
-| 9   | Finanzas y Wompi sandbox                                                     | 7          | Bloqueado (llaves sandbox, PC-5)    |
-| 10  | PQR, comunicaciones y contenido                                              | 2, 3       | Pendiente (textos legales PC-6)     |
-| 11  | Reportes, pruebas integrales, prep. producción                               | todos      | Pendiente                           |
+| #   | Lote                                                                         | Depende de | Estado                                          |
+| --- | ---------------------------------------------------------------------------- | ---------- | ----------------------------------------------- |
+| 1   | Arquitectura backend y contratos (ADR-0001: pnpm, Turborepo, NestJS/Fastify) | Lote 4     | En revisión                                     |
+| 2   | Auth, usuarios, roles y permisos                                             | Prisma v2  | Bloqueado: falta CLI Docker para PostgreSQL/E2E |
+| 3   | Estructura del panel administrativo                                          | 2          | En desarrollo (UI recuperada)                   |
+| 4   | CRUD de catálogo                                                             | 2, 3       | Pendiente                                       |
+| 5   | CRM y asesores                                                               | 2, 3       | Pendiente                                       |
+| 6   | Constructor y motor de precios                                               | 4          | Pendiente (datos ficticios; PC-4)               |
+| 7   | Cotizaciones y reservas                                                      | 6          | Pendiente                                       |
+| 8   | Portal del cliente                                                           | 2, 7       | Pendiente                                       |
+| 9   | Finanzas y Wompi sandbox                                                     | 7          | Bloqueado (llaves sandbox, PC-5)                |
+| 10  | PQR, comunicaciones y contenido                                              | 2, 3       | Pendiente (textos legales PC-6)                 |
+| 11  | Reportes, pruebas integrales, prep. producción                               | todos      | Pendiente                                       |
 
 ## Inventario funcional
 
