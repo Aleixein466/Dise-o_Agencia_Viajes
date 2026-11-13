@@ -21,8 +21,8 @@ Actualizado: 2026-11-13. Estados: **Pendiente** · **En desarrollo** · **En rev
 | #   | Lote                                                                         | Depende de | Estado                            |
 | --- | ---------------------------------------------------------------------------- | ---------- | --------------------------------- |
 | 1   | Arquitectura backend y contratos (ADR-0001: pnpm, Turborepo, NestJS/Fastify) | Lote 4     | En revisión                       |
-| 2   | Auth, usuarios, roles y permisos                                             | Prisma v2  | Pendiente                         |
-| 3   | Estructura del panel administrativo                                          | 2          | Pendiente                         |
+| 2   | Auth, usuarios, roles y permisos                                             | Prisma v2  | En desarrollo                     |
+| 3   | Estructura del panel administrativo                                          | 2          | En desarrollo (UI recuperada)     |
 | 4   | CRUD de catálogo                                                             | 2, 3       | Pendiente                         |
 | 5   | CRM y asesores                                                               | 2, 3       | Pendiente                         |
 | 6   | Constructor y motor de precios                                               | 4          | Pendiente (datos ficticios; PC-4) |
@@ -45,8 +45,8 @@ Leyenda: **Implementado** (código + pruebas) · **Parcial** · **Ausente** · *
 | Intake de cotizaciones                                                | Parcial (cerrado)      | `apps/web/src/app/api/quotes`; 503 hasta PC-6 + limitador compartido   |
 | Máquinas de estado reserva/pago                                       | Implementado (dominio) | `packages/domain/src/**`; sin persistencia aún                         |
 | Modelo de datos v2                                                    | Implementado           | `packages/db/prisma/schema.prisma`, `docs/data/DATA_MODEL.md`          |
-| Auth, sesiones, MFA, RBAC                                             | Ausente                | Lote 2                                                                 |
-| Panel administrativo (dashboard, catálogo, precios, cupos, auditoría) | Ausente                | Lotes 3–4                                                              |
+| Auth, sesiones, MFA, RBAC                                             | Parcial                | Dominio y UI recuperados; endpoints y persistencia pendientes          |
+| Panel administrativo (dashboard, catálogo, precios, cupos, auditoría) | Parcial                | Shell, rutas protegidas y vacíos reales; CRUD y métricas pendientes    |
 | Panel de asesores / CRM                                               | Ausente                | Lote 5                                                                 |
 | Constructor de paquetes y motor de precios                            | Ausente                | Lote 6; tarifas reales bloqueadas por PC-4 (Excel)                     |
 | Cotizaciones y reservas persistidas                                   | Ausente                | Lote 7                                                                 |
