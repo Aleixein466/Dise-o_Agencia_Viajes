@@ -24,6 +24,22 @@ export function sessionKindFor(roles: readonly string[]): SessionKind {
 export function sessionAbsoluteExpiry(createdAt: Date, kind: SessionKind): Date {
   return new Date(createdAt.getTime() + SESSION_POLICY[kind].absoluteMs);
 }
+export interface SessionTimes {
+  createdAt: Date;
+  lastSeenAt: Date | null;
+  expiresAt: Date;
+  revokedAt: Date | null;
+}
+export type SessionState = "active" | "revoked" | "expired_absolute" | "expired_idle";
+/** Re-evaluate against current roles so a newly promoted staff user receives the shorter policy immediately. */
+export function sessionState(session: SessionTimes, kind: SessionKind, now: Date): SessionState {
+  if (session.revokedAt) return "revoked";
+  const policy = SESSION_POLICY[kind];
+  const absolute = Math.min(session.expiresAt.getTime(), session.createdAt.getTime() + policy.absoluteMs);
+  if (now.getTime() >= absolute) return "expired_absolute";
+  if (now.getTime() - (session.lastSeenAt ?? session.createdAt).getTime() >= policy.idleMs) return "expired_idle";
+  return "active";
+}
 export function oneTimeTokenExpiry(purpose: OneTimeTokenPurpose, now: Date): Date {
   return new Date(now.getTime() + ONE_TIME_TOKEN_TTL_MS[purpose]);
 }

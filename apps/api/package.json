@@ -8,7 +8,8 @@
     "start": "node dist/main.mjs",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "auth:bootstrap": "tsx src/auth/bootstrap.ts"
   },
   "dependencies": {
     "@fastify/helmet": "13.2.0",
@@ -28,6 +29,7 @@
   "devDependencies": {
     "@nestjs/testing": "11.2.8",
     "@ricaurte/db": "workspace:*",
+    "@ricaurte/domain": "workspace:*",
     "@ricaurte/validation": "workspace:*",
     "@types/node": "24.19.2",
     "esbuild": "0.28.2",

@@ -7,7 +7,7 @@ const READY_TIMEOUT_MS = 2000;
 @Injectable()
 export class DbService implements OnModuleDestroy {
   private readonly logger = new Logger(DbService.name);
-  private client: Promise<PrismaClient> | undefined;
+  private dbClient: Promise<PrismaClient> | undefined;
 
   constructor(@Inject(ENV) private readonly env: ApiEnv) {}
 
@@ -15,8 +15,15 @@ export class DbService implements OnModuleDestroy {
   private getClient(): Promise<PrismaClient> | undefined {
     const url = this.env.DATABASE_URL;
     if (url === undefined) return undefined;
-    this.client ??= import("@ricaurte/db").then((db) => db.createDbClient(url));
-    return this.client;
+    this.dbClient ??= import("@ricaurte/db").then((db) => db.createDbClient(url));
+    return this.dbClient;
+  }
+
+  /** Auth and application services must use this accessor; it never silently falls back to memory. */
+  async client(): Promise<PrismaClient> {
+    const pending = this.getClient();
+    if (pending === undefined) throw new Error("Database is not configured");
+    return pending;
   }
 
   /** True only when `SELECT 1` succeeds within the timeout. Never throws and never exposes the cause. */
@@ -41,9 +48,9 @@ export class DbService implements OnModuleDestroy {
   }
 
   async onModuleDestroy(): Promise<void> {
-    const pending = this.client;
+    const pending = this.dbClient;
     if (pending === undefined) return;
-    this.client = undefined;
+    this.dbClient = undefined;
     try {
       await (await pending).$disconnect();
     } catch {

@@ -12,6 +12,10 @@ const envSchema = z.object({
   LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace", "silent"]).default("info"),
   // Number of reverse proxies in front of the API whose X-Forwarded-* headers are trusted. 0 = trust none.
   TRUST_PROXY_HOPS: z.coerce.number().int().min(0).max(5).default(0),
+  // Origin checked on every cookie-authenticated mutation. It is intentionally not inferred from Host.
+  APP_ORIGIN: z.url().default("http://localhost:3000"),
+  // Required when a staff member provisions or verifies TOTP. Base64-encoded 32-byte AES-256 key.
+  MFA_ENCRYPTION_KEY: z.string().min(1).optional(),
 });
 
 export type ApiEnv = z.infer<typeof envSchema>;

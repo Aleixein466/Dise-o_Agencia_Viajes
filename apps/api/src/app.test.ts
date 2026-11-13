@@ -7,17 +7,19 @@ import { afterEach, describe, expect, it } from "vitest";
 import { BODY_LIMIT_BYTES, configureApp, createAdapter } from "./app.factory";
 import { AppModule } from "./app.module";
 import { DbService } from "./db/db.service";
+import { AuthService } from "./auth/auth.service";
 import { parseEnv, type ApiEnv } from "./config/env";
 
 const apps: NestFastifyApplication[] = [];
 
 async function boot(
   overrides: Record<string, string> = {},
-  options: { db?: Pick<DbService, "isReady">; logStream?: Writable } = {},
+  options: { db?: Pick<DbService, "isReady">; auth?: Partial<AuthService>; logStream?: Writable } = {},
 ): Promise<NestFastifyApplication> {
   const env: ApiEnv = parseEnv({ LOG_LEVEL: options.logStream ? "info" : "silent", ...overrides });
   let builder = Test.createTestingModule({ imports: [AppModule.register(env)] });
   if (options.db) builder = builder.overrideProvider(DbService).useValue(options.db);
+  if (options.auth) builder = builder.overrideProvider(AuthService).useValue(options.auth);
   const moduleRef = await builder.compile();
   const app = moduleRef.createNestApplication<NestFastifyApplication>(createAdapter(env, options.logStream), {
     logger: false,
@@ -38,7 +40,7 @@ describe("GET /api/v1/health", () => {
     const app = await boot();
     const response = await app.inject({ method: "GET", url: "/api/v1/health" });
 
-    expect(response.statusCode).toBe(200);
+    expect(response.statusCode, response.body).toBe(200);
     expect(healthResponse.parse(response.json())).toEqual({ status: "ok" });
     expect(response.headers["x-content-type-options"]).toBe("nosniff");
     expect(response.headers["cache-control"]).toBe("no-store");
@@ -141,5 +143,44 @@ describe("parseEnv", () => {
     expect(() => parseEnv({ PORT: "99999", DATABASE_URL: "mysql://secret" })).toThrow(
       /Invalid environment configuration: PORT, DATABASE_URL$/,
     );
+  });
+});
+
+describe("authentication HTTP contract", () => {
+  it("sets an opaque HttpOnly session cookie after a successful login", async () => {
+    const app = await boot(
+      {},
+      {
+        auth: {
+          cookieName: () => "__Host-rt_session",
+          login: async () => ({ token: "opaque-token", mfaRequired: true }),
+        },
+      },
+    );
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/v1/auth/login",
+      payload: { email: "staff@example.com", password: "a-password-long-enough" },
+    });
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual({ mfaRequired: true });
+    expect(response.headers["set-cookie"]).toContain("__Host-rt_session=opaque-token; Path=/; HttpOnly; SameSite=Lax");
+  });
+
+  it("does not accept a malformed login request", async () => {
+    const app = await boot({}, { auth: { login: async () => ({ token: "never", mfaRequired: false }) } });
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/v1/auth/login",
+      payload: { email: "not-an-email", password: "x" },
+    });
+    expect(response.statusCode).toBe(400);
+    expect(problem.parse(response.json())).toMatchObject({ status: 400 });
+  });
+
+  it("requires the opaque cookie before exposing session data", async () => {
+    const app = await boot({}, { auth: { cookieName: () => "__Host-rt_session", session: async () => ({}) as never } });
+    const response = await app.inject({ method: "GET", url: "/api/v1/auth/session" });
+    expect(response.statusCode, response.body).toBe(401);
   });
 });

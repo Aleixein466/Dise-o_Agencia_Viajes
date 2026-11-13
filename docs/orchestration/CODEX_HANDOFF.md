@@ -14,7 +14,7 @@ Actualizado: 2026-11-13. Rama de continuación: `codex/continue-auth-admin`, cre
 
 - `packages/domain/src/auth/`: catálogo RBAC, restricciones de roles, reglas de propiedad para evitar IDOR, política de sesiones/bloqueo y contraseña.
 - `apps/web/src/app/(auth)/`, `apps/web/src/app/admin/`, `apps/web/src/components/admin/`, `apps/web/src/lib/auth/` y `apps/web/src/proxy.ts`: interfaz de acceso y panel base. La autorización se verifica en layout y página; el proxy solo aporta la ruta y evita caché, conforme a Next 16.
-- Se añadieron `@node-rs/argon2` y `otpauth` al API y se actualizó el lockfile. Aún no se exponen endpoints de autenticación: el API existente contiene solo salud.
+- Se añadieron `@node-rs/argon2` y `otpauth` al API y se actualizó el lockfile.
 - Se corrigió navegación interna tras login/MFA/logout para usar el router de Next y refrescar el estado de sesión; no hay enlaces visuales que sustituyan la autorización de servidor.
 
 ## Verificación ejecutada
@@ -30,11 +30,18 @@ Actualizado: 2026-11-13. Rama de continuación: `codex/continue-auth-admin`, cre
 
 Los comandos raíz de Turbo y el script de build del paquete web no pudieron invocar `pnpm` directamente porque no está en el PATH. `corepack enable` tampoco pudo crear los shims por falta de permisos sobre `C:\Program Files\nodejs`. La misma build se verificó mediante `corepack pnpm` y el binario local de Next. No se ejecutaron migraciones: no hay PostgreSQL local configurado.
 
+## Autenticación implementada
+
+- `POST /api/v1/auth/login`, `GET /auth/session`, cierre de una o todas las sesiones, recuperación y restablecimiento de contraseña, alta/verificación TOTP y código de recuperación.
+- La cookie contiene un token opaco de 256 bits; PostgreSQL solo recibe su SHA-256. Las contraseñas se procesan con Argon2id y la clave TOTP se cifra con AES-256-GCM usando `MFA_ENCRYPTION_KEY`.
+- Toda mutación autenticada exige `Origin` igual a `APP_ORIGIN` y un token CSRF ligado a la sesión. El login invalida sesiones previas; el restablecimiento invalida todas.
+- `apps/api/src/auth/bootstrap.ts` siembra roles/permisos y crea el primer ADMIN solo fuera de producción y solo con las tres variables `BOOTSTRAP_ADMIN_*`. No hay registro público de personal.
+
 ## Riesgos y tareas pendientes
 
-1. Implementar el módulo Nest `auth`: hash Argon2id, cookie opaca `__Host-rt_session`, CSRF, rate limit, tokens de recuperación, MFA cifrado y auditoría.
-2. Crear una migración/seed versionada para los roles y permisos de `packages/domain`; el esquema v2 ya contiene las tablas, pero no los datos.
-3. Agregar pruebas de integración con PostgreSQL y E2E para login, MFA, 401/403 e IDOR; actualmente el panel es una interfaz integrada a contratos aún no expuestos.
+1. Ejecutar las pruebas de integración con PostgreSQL y E2E para login, MFA, 401/403 e IDOR. Docker no está instalado localmente y no hay una base configurada, por lo que esto no se ha declarado verificado.
+2. Conectar un adaptador de correo transaccional aprobado: por seguridad el endpoint de recuperación guarda solo el hash y nunca devuelve el token; aún no existe entrega de correo.
+3. Añadir guards de permiso/propiedad a los módulos de recursos cuando se implementen y probar IDOR por recurso.
 4. Conectar estadísticas reales y CRUD antes de marcar módulos del panel como funcionales. Los estados vacíos actuales son deliberados.
 5. Solicitar al propietario una copia local no versionada de `Portafolio_Ricaurte_Tours.docx` si contiene datos comerciales privados, por ejemplo en `docs/input/` ignorado por Git.
 
