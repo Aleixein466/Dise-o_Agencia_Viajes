@@ -48,6 +48,9 @@ pnpm audit --prod
   - `apps/web/src/content/historical-trips.ts`: contenido editorial reemplazable.
   - `apps/web/e2e`: pruebas Playwright.
 - `packages/db`: Prisma (`@ricaurte/db`): `prisma/schema.prisma` (modelo de datos), migraciones y cliente generado en `src/generated/` (ignorado por git; `pnpm db:generate`).
+- `apps/api`: API NestJS + Fastify (`@ricaurte/api`), prefijo `/api/v1`; `GET /api/v1/health` (liveness) y `/api/v1/health/ready` (PostgreSQL). `pnpm --filter @ricaurte/api dev` (puerto 4000, solo loopback). Web la expone mismo-origen con `API_INTERNAL_URL` (rewrite `/api/v1/*`, leído en `next build`).
+- `packages/domain`: dominio puro en TypeScript (`@ricaurte/domain`): máquinas de estado de reserva/pago y dinero en centavos.
+- `packages/validation`: esquemas Zod compartidos (`@ricaurte/validation`): `healthResponse`, `problem` (RFC 9457).
 - `docs/propuesta.md`: arquitectura y plan inicial.
 - `docs/auditoria-v2.md`: hallazgos verificados, benchmark, decisiones y QA del rediseño.
 

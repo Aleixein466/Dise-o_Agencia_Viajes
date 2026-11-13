@@ -9,8 +9,8 @@
     },
     "build": {
       "dependsOn": ["^generate"],
-      "env": ["NEXT_PUBLIC_*"],
-      "outputs": [".next/**", "!.next/cache/**"]
+      "env": ["NEXT_PUBLIC_*", "API_INTERNAL_URL"],
+      "outputs": [".next/**", "!.next/cache/**", "dist/**"]
     },
     "dev": {
       "dependsOn": ["^generate"],

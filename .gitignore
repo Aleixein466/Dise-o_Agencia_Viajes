@@ -17,3 +17,4 @@ test-results/
 .orchestra/
 .claude/worktrees/
 .turbo/
+dist/

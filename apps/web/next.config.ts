@@ -20,10 +20,23 @@ const securityHeaders = [
   { key: "Cross-Origin-Opener-Policy", value: "same-origin" },
 ];
 
+// Same-origin access to the API (no CORS): /api/v1/* is proxied server-side. The route manifest is built at
+// `next build`, so API_INTERNAL_URL must be set at build time. Existing Next routes such as /api/quotes are untouched.
+function apiRewrites() {
+  const raw = process.env.API_INTERNAL_URL;
+  if (!raw) return [];
+  const url = new URL(raw);
+  if (url.protocol !== "http:" && url.protocol !== "https:") throw new Error("API_INTERNAL_URL must be http(s)");
+  return [{ source: "/api/v1/:path*", destination: `${url.origin}/api/v1/:path*` }];
+}
+
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
   transpilePackages: ["@ricaurte/db"],
+  async rewrites() {
+    return apiRewrites();
+  },
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
   },
