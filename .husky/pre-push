@@ -5,4 +5,4 @@ while read local_ref local_sha remote_ref remote_sha; do
     exit 1
   fi
 done
-npm run lint && npm run typecheck && npm test
+pnpm lint && pnpm typecheck && pnpm test

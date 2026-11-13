@@ -1,0 +1,8 @@
+packages:
+  - apps/*
+  - packages/*
+
+# Lifecycle scripts are blocked by default; only Prisma's engine download/setup is allowed.
+allowBuilds:
+  "@prisma/engines": true
+  prisma: true

@@ -4,4 +4,4 @@ if [ "$branch" = "main" ]; then
   echo "Blocked: direct commits to main are not allowed. Use a feature branch + PR." >&2
   exit 1
 fi
-npx lint-staged
+pnpm exec lint-staged
