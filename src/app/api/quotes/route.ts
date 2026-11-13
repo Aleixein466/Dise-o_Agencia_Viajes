@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getDb } from "@/lib/db";
+import { readJsonLimited } from "@/lib/http/read-json-limited";
+import { checkRateLimit } from "@/lib/http/rate-limit";
 
 const schema = z.object({
   name: z.string().trim().min(2).max(120),
@@ -21,9 +23,21 @@ export async function POST(request: Request) {
   if (process.env.QUOTE_INTAKE_ENABLED !== "true" || process.env.PRIVACY_POLICY_APPROVED !== "true" || !process.env.DATABASE_URL) {
     return NextResponse.json({ message: "Las cotizaciones aún no están habilitadas. La agencia debe aprobar la política de datos y configurar la base de datos." }, { status: 503 });
   }
-  if (Number(request.headers.get("content-length")) > 16_000) return NextResponse.json({ message: "La solicitud es demasiado extensa." }, { status: 413 });
-  let body: unknown;
-  try { body = await request.json(); } catch { return NextResponse.json({ message: "Solicitud inválida." }, { status: 400 }); }
+  if (!request.headers.get("content-type")?.toLowerCase().startsWith("application/json")) return NextResponse.json({ message: "Tipo de contenido inválido." }, { status: 415 });
+  const origin = request.headers.get("origin");
+  if (origin) {
+    let expectedOrigin: string;
+    try { expectedOrigin = new URL(process.env.NEXT_PUBLIC_SITE_URL || request.url).origin; }
+    catch { expectedOrigin = new URL(request.url).origin; }
+    if (origin !== expectedOrigin) return NextResponse.json({ message: "Origen inválido." }, { status: 403 });
+  }
+  // Missing Origin is allowed because same-origin fetch may omit it in some browsers.
+  const clientIp = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+  const rate = checkRateLimit(clientIp);
+  if (!rate.allowed) return NextResponse.json({ message: "Demasiadas solicitudes. Intenta más tarde." }, { status: 429, headers: { "Retry-After": String(rate.retryAfter) } });
+  const result = await readJsonLimited(request);
+  if (!result.ok) return NextResponse.json({ message: result.status === 413 ? "La solicitud es demasiado extensa." : "Solicitud inválida." }, { status: result.status });
+  const body = result.value;
   const parsed = schema.safeParse(body);
   if (!parsed.success) return NextResponse.json({ message: "Revisa los campos señalados.", errors: parsed.error.flatten().fieldErrors }, { status: 400 });
   const data = parsed.data;
