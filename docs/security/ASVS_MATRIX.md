@@ -14,8 +14,8 @@ Estados: **Cumple** (evidencia en código o prueba), **Parcial** (control parcia
 
 | Estado              | Filas |
 | ------------------- | ----- |
-| Cumple              | 26    |
-| Parcial             | 17    |
+| Cumple              | 28    |
+| Parcial             | 15    |
 | No cumple           | 3     |
 | No aplica           | 3     |
 | Pendiente de módulo | 34    |
@@ -163,15 +163,15 @@ Estados: **Cumple** (evidencia en código o prueba), **Parcial** (control parcia
 
 ## V15 Codificación segura y arquitectura
 
-| ID                   | Requisito                                                  | Estado              | Evidencia                                                                                          | Lote     | Riesgo |
-| -------------------- | ---------------------------------------------------------- | ------------------- | -------------------------------------------------------------------------------------------------- | -------- | ------ |
-| V15 ID por confirmar | Análisis de vulnerabilidades de dependencias               | Parcial             | `.github/workflows/ci.yml` (`npm audit --omit=dev --audit-level=high`); sin Dependabot             | Infra    | R12    |
-| V15 ID por confirmar | Pipeline con permisos mínimos y acciones fijadas por SHA   | Cumple              | `.github/workflows/ci.yml` (`permissions: contents: read`, acciones por SHA)                       | Infra    | —      |
-| V15 ID por confirmar | Revisión obligatoria antes de integrar a `main`            | Parcial             | `.husky/pre-commit`, `.husky/pre-push` (bloqueo local); protección de rama en GitHub sin verificar | Infra    | R10    |
-| V15 ID por confirmar | Pruebas automatizadas de seguridad en CI                   | Parcial             | `e2e/security.spec.ts`; `.github/workflows/e2e.yml`; sin pruebas adversarias de pago               | Infra    | R05    |
-| V15 ID por confirmar | Modelo de amenazas documentado                             | Cumple              | `docs/security/THREAT_MODEL.md`                                                                    | Infra    | —      |
-| V15 ID por confirmar | Escaneo de imágenes y cadena de suministro de contenedores | Pendiente de módulo | —                                                                                                  | Infra    | R14    |
-| V15 ID por confirmar | Lógica de dominio aislada y probada                        | Cumple              | `src/domain/README.md`; `src/domain/payments/state-machine.test.ts`                                | Reservas | R05    |
+| ID                   | Requisito                                                  | Estado              | Evidencia                                                                                             | Lote     | Riesgo |
+| -------------------- | ---------------------------------------------------------- | ------------------- | ----------------------------------------------------------------------------------------------------- | -------- | ------ |
+| V15 ID por confirmar | Análisis de vulnerabilidades de dependencias               | Cumple              | `.github/workflows/ci.yml` (`npm audit`); `.github/dependabot.yml` (activo al llegar a `main`)        | Infra    | R12    |
+| V15 ID por confirmar | Pipeline con permisos mínimos y acciones fijadas por SHA   | Cumple              | `.github/workflows/ci.yml` (`permissions: contents: read`, acciones por SHA)                          | Infra    | —      |
+| V15 ID por confirmar | Revisión obligatoria antes de integrar a `main`            | Cumple              | Protección de `main` verificada por API (PR, checks `verify`+`secrets`, `enforce_admins`); `.husky/*` | Infra    | R10    |
+| V15 ID por confirmar | Pruebas automatizadas de seguridad en CI                   | Parcial             | `e2e/security.spec.ts`; `.github/workflows/e2e.yml`; sin pruebas adversarias de pago                  | Infra    | R05    |
+| V15 ID por confirmar | Modelo de amenazas documentado                             | Cumple              | `docs/security/THREAT_MODEL.md`                                                                       | Infra    | —      |
+| V15 ID por confirmar | Escaneo de imágenes y cadena de suministro de contenedores | Pendiente de módulo | —                                                                                                     | Infra    | R14    |
+| V15 ID por confirmar | Lógica de dominio aislada y probada                        | Cumple              | `src/domain/README.md`; `src/domain/payments/state-machine.test.ts`                                   | Reservas | R05    |
 
 ## V16 Registro de seguridad y manejo de errores
 
@@ -191,4 +191,4 @@ Estados: **Cumple** (evidencia en código o prueba), **Parcial** (control parcia
 
 ## Pendiente de verificación manual
 
-No cuenta como «Cumple»: protección de la rama `main` en GitHub (R10), cabeceras reales en el despliegue y pruebas con PostgreSQL real (R09).
+No cuenta como «Cumple»: cabeceras reales en el despliegue y pruebas con PostgreSQL real (R09).
