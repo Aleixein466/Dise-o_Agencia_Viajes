@@ -36,26 +36,26 @@ Actualizado: 2026-11-13. Estados: **Pendiente** · **En desarrollo** · **En rev
 
 Leyenda: **Implementado** (código + pruebas) · **Parcial** · **Ausente** · **Bloqueado por cliente**.
 
-| Área                                                                  | Estado                 | Evidencia / nota                                              |
-| --------------------------------------------------------------------- | ---------------------- | ------------------------------------------------------------- |
-| Sitio público (inicio, destinos, detalle, contacto, legales)          | Parcial                | `src/app/**`; contenido histórico, sin catálogo administrable |
-| SEO técnico (robots, sitemap, canonical, OG, noindex)                 | Implementado           | `src/lib/seo.ts`, `src/app/robots.ts`, `sitemap.ts`           |
-| Cabeceras de seguridad                                                | Implementado           | `next.config.ts`; CSP con nonce pendiente (F1-09)             |
-| Validación de entorno                                                 | Implementado           | `src/lib/env.ts`                                              |
-| Intake de cotizaciones                                                | Parcial (cerrado)      | `src/app/api/quotes`; 503 hasta PC-6 + limitador compartido   |
-| Máquinas de estado reserva/pago                                       | Implementado (dominio) | `src/domain/**`; sin persistencia aún                         |
-| Modelo de datos v2                                                    | Implementado           | `prisma/schema.prisma`, `docs/data/DATA_MODEL.md`             |
-| Auth, sesiones, MFA, RBAC                                             | Ausente                | Lote 2                                                        |
-| Panel administrativo (dashboard, catálogo, precios, cupos, auditoría) | Ausente                | Lotes 3–4                                                     |
-| Panel de asesores / CRM                                               | Ausente                | Lote 5                                                        |
-| Constructor de paquetes y motor de precios                            | Ausente                | Lote 6; tarifas reales bloqueadas por PC-4 (Excel)            |
-| Cotizaciones y reservas persistidas                                   | Ausente                | Lote 7                                                        |
-| Portal del cliente y enlaces mágicos                                  | Ausente                | Lote 8                                                        |
-| Finanzas, abonos, conciliación Wompi                                  | Bloqueado por cliente  | Lote 9; PC-5 llaves                                           |
-| PQR                                                                   | Parcial                | Página informativa `src/app/pqrs`; sin flujo                  |
-| Textos legales, RNT, NIT, contactos                                   | Bloqueado por cliente  | PC-6; no se inventan                                          |
-| Identidad visual definitiva                                           | Bloqueado por cliente  | PC-1 (logo provisional), PC-3                                 |
-| E2E + accesibilidad                                                   | Implementado           | `e2e/**`; axe sin violaciones en 6 proyectos                  |
-| CI, gitleaks, protección de `main`                                    | Implementado           | `.github/workflows/*`, protección verificada por API          |
-| Despliegue: producción manual                                         | Implementado           | `vercel.json`, `docs/operations/DEPLOYMENT.md`                |
-| Imagen Docker / Docker Hub                                            | Bloqueado por cliente  | Sin token; no se publica nada                                 |
+| Área                                                                  | Estado                 | Evidencia / nota                                                       |
+| --------------------------------------------------------------------- | ---------------------- | ---------------------------------------------------------------------- |
+| Sitio público (inicio, destinos, detalle, contacto, legales)          | Parcial                | `apps/web/src/app/**`; contenido histórico, sin catálogo administrable |
+| SEO técnico (robots, sitemap, canonical, OG, noindex)                 | Implementado           | `apps/web/src/lib/seo.ts`, `apps/web/src/app/robots.ts`, `sitemap.ts`  |
+| Cabeceras de seguridad                                                | Implementado           | `apps/web/next.config.ts`; CSP con nonce pendiente (F1-09)             |
+| Validación de entorno                                                 | Implementado           | `apps/web/src/lib/env.ts`                                              |
+| Intake de cotizaciones                                                | Parcial (cerrado)      | `apps/web/src/app/api/quotes`; 503 hasta PC-6 + limitador compartido   |
+| Máquinas de estado reserva/pago                                       | Implementado (dominio) | `apps/web/src/domain/**`; sin persistencia aún                         |
+| Modelo de datos v2                                                    | Implementado           | `packages/db/prisma/schema.prisma`, `docs/data/DATA_MODEL.md`          |
+| Auth, sesiones, MFA, RBAC                                             | Ausente                | Lote 2                                                                 |
+| Panel administrativo (dashboard, catálogo, precios, cupos, auditoría) | Ausente                | Lotes 3–4                                                              |
+| Panel de asesores / CRM                                               | Ausente                | Lote 5                                                                 |
+| Constructor de paquetes y motor de precios                            | Ausente                | Lote 6; tarifas reales bloqueadas por PC-4 (Excel)                     |
+| Cotizaciones y reservas persistidas                                   | Ausente                | Lote 7                                                                 |
+| Portal del cliente y enlaces mágicos                                  | Ausente                | Lote 8                                                                 |
+| Finanzas, abonos, conciliación Wompi                                  | Bloqueado por cliente  | Lote 9; PC-5 llaves                                                    |
+| PQR                                                                   | Parcial                | Página informativa `apps/web/src/app/pqrs`; sin flujo                  |
+| Textos legales, RNT, NIT, contactos                                   | Bloqueado por cliente  | PC-6; no se inventan                                                   |
+| Identidad visual definitiva                                           | Bloqueado por cliente  | PC-1 (logo provisional), PC-3                                          |
+| E2E + accesibilidad                                                   | Implementado           | `apps/web/e2e/**`; axe sin violaciones en 6 proyectos                  |
+| CI, gitleaks, protección de `main`                                    | Implementado           | `.github/workflows/*`, protección verificada por API                   |
+| Despliegue: producción manual                                         | Implementado           | `vercel.json`, `docs/operations/DEPLOYMENT.md`                         |
+| Imagen Docker / Docker Hub                                            | Bloqueado por cliente  | Sin token; no se publica nada                                          |
