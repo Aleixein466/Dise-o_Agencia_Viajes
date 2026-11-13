@@ -31,7 +31,7 @@ Source of truth: `packages/db/prisma/schema.prisma`. Migration: `packages/db/pri
 | Content               | `ContentPage` (page/article/guide + SEO), `FaqItem`                                                                                                                                                                                                                              |
 | Advisor CRM           | `LeadAssignment`, `FollowUpTask`, `CrmNote`                                                                                                                                                                                                                                      |
 
-### State enums (kept equal to the domain by `src/domain/schema-parity.test.ts`)
+### State enums (kept equal to the domain by `packages/domain/src/schema-parity.test.ts`)
 
 - `ReservationStatus` = `RESERVATION_STATES` (12 states, §10.4).
 - `PaymentStatus` = `PAYMENT_STATUSES` (`PENDING, APPROVED, DECLINED, VOIDED, ERROR, REFUNDED`); DB type `PaymentStatusV2`.
