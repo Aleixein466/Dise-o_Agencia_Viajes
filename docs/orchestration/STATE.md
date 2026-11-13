@@ -4,8 +4,10 @@ Actualizado: 2026-11-13. Reanudar leyendo este archivo, `BACKLOG.md`, `RISK_REGI
 
 ## Estado
 
-- Fase actual: **F0 cerrada · F1 tanda 1 en ramas locales (sin push, sin merge)**.
-- `main` = `99844b7` (sin cambios).
+- Fase actual: **F0 cerrada · F1 lote 1 aprobado por revisor (Sonnet) e integrado en `integration/f1` · F1 lote 2 en curso (Codex)**.
+- `main` = `99844b7` (sin cambios). `integration/f1` = merge de las 4 ramas; lint 0, typecheck OK, 5/5 tests, build OK.
+- Protección local de `main` (sin `gh`): `.git/hooks/pre-commit` bloquea commits en `main`; `.git/hooks/pre-push` bloquea push a `main` y exige lint+typecheck+test. Probado: commit en `main` rechazado. Protección en GitHub (PR + checks requeridos) pendiente de `gh auth login`.
+- Lote 2 en worktrees `C:\Users\alexi\Desktop\rt-wt\{f1-07-quotes-hardening,f1-04-env,f1-10-history}` (ramas `fix/f1-quotes-hardening`, `feat/f1-env`, `refactor/f1-history`, base `integration/f1`). Codex edita; Claude hace commit; revisor distinto revisa.
 - Requisitos: `docs/requirements/requisitos_plataforma_ricaurte_tours_v2.0.md`.
 
 ## Ramas locales (cada una 1 commit sobre `main`)
