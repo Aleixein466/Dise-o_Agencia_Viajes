@@ -8,7 +8,9 @@
     "start": "next start",
     "typecheck": "tsc --noEmit",
     "db:generate": "prisma generate",
-    "db:migrate": "prisma migrate dev"
+    "db:migrate": "prisma migrate dev",
+    "lint": "eslint .",
+    "test": "vitest run"
   },
   "dependencies": {
     "@prisma/adapter-pg": "7.10.1",
@@ -21,12 +23,22 @@
     "zod": "4.6.7"
   },
   "devDependencies": {
+    "@axe-core/playwright": "4.14.0",
+    "@commitlint/cli": "21.2.4",
+    "@commitlint/config-conventional": "21.2.4",
+    "@playwright/test": "1.65.0",
     "@tailwindcss/postcss": "4.3.3",
     "@types/node": "^24",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "eslint": "9.39.5",
+    "eslint-config-next": "16.4.2",
+    "husky": "9.1.7",
+    "lint-staged": "17.6.0",
+    "prettier": "3.10.1",
     "prisma": "7.10.1",
     "tailwindcss": "4.3.3",
-    "typescript": "^5.9"
+    "typescript": "^5.9",
+    "vitest": "5.1.0"
   }
 }

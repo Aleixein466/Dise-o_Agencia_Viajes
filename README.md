@@ -18,7 +18,7 @@ npm install
 npm run dev
 ```
 
-Abrir `http://localhost:3000`. Para preparar PostgreSQL, copiar `.env.example` a `.env` y cambiar la contraseña. `docker-compose.yml` permite levantar la base si Docker está instalado:
+Abrir `http://localhost:3000`. Para preparar PostgreSQL, copiar `.env.example` a `.env` y reemplazar `REPLACE_WITH_LOCAL_DEV_PASSWORD` (en `POSTGRES_PASSWORD` y `DATABASE_URL`) por una contraseña local única. `docker-compose.yml` exige esa variable, publica PostgreSQL solo en `127.0.0.1` y es exclusivo para desarrollo local:
 
 ```powershell
 docker compose up -d
@@ -41,7 +41,7 @@ npm audit
 
 - `src/app`: rutas públicas y API de cotizaciones.
 - `src/components`: navegación, pie, tarjetas, portada fotográfica y galería accesible.
-- `src/lib/demo-data.ts`: contenido editorial reemplazable.
+- `src/content/historical-trips.ts`: contenido editorial reemplazable.
 - `prisma/schema.prisma`: modelo de datos inicial.
 - `docs/propuesta.md`: arquitectura y plan inicial.
 - `docs/auditoria-v2.md`: hallazgos verificados, benchmark, decisiones y QA del rediseño.

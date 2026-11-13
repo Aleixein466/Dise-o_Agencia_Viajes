@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useMemo, useState } from "react";
 import { ArrowUpRight, CalendarDays, Search } from "lucide-react";
-import { categories, demoTrips } from "@/lib/demo-data";
+import { categories, historicalTrips } from "@/content/historical-trips";
 import { TripCard } from "@/components/trip-card";
 
 function CatalogContent() {
@@ -14,7 +14,7 @@ function CatalogContent() {
   const region = params.get("region") || "";
   const date = params.get("fecha") || "";
   const travelers = params.get("viajeros") || "";
-  const trips = useMemo(() => demoTrips.filter((trip) =>
+  const trips = useMemo(() => historicalTrips.filter((trip) =>
     (category === "Todos" || !category || trip.category === category) &&
     (!region || (region === "ecuador" ? trip.region.toLowerCase().includes("ecuador") : !trip.region.toLowerCase().includes("ecuador"))) &&
     `${trip.name} ${trip.region} ${trip.category}`.toLocaleLowerCase("es").includes(query.toLocaleLowerCase("es").trim())

@@ -1,9 +1,9 @@
 import Image from "next/image";
 import Link from "next/link";
 import { ArrowUpRight, MapPin } from "lucide-react";
-import type { DemoTrip } from "@/lib/demo-data";
+import type { HistoricalTrip } from "@/content/historical-trips";
 
-export function TripCard({ trip, priority = false }: { trip: DemoTrip; priority?: boolean }) {
+export function TripCard({ trip, priority = false }: { trip: HistoricalTrip; priority?: boolean }) {
   return <article className="trip-card">
     <Link href={`/destinos/${trip.slug}`} className="trip-image-link" aria-label={`Ver viaje realizado a ${trip.name}`}>
       <Image src={trip.image} alt={trip.imageAlt} fill sizes="(max-width: 700px) 100vw, (max-width: 1100px) 50vw, 33vw" className="trip-image" priority={priority} />
