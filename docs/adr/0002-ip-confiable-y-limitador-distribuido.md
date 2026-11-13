@@ -24,6 +24,12 @@ Estado: **Propuesto** · Fecha: 2026-11-13 · Relacionado: THREAT_MODEL (D: abus
 4. **Puerta en el entorno**: en `production`, `QUOTE_INTAKE_ENABLED=true` es inválido si `CLIENT_IP_SOURCE=none` o `RATE_LIMIT_STORE=memory` → `quoteIntakeOpen()` falla cerrado (503). `RATE_LIMIT_STORE=postgres` responde 503 hasta que exista la implementación.
 5. Turnstile server-side se suma antes de abrir el intake (F6), no sustituye al limitador.
 
+## Límites conocidos (revisión lote 3)
+
+- `x-real-ip` y `x-forwarded-for` solo son seguros detrás de un proxy que **sobrescribe** o **añade** la cabecera. Si la app queda expuesta directamente, incluso la entrada derecha de XFF es del cliente: usar `none`.
+- IPv6: antes de abrir el intake, agrupar por prefijo /64 en forma canónica (un cliente con /64 puede rotar direcciones).
+- Con `none`, la cubeta compartida «unverified» permite que cualquiera bloquee el intake (5 por 10 min). Aceptable solo porque producción exige una fuente distinta de `none`.
+
 ## Consecuencias
 
 - Hoy no es posible abrir cotizaciones en producción por accidente.

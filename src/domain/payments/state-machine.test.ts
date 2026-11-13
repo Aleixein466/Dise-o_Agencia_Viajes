@@ -49,10 +49,21 @@ describe("payment state machine", () => {
     const approved = { ...base, status: "APPROVED" as const };
     expect(applyPaymentEvent(approved, evt("r1", "REFUNDED"), SYSTEM)).toEqual({ ok: false, error: "FORBIDDEN" });
     expect(applyPaymentEvent(approved, evt("r1", "REFUNDED"), FINANCE)).toMatchObject({ ok: true, effect: "REFUNDED", payment: { status: "REFUNDED" } });
-    expect(applyPaymentEvent(base, evt("e1", "APPROVED"), FINANCE)).toEqual({ ok: false, error: "FORBIDDEN" });
+    // Manual abono (transfer/cash with comprobante) is approved by finance; provider failures are system-only.
+    expect(applyPaymentEvent(base, evt("m1", "APPROVED"), FINANCE)).toMatchObject({ ok: true, changed: true, effect: "APPROVED" });
+    expect(applyPaymentEvent(base, evt("m1", "DECLINED"), FINANCE)).toEqual({ ok: false, error: "FORBIDDEN" });
+    expect(applyPaymentEvent(approved, evt("v1", "VOIDED"), FINANCE)).toEqual({ ok: false, error: "FORBIDDEN" });
     for (const role of ["CUSTOMER", "ADVISOR", "ADMIN"] as const) {
       expect(applyPaymentEvent(base, evt("e1", "APPROVED"), { role })).toEqual({ ok: false, error: "FORBIDDEN" });
     }
+  });
+
+  it("reverses verified money when an approved payment is voided by the provider", () => {
+    const approved = { ...base, status: "APPROVED" as const, processedEventIds: ["e1"] };
+    expect(applyPaymentEvent(approved, evt("v1", "VOIDED"), SYSTEM)).toMatchObject({ ok: true, changed: true, effect: "VOIDED", payment: { status: "VOIDED" } });
+    const pendingVoid = applyPaymentEvent(base, evt("v1", "VOIDED"), SYSTEM);
+    expect(pendingVoid).toMatchObject({ ok: true, changed: true, payment: { status: "VOIDED" } });
+    expect(pendingVoid.ok && pendingVoid.effect).toBeFalsy();
   });
 
   it("validates amounts and event identity", () => {

@@ -3,7 +3,7 @@ import { resetEnvCache } from "@/lib/env";
 import { historicalTrips } from "@/content/historical-trips";
 import robots from "@/app/robots";
 import sitemap from "@/app/sitemap";
-import { absoluteUrl, indexingAllowed } from "@/lib/seo";
+import { absoluteUrl, indexingAllowed, siteUrl } from "@/lib/seo";
 
 beforeEach(() => {
   vi.unstubAllEnvs();
@@ -31,9 +31,10 @@ describe("sitemap", () => {
     const urls = sitemap().map((entry) => entry.url);
     expect(historicalTrips).toHaveLength(6);
     for (const trip of historicalTrips) expect(urls).toContain(`https://example.com/destinos/${trip.slug}`);
-    expect(urls).toEqual(expect.arrayContaining(["https://example.com/", "https://example.com/destinos", "https://example.com/contacto"]));
+    expect(urls).toEqual(expect.arrayContaining(["https://example.com/", "https://example.com/destinos"]));
+    expect(urls).not.toContain("https://example.com/contacto");
     for (const path of ["/privacidad", "/terminos", "/pqrs", "/cotizar"]) expect(urls).not.toContain(`https://example.com${path}`);
-    expect(urls).toHaveLength(9);
+    expect(urls).toHaveLength(8);
   });
 });
 
@@ -47,5 +48,21 @@ describe("seo helpers", () => {
     vi.stubEnv("SITE_INDEXING", "true");
     vi.stubEnv("NEXT_PUBLIC_SITE_URL", "not a url");
     expect(indexingAllowed()).toBe(false);
+  });
+
+  it("requires an https public origin to allow indexing", () => {
+    vi.stubEnv("SITE_INDEXING", "true");
+    vi.stubEnv("NEXT_PUBLIC_SITE_URL", "http://localhost:3000");
+    expect(indexingAllowed()).toBe(false);
+    vi.stubEnv("NEXT_PUBLIC_SITE_URL", "https://example.com");
+    resetEnvCache();
+    expect(indexingAllowed()).toBe(true);
+  });
+
+  it("keeps a usable site URL when the environment is invalid", () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("QUOTE_INTAKE_ENABLED", "true");
+    vi.stubEnv("NEXT_PUBLIC_SITE_URL", "https://example.com");
+    expect(siteUrl()).toBe("https://example.com");
   });
 });

@@ -33,6 +33,7 @@ const SPEC: Record<string, Role[]> = {
   "PAID:CONFIRM": S,
   "PAID:REJECT": S,
   "PAID:CANCEL": S,
+  "CONFIRMED:PAYMENT_SETTLED": ["SYSTEM", "FINANCE"],
   "CONFIRMED:CANCEL": S,
   "CONFIRMED:COMPLETE": S,
   "REFUND_PENDING:REFUND_COMPLETED": ["FINANCE"],
@@ -97,6 +98,18 @@ describe("reservation state machine", () => {
     for (const bad of [-1, 10.5, Number.NaN, Number.MAX_SAFE_INTEGER + 1]) {
       expect(transitionReservation("DRAFT", ev("CHECKOUT", "CUSTOMER"), { ...unpaid, totalCents: bad }, at)).toEqual({ ok: false, error: "INVALID_AMOUNT" });
     }
+  });
+
+  it("accepts later abonos after a deposit-based confirmation without changing it", () => {
+    expect(transitionReservation("CONFIRMED", ev("PAYMENT_SETTLED", "FINANCE"), { ...deposit, paidCents: 60_000_00 }, at)).toEqual({ ok: true, changed: false, next: "CONFIRMED" });
+    expect(transitionReservation("CONFIRMED", ev("COMPLETE", "ADMIN"), full, at)).toMatchObject({ ok: true, next: "COMPLETED" });
+  });
+
+  it("refuses to close a paid state without refund when context says nothing was paid", () => {
+    for (const state of ["PARTIALLY_PAID", "PAID", "CONFIRMED"] as const) {
+      expect(transitionReservation(state, ev("CANCEL", "ADMIN"), unpaid, at)).toEqual({ ok: false, error: "GUARD_FAILED" });
+    }
+    expect(transitionReservation("PAID", ev("REJECT", "ADVISOR"), unpaid, at)).toEqual({ ok: false, error: "GUARD_FAILED" });
   });
 
   it("completes only fully paid confirmed trips", () => {

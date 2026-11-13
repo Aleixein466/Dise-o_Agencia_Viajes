@@ -49,7 +49,8 @@ export const RESERVATION_TRANSITIONS: Readonly<Record<ReservationEventType, read
   CHECKOUT: [{ from: ["DRAFT"], roles: ["CUSTOMER"] }],
   START_VALIDATION: [{ from: ["REQUEST_RECEIVED"], roles: STAFF }],
   APPROVE_FOR_PAYMENT: [{ from: ["PENDING_VALIDATION"], roles: STAFF }],
-  PAYMENT_SETTLED: [{ from: ["PENDING_PAYMENT", "PARTIALLY_PAID", "PAID"], roles: ["SYSTEM", "FINANCE"] }],
+  // CONFIRMED accepts later abonos (deposit-based confirmation, §11.4 "varios pagos").
+  PAYMENT_SETTLED: [{ from: ["PENDING_PAYMENT", "PARTIALLY_PAID", "PAID", "CONFIRMED"], roles: ["SYSTEM", "FINANCE"] }],
   CONFIRM: [{ from: ["PARTIALLY_PAID", "PAID"], roles: STAFF }],
   REJECT: [{ from: ["REQUEST_RECEIVED", "PENDING_VALIDATION", "PENDING_PAYMENT", "PARTIALLY_PAID", "PAID"], roles: STAFF }],
   CANCEL: [
@@ -94,6 +95,9 @@ export function transitionReservation(
 function resolveNext(state: ReservationState, type: ReservationEventType, ctx: ReservationContext): ReservationState | null {
   const moneyHeld = ctx.paidCents > 0;
   const fullyPaid = ctx.paidCents >= ctx.totalCents;
+  // A state that implies money received must never be closed without refund because of stale context.
+  const stateImpliesMoney = state === "PARTIALLY_PAID" || state === "PAID" || state === "CONFIRMED";
+  if ((type === "REJECT" || type === "CANCEL") && stateImpliesMoney && !moneyHeld) return null;
   switch (type) {
     case "SUBMIT_REQUEST": return "REQUEST_RECEIVED";
     case "CHECKOUT": return "PENDING_PAYMENT";
@@ -101,6 +105,7 @@ function resolveNext(state: ReservationState, type: ReservationEventType, ctx: R
     case "APPROVE_FOR_PAYMENT": return ctx.availabilityValidated ? "PENDING_PAYMENT" : null;
     case "PAYMENT_SETTLED":
       if (!moneyHeld) return null;
+      if (state === "CONFIRMED") return "CONFIRMED"; // further abonos never change confirmation
       if (state === "PAID") return fullyPaid ? "PAID" : null; // never downgrade a paid reservation
       return fullyPaid ? "PAID" : "PARTIALLY_PAID";
     case "CONFIRM": {

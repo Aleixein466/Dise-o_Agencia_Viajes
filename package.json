@@ -11,7 +11,7 @@
     "db:migrate": "prisma migrate dev",
     "lint": "eslint .",
     "test": "vitest run",
-    "prepare": "husky",
+    "prepare": "husky || true",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
   },

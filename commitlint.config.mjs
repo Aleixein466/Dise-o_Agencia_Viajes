@@ -1,5 +1,5 @@
 // Conventional Commits (requirements §22).
-export default {
+const config = {
   extends: ["@commitlint/config-conventional"],
   rules: {
     // Bodies carry review notes and attribution lines; keep them readable but not rejected for length.
@@ -7,3 +7,5 @@ export default {
     "footer-max-line-length": [1, "always", 120],
   },
 };
+
+export default config;
