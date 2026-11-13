@@ -22,7 +22,7 @@ services:
   playwright:
     image: mcr.microsoft.com/playwright:v1.65.0-noble
     profiles: ["tools"]
-    working_dir: /work
+    working_dir: /work/apps/web
     volumes:
       - ./:/work
     ipc: host

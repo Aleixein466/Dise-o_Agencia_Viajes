@@ -4,11 +4,14 @@ import { describe, expect, it } from "vitest";
 import { PAYMENT_STATUSES } from "./payments/state-machine";
 import { RESERVATION_EVENTS, RESERVATION_STATES, ROLES } from "./reservations/state-machine";
 
-const schema = readFileSync(fileURLToPath(new URL("../../prisma/schema.prisma", import.meta.url)), "utf8");
+const schema = readFileSync(
+  fileURLToPath(new URL("../../../../packages/db/prisma/schema.prisma", import.meta.url)),
+  "utf8",
+);
 
 function enumValues(name: string): string[] {
   const block = new RegExp(`^enum ${name} \\{([\\s\\S]*?)^\\}`, "m").exec(schema);
-  if (!block) throw new Error(`enum ${name} not found in prisma/schema.prisma`);
+  if (!block) throw new Error(`enum ${name} not found in packages/db/prisma/schema.prisma`);
   return block[1]
     .split(/\r?\n/)
     .map((line) => line.replace(/\/\/.*$/, "").trim())

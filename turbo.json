@@ -1,0 +1,25 @@
+{
+  "$schema": "https://turborepo.dev/schema.json",
+  "envMode": "loose",
+  "globalDependencies": [".env", ".env.local"],
+  "tasks": {
+    "generate": {
+      "inputs": ["prisma/**"],
+      "outputs": ["src/generated/**"]
+    },
+    "build": {
+      "dependsOn": ["^generate"],
+      "env": ["NEXT_PUBLIC_*"],
+      "outputs": [".next/**", "!.next/cache/**"]
+    },
+    "dev": {
+      "dependsOn": ["^generate"],
+      "cache": false,
+      "persistent": true
+    },
+    "lint": { "dependsOn": ["^generate"] },
+    "typecheck": { "dependsOn": ["^generate"] },
+    "test": { "dependsOn": ["^generate"] },
+    "test:e2e": { "dependsOn": ["build"], "cache": false }
+  }
+}

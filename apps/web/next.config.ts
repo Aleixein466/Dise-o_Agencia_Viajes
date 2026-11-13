@@ -1,4 +1,9 @@
+import { resolve } from "node:path";
+import { loadEnvConfig } from "@next/env";
 import type { NextConfig } from "next";
+
+// The single local .env lives at the monorepo root (see .env.example); Next only reads apps/web by default.
+loadEnvConfig(resolve(process.cwd(), "../.."));
 
 // Baseline security headers (ASVS V3/V14). Script/style CSP with nonces is tracked as backlog F1-09:
 // it needs a proxy-based nonce and is not safe to add blindly to statically rendered pages.
@@ -18,6 +23,7 @@ const securityHeaders = [
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
+  transpilePackages: ["@ricaurte/db"],
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
   },

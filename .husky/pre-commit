@@ -4,4 +4,6 @@ if [ "$branch" = "main" ]; then
   echo "Blocked: direct commits to main are not allowed. Use a feature branch + PR." >&2
   exit 1
 fi
-npx lint-staged
+# Fall back to corepack when pnpm is not on PATH.
+command -v pnpm >/dev/null 2>&1 || pnpm() { corepack pnpm "$@"; }
+pnpm exec lint-staged
