@@ -36,7 +36,7 @@ export function createAdapter(env: ApiEnv, stream?: LoggerOptions["stream"]): Fa
     // Never trust a client-supplied id: always mint our own.
     requestIdHeader: false,
     genReqId: () => randomUUID(),
-    trustProxy: env.TRUST_PROXY_HOPS > 0 ? env.TRUST_PROXY_HOPS : false,
+    trustProxy: env.TRUST_PROXY_HOPS > 0 ? (_address, hop) => hop < env.TRUST_PROXY_HOPS : false,
   });
 }
 
