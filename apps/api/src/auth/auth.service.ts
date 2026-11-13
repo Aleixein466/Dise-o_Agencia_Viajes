@@ -149,6 +149,23 @@ export class AuthService {
     return this.principal(token);
   }
 
+  async requirePermission(
+    token: string,
+    csrf: string | undefined,
+    origin: string | undefined,
+    permission: string,
+  ): Promise<Principal> {
+    const principal = await this.assertMutation(token, csrf, origin);
+    if (!principal.session.mfaVerifiedAt || !principal.permissions.includes(permission)) throw new ForbiddenException();
+    return principal;
+  }
+
+  async requireReadPermission(token: string, permission: string): Promise<Principal> {
+    const principal = await this.principal(token);
+    if (!principal.session.mfaVerifiedAt || !principal.permissions.includes(permission)) throw new ForbiddenException();
+    return principal;
+  }
+
   async logout(token: string, csrf: string | undefined, origin: string | undefined, all = false): Promise<void> {
     const principal = await this.assertMutation(token, csrf, origin);
     const client = await this.db.client();

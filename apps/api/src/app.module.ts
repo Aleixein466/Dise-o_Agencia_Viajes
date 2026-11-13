@@ -4,14 +4,16 @@ import { DbService } from "./db/db.service";
 import { HealthController } from "./health/health.controller";
 import { AuthController } from "./auth/auth.controller";
 import { AuthService } from "./auth/auth.service";
+import { UsersController } from "./users/users.controller";
+import { UsersService } from "./users/users.service";
 
 @Module({})
 export class AppModule {
   static register(env: ApiEnv): DynamicModule {
     return {
       module: AppModule,
-      controllers: [HealthController, AuthController],
-      providers: [{ provide: ENV, useValue: env }, DbService, AuthService],
+      controllers: [HealthController, AuthController, UsersController],
+      providers: [{ provide: ENV, useValue: env }, DbService, AuthService, UsersService],
     };
   }
 }
