@@ -10,6 +10,13 @@ const envSchema = z.object({
   QUOTE_INTAKE_ENABLED: z.enum(["true", "false"]).default("false"),
   PRIVACY_POLICY_APPROVED: z.enum(["true", "false"]).default("false"),
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
+  // Search indexing is opt-in: only the authorised production deployment sets "true".
+  SITE_INDEXING: z.enum(["true", "false"]).default("false"),
+  // Where the real client IP comes from. "none" = trust no header (all clients share one bucket).
+  // Only set another value when that header is overwritten by a proxy you control.
+  CLIENT_IP_SOURCE: z.enum(["none", "x-real-ip", "cf-connecting-ip", "x-forwarded-for"]).default("none"),
+  // For x-forwarded-for: number of trusted proxies appending to the header (rightmost entries).
+  TRUSTED_PROXY_HOPS: z.coerce.number().int().min(1).max(5).default(1),
 }).superRefine((env, context) => {
   if (
     env.NODE_ENV === "production" &&
