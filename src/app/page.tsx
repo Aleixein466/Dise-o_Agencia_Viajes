@@ -5,6 +5,9 @@ import { historicalTrips, postSources, type TripPhoto } from "@/content/historic
 import { HeroSlider } from "@/components/hero-slider";
 import { PhotoGallery } from "@/components/photo-gallery";
 import { TripCard } from "@/components/trip-card";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = { alternates: { canonical: "/" } };
 
 const experiences = [
   { title: "Naturaleza", icon: Leaf, image: "/images/social/eje-cafetero-2026.jpg", description: "Paisajes para respirar distinto" },
