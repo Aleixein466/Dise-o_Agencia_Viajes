@@ -1,1 +1,3 @@
+import type { Metadata } from "next";
+export const metadata: Metadata = { alternates: { canonical: "/privacidad" }, robots: { index: false, follow: true } };
 export default function Privacidad() { return <div className="shell simple-page"><span className="eyebrow">DOCUMENTO PENDIENTE DE APROBACIÓN</span><h1>Privacidad y datos</h1><p>Ricaurte Tours debe proporcionar o aprobar su política de tratamiento de datos personales antes de recibir cotizaciones. Por ahora el sitio solo permite explorar destinos y preparar preferencias sin enviar datos personales. Esta página no constituye una política legal definitiva.</p></div>; }

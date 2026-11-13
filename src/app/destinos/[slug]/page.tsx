@@ -12,7 +12,13 @@ export async function generateStaticParams() { return historicalTrips.map(({ slu
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const trip = historicalTrips.find((item) => item.slug === slug);
-  return { title: trip ? `${trip.name} · Viaje realizado` : "Destino", description: trip?.teaser };
+  const canonical = `/destinos/${slug}`;
+  return {
+    title: trip ? `${trip.name} · Viaje realizado` : "Destino",
+    description: trip?.teaser,
+    alternates: { canonical },
+    openGraph: trip ? { images: [{ url: trip.image, alt: trip.imageAlt }] } : undefined,
+  };
 }
 
 export default async function TripDetail({ params }: Props) {
