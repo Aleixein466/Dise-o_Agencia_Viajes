@@ -7,6 +7,14 @@ datasource db {
   provider = "postgresql"
 }
 
+// Schema v2. See docs/data/DATA_MODEL.md for conventions, legacy (v1) models and the
+// database-level constraints/triggers that live only in migration SQL.
+
+// ---------------------------------------------------------------------------
+// Enums (v1, kept for legacy tables)
+// ---------------------------------------------------------------------------
+
+/// Legacy. Authorization source of truth is the RBAC tables (Role, UserRoleAssignment).
 enum UserRole {
   SUPERADMIN
   ADMIN
@@ -18,6 +26,7 @@ enum PublicationStatus {
   PUBLISHED
   ARCHIVED
 }
+/// Legacy (bookings). Superseded by ReservationStatus.
 enum BookingStatus {
   REQUESTED
   PENDING_CONFIRMATION
@@ -36,11 +45,13 @@ enum QuoteStatus {
   DECLINED
   CLOSED
 }
-enum PaymentStatus {
+/// Legacy (payments table). Superseded by PaymentStatus. DB type name kept as "PaymentStatus".
+enum LegacyPaymentStatus {
   PENDING
   SUCCEEDED
   FAILED
   REFUNDED
+  @@map("PaymentStatus")
 }
 enum PaymentPlanStatus {
   ACTIVE
@@ -61,18 +72,356 @@ enum PqrsStatus {
   CLOSED
 }
 
+// ---------------------------------------------------------------------------
+// Enums (v2)
+// ---------------------------------------------------------------------------
+
+enum UserStatus {
+  PENDING_VERIFICATION
+  ACTIVE
+  LOCKED
+  DISABLED
+}
+/// RBAC roles (domain ROLES without SYSTEM).
+enum RoleCode {
+  CUSTOMER
+  ADVISOR
+  FINANCE
+  ADMIN
+}
+/// Actor recorded on history/audit rows. Must equal domain ROLES.
+enum ActorRole {
+  CUSTOMER
+  ADVISOR
+  FINANCE
+  ADMIN
+  SYSTEM
+}
+enum MfaFactorType {
+  TOTP
+}
+enum OneTimeTokenPurpose {
+  MAGIC_LINK_LOGIN
+  PASSWORD_RESET
+  EMAIL_VERIFICATION
+  RESERVATION_ACCESS
+}
+enum DestinationCategory {
+  NACIONAL
+  INTERNACIONAL
+  PASADIA
+  ESPECIAL
+}
+enum TransportMode {
+  GROUND
+  AIR
+  SEA
+}
+enum AvailabilityStatus {
+  AVAILABLE
+  SOLD_OUT
+  TO_CONFIRM
+}
+enum MediaVisibility {
+  PUBLIC
+  PRIVATE
+}
+enum PackageComponentType {
+  HOTEL
+  ROOM_TYPE
+  TOUR
+  TRANSPORT
+  ADD_ON
+}
+enum TravelerCategory {
+  ADULT
+  CHILD
+  INFANT
+  SENIOR
+}
+enum AgeRuleBasis {
+  AGE_YEARS
+  HEIGHT_CM
+}
+enum PriceUnit {
+  PER_PERSON
+  PER_PERSON_NIGHT
+  PER_ROOM_NIGHT
+  PER_BOOKING
+}
+enum DiscountType {
+  PERCENT
+  FIXED_AMOUNT
+}
+enum PriceLineKind {
+  PACKAGE
+  TRANSPORT
+  HOTEL_ROOM
+  TOUR
+  ADD_ON
+  SEASON_SUPPLEMENT
+  PROMOTION
+  TAX
+  FEE
+  ADJUSTMENT
+}
+/// Must equal domain RESERVATION_STATES (src/domain/reservations/state-machine.ts).
+enum ReservationStatus {
+  DRAFT
+  REQUEST_RECEIVED
+  PENDING_VALIDATION
+  PENDING_PAYMENT
+  PARTIALLY_PAID
+  PAID
+  CONFIRMED
+  REJECTED
+  CANCELLED
+  REFUND_PENDING
+  REFUNDED
+  COMPLETED
+}
+/// Must equal domain RESERVATION_EVENTS.
+enum ReservationEventType {
+  SUBMIT_REQUEST
+  CHECKOUT
+  START_VALIDATION
+  APPROVE_FOR_PAYMENT
+  PAYMENT_SETTLED
+  CONFIRM
+  REJECT
+  CANCEL
+  REFUND_COMPLETED
+  COMPLETE
+}
+/// Must equal domain PAYMENT_STATUSES (src/domain/payments/state-machine.ts).
+enum PaymentStatus {
+  PENDING
+  APPROVED
+  DECLINED
+  VOIDED
+  ERROR
+  REFUNDED
+  @@map("PaymentStatusV2")
+}
+enum PaymentProvider {
+  WOMPI
+  MANUAL
+}
+enum PaymentMethod {
+  CARD
+  PSE
+  NEQUI
+  BANCOLOMBIA
+  BANK_TRANSFER
+  CASH
+  OTHER
+}
+enum LedgerEntryKind {
+  PAYMENT_APPROVED
+  PAYMENT_VOIDED
+  MANUAL_ABONO
+  REFUND
+  ADJUSTMENT
+}
+enum ManualAbonoStatus {
+  SUBMITTED
+  APPROVED
+  REJECTED
+}
+enum RefundStatus {
+  REQUESTED
+  PROCESSING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+enum LegalDocumentType {
+  TERMS
+  PRIVACY_POLICY
+  DATA_TREATMENT_AUTHORIZATION
+  CANCELLATION_POLICY
+  COOKIES_POLICY
+  ESCNNA_NOTICE
+  WITHDRAWAL_POLICY
+}
+enum LegalDocumentStatus {
+  DRAFT
+  APPROVED
+}
+enum ConsentPurpose {
+  DATA_PROCESSING
+  MARKETING
+  TERMS_ACCEPTANCE
+  COOKIES_ANALYTICS
+}
+enum TaskStatus {
+  OPEN
+  DONE
+  CANCELLED
+}
+enum ContentKind {
+  PAGE
+  ARTICLE
+  GUIDE
+}
+
+// ---------------------------------------------------------------------------
+// Auth and RBAC
+// ---------------------------------------------------------------------------
+
 model User {
   id String @id @default(uuid()) @db.Uuid
+  /// Always stored lowercased (DB CHECK users_email_lowercase).
   email String @unique @db.VarChar(254)
   passwordHash String? @map("password_hash")
+  /// Legacy; use roles (UserRoleAssignment).
   role UserRole @default(CUSTOMER)
   name String @db.VarChar(120)
+  status UserStatus @default(ACTIVE)
+  emailVerifiedAt DateTime? @map("email_verified_at")
+  failedLoginCount Int @default(0) @map("failed_login_count")
+  lockedUntil DateTime? @map("locked_until")
+  lastLoginAt DateTime? @map("last_login_at")
+  deletedAt DateTime? @map("deleted_at")
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
   customer Customer?
   assignedQuotes Quote[] @relation("quote_assignee")
   auditLogs AuditLog[]
+  roles UserRoleAssignment[] @relation("user_role_user")
+  rolesGranted UserRoleAssignment[] @relation("user_role_granter")
+  sessions Session[]
+  mfaFactors MfaFactor[]
+  mfaRecoveryCodes MfaRecoveryCode[]
+  oneTimeTokens OneTimeToken[]
+  reservationsAssigned Reservation[] @relation("reservation_advisor")
+  reservationsValidated Reservation[] @relation("reservation_validator")
+  reservationHistory ReservationStatusHistory[]
+  ledgerEntries LedgerEntry[]
+  abonosRegistered ManualAbono[] @relation("abono_registered_by")
+  abonosApproved ManualAbono[] @relation("abono_approved_by")
+  refundsRequested Refund[] @relation("refund_requested_by")
+  refundsApproved Refund[] @relation("refund_approved_by")
+  legalDocumentsApproved LegalDocument[]
+  consentRecords ConsentRecord[]
+  pqrsAssigned PqrsTicket[] @relation("pqrs_assignee")
+  pqrsMessages PqrsMessage[]
+  leadAssignments LeadAssignment[] @relation("lead_advisor")
+  leadAssignmentsMade LeadAssignment[] @relation("lead_assigned_by")
+  tasksAssigned FollowUpTask[] @relation("task_assignee")
+  tasksCreated FollowUpTask[] @relation("task_creator")
+  crmNotes CrmNote[]
+  mediaUploaded MediaAsset[]
   @@map("users")
+}
+
+model Role {
+  code RoleCode @id
+  name String @db.VarChar(80)
+  description String? @db.VarChar(300)
+  permissions RolePermission[]
+  users UserRoleAssignment[]
+  @@map("roles")
+}
+
+model Permission {
+  id String @id @default(uuid()) @db.Uuid
+  /// e.g. "reservations:confirm", "payments:approve_abono".
+  key String @unique @db.VarChar(100)
+  description String? @db.VarChar(300)
+  roles RolePermission[]
+  @@map("permissions")
+}
+
+model RolePermission {
+  roleCode RoleCode @map("role_code")
+  permissionId String @db.Uuid @map("permission_id")
+  role Role @relation(fields: [roleCode], references: [code], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+  @@id([roleCode, permissionId])
+  @@map("role_permissions")
+}
+
+model UserRoleAssignment {
+  userId String @db.Uuid @map("user_id")
+  roleCode RoleCode @map("role_code")
+  grantedById String? @db.Uuid @map("granted_by_id")
+  grantedAt DateTime @default(now()) @map("granted_at")
+  user User @relation("user_role_user", fields: [userId], references: [id], onDelete: Cascade)
+  role Role @relation(fields: [roleCode], references: [code], onDelete: Restrict)
+  grantedBy User? @relation("user_role_granter", fields: [grantedById], references: [id], onDelete: SetNull)
+  @@id([userId, roleCode])
+  @@index([roleCode])
+  @@map("user_roles")
+}
+
+/// Server-side session. The cookie carries a random token; only its SHA-256 is stored.
+model Session {
+  id String @id @default(uuid()) @db.Uuid
+  userId String @db.Uuid @map("user_id")
+  tokenHash String @unique @db.Char(64) @map("token_hash")
+  ipHash String? @db.Char(64) @map("ip_hash")
+  userAgentHash String? @db.Char(64) @map("user_agent_hash")
+  mfaVerifiedAt DateTime? @map("mfa_verified_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  lastSeenAt DateTime? @map("last_seen_at")
+  expiresAt DateTime @map("expires_at")
+  revokedAt DateTime? @map("revoked_at")
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("sessions")
+}
+
+/// Staff MFA. TOTP secrets are encrypted at the application layer (never stored in clear).
+model MfaFactor {
+  id String @id @default(uuid()) @db.Uuid
+  userId String @db.Uuid @map("user_id")
+  type MfaFactorType @default(TOTP)
+  label String? @db.VarChar(80)
+  secretEncrypted String @map("secret_encrypted")
+  /// Last accepted TOTP time step, to reject code replay.
+  lastUsedStep BigInt? @map("last_used_step")
+  confirmedAt DateTime? @map("confirmed_at")
+  lastUsedAt DateTime? @map("last_used_at")
+  revokedAt DateTime? @map("revoked_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([userId])
+  @@map("mfa_factors")
+}
+
+model MfaRecoveryCode {
+  id String @id @default(uuid()) @db.Uuid
+  userId String @db.Uuid @map("user_id")
+  codeHash String @unique @map("code_hash")
+  usedAt DateTime? @map("used_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([userId])
+  @@map("mfa_recovery_codes")
+}
+
+/// Magic link / reset / verification / guest reservation access. Hashed, short-lived, single-use
+/// (consume with UPDATE ... WHERE used_at IS NULL AND expires_at > now()).
+model OneTimeToken {
+  id String @id @default(uuid()) @db.Uuid
+  tokenHash String @unique @db.Char(64) @map("token_hash")
+  purpose OneTimeTokenPurpose
+  userId String? @db.Uuid @map("user_id")
+  /// Lowercased; set for guest flows without a user account.
+  email String? @db.VarChar(254)
+  reservationId String? @db.Uuid @map("reservation_id")
+  ipHash String? @db.Char(64) @map("ip_hash")
+  createdAt DateTime @default(now()) @map("created_at")
+  expiresAt DateTime @map("expires_at")
+  usedAt DateTime? @map("used_at")
+  user User? @relation(fields: [userId], references: [id], onDelete: Cascade)
+  reservation Reservation? @relation(fields: [reservationId], references: [id], onDelete: Cascade)
+  @@index([userId, purpose])
+  @@index([email, purpose])
+  @@index([expiresAt])
+  @@map("one_time_tokens")
 }
 
 model Customer {
@@ -82,13 +431,33 @@ model Customer {
   name String @db.VarChar(120)
   email String @db.VarChar(254)
   phone String @db.VarChar(25)
+  /// ISO 3166-1 alpha-2.
+  country String? @db.VarChar(2)
+  /// PII. Only when the operation requires it.
+  documentType String? @db.VarChar(20) @map("document_type")
+  /// PII. Only when the operation requires it.
+  documentNumber String? @db.VarChar(40) @map("document_number")
+  deletedAt DateTime? @map("deleted_at")
   createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
   bookings Booking[]
   savingsPlans SavingsPlan[]
   pqrsTickets PqrsTicket[]
+  quotes Quote[]
+  reservations Reservation[]
+  payments Payment[]
+  ledgerEntries LedgerEntry[]
+  manualAbonos ManualAbono[]
+  consentRecords ConsentRecord[]
+  followUpTasks FollowUpTask[]
+  crmNotes CrmNote[]
   @@index([email])
   @@map("customers")
 }
+
+// ---------------------------------------------------------------------------
+// Catalog
+// ---------------------------------------------------------------------------
 
 model Destination {
   id String @id @default(uuid()) @db.Uuid
@@ -97,14 +466,32 @@ model Destination {
   country String @db.VarChar(100)
   region String? @db.VarChar(100)
   description String? @db.Text
+  /// Nullable for pre-v2 rows; required by the admin UI for new rows.
+  category DestinationCategory?
   status PublicationStatus @default(DRAFT)
+  seoTitle String? @db.VarChar(70) @map("seo_title")
+  seoDescription String? @db.VarChar(170) @map("seo_description")
+  noindex Boolean @default(false)
+  sortOrder Int @default(0) @map("sort_order")
+  deletedAt DateTime? @map("deleted_at")
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
   packages TourPackage[]
+  hotels Hotel[]
+  tours Tour[]
+  transportOptions TransportOption[]
+  seasons Season[]
+  ageRules AgeRule[]
+  promotions Promotion[]
+  quotes Quote[]
+  reservations Reservation[]
+  media MediaAttachment[]
   @@index([status, country])
+  @@index([category, status])
   @@map("destinations")
 }
 
+/// The "Package" of the requirements (table tour_packages).
 model TourPackage {
   id String @id @default(uuid()) @db.Uuid
   destinationId String @db.Uuid @map("destination_id")
@@ -114,20 +501,281 @@ model TourPackage {
   summary String? @db.Text
   description String? @db.Text
   durationDays Int? @map("duration_days")
+  /// Legacy decimal price. Use basePriceCents.
   basePrice Decimal? @db.Decimal(14, 2) @map("base_price")
+  basePriceCents BigInt? @map("base_price_cents")
+  /// True until the agency price matrix is loaded (PC-4).
+  isFictitious Boolean @default(true) @map("is_fictitious")
+  customizable Boolean @default(false)
   currency String @default("COP") @db.VarChar(3)
   includes Json?
   excludes Json?
   cancellationTerms String? @db.Text @map("cancellation_terms")
   status PublicationStatus @default(DRAFT)
+  seoTitle String? @db.VarChar(70) @map("seo_title")
+  seoDescription String? @db.VarChar(170) @map("seo_description")
+  noindex Boolean @default(false)
+  deletedAt DateTime? @map("deleted_at")
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
   images PackageImage[]
   itinerary ItineraryDay[]
   departures Departure[]
   bookings Booking[]
+  components PackageComponent[]
+  priceRules PriceRule[]
+  ageRules AgeRule[]
+  promotions Promotion[]
+  quotes Quote[]
+  reservations Reservation[]
+  savingsPlans SavingsPlan[]
   @@index([destinationId, status])
   @@map("tour_packages")
+}
+
+model Hotel {
+  id String @id @default(uuid()) @db.Uuid
+  destinationId String @db.Uuid @map("destination_id")
+  slug String @unique @db.VarChar(160)
+  name String @db.VarChar(160)
+  description String? @db.Text
+  stars Int?
+  address String? @db.VarChar(250)
+  amenities Json?
+  status PublicationStatus @default(DRAFT)
+  seoTitle String? @db.VarChar(70) @map("seo_title")
+  seoDescription String? @db.VarChar(170) @map("seo_description")
+  deletedAt DateTime? @map("deleted_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  destination Destination @relation(fields: [destinationId], references: [id], onDelete: Restrict)
+  roomTypes RoomType[]
+  packageComponents PackageComponent[]
+  media MediaAttachment[]
+  @@index([destinationId, status])
+  @@map("hotels")
+}
+
+model RoomType {
+  id String @id @default(uuid()) @db.Uuid
+  hotelId String @db.Uuid @map("hotel_id")
+  name String @db.VarChar(120)
+  description String? @db.Text
+  maxOccupancy Int @map("max_occupancy")
+  maxAdults Int? @map("max_adults")
+  maxChildren Int? @map("max_children")
+  active Boolean @default(true)
+  deletedAt DateTime? @map("deleted_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  hotel Hotel @relation(fields: [hotelId], references: [id], onDelete: Restrict)
+  packageComponents PackageComponent[]
+  priceRules PriceRule[]
+  @@unique([hotelId, name])
+  @@map("room_types")
+}
+
+/// DestinationTransport of the requirements: one destination, several modes, each with own conditions.
+model TransportOption {
+  id String @id @default(uuid()) @db.Uuid
+  destinationId String @db.Uuid @map("destination_id")
+  mode TransportMode
+  name String @db.VarChar(120)
+  description String? @db.Text
+  conditions String? @db.Text
+  active Boolean @default(true)
+  deletedAt DateTime? @map("deleted_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  destination Destination @relation(fields: [destinationId], references: [id], onDelete: Restrict)
+  packageComponents PackageComponent[]
+  priceRules PriceRule[]
+  quotes Quote[]
+  reservations Reservation[]
+  @@unique([destinationId, mode, name])
+  @@map("transport_options")
+}
+
+model Tour {
+  id String @id @default(uuid()) @db.Uuid
+  destinationId String @db.Uuid @map("destination_id")
+  slug String @unique @db.VarChar(160)
+  name String @db.VarChar(160)
+  summary String? @db.Text
+  description String? @db.Text
+  durationHours Int? @map("duration_hours")
+  includes Json?
+  excludes Json?
+  status PublicationStatus @default(DRAFT)
+  seoTitle String? @db.VarChar(70) @map("seo_title")
+  seoDescription String? @db.VarChar(170) @map("seo_description")
+  deletedAt DateTime? @map("deleted_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  destination Destination @relation(fields: [destinationId], references: [id], onDelete: Restrict)
+  packageComponents PackageComponent[]
+  priceRules PriceRule[]
+  ageRules AgeRule[]
+  media MediaAttachment[]
+  @@index([destinationId, status])
+  @@map("tours")
+}
+
+/// Complementos (travel insurance, etc.).
+model AddOn {
+  id String @id @default(uuid()) @db.Uuid
+  name String @db.VarChar(120)
+  description String? @db.Text
+  active Boolean @default(true)
+  deletedAt DateTime? @map("deleted_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  packageComponents PackageComponent[]
+  priceRules PriceRule[]
+  @@map("add_ons")
+}
+
+/// Options a package includes (included = true) or allows the builder to add. Exactly one target FK (DB CHECK).
+model PackageComponent {
+  id String @id @default(uuid()) @db.Uuid
+  packageId String @db.Uuid @map("package_id")
+  type PackageComponentType
+  included Boolean @default(false)
+  hotelId String? @db.Uuid @map("hotel_id")
+  roomTypeId String? @db.Uuid @map("room_type_id")
+  tourId String? @db.Uuid @map("tour_id")
+  transportOptionId String? @db.Uuid @map("transport_option_id")
+  addOnId String? @db.Uuid @map("add_on_id")
+  sortOrder Int @default(0) @map("sort_order")
+  package TourPackage @relation(fields: [packageId], references: [id], onDelete: Cascade)
+  hotel Hotel? @relation(fields: [hotelId], references: [id], onDelete: Restrict)
+  roomType RoomType? @relation(fields: [roomTypeId], references: [id], onDelete: Restrict)
+  tour Tour? @relation(fields: [tourId], references: [id], onDelete: Restrict)
+  transportOption TransportOption? @relation(fields: [transportOptionId], references: [id], onDelete: Restrict)
+  addOn AddOn? @relation(fields: [addOnId], references: [id], onDelete: Restrict)
+  @@index([packageId, type])
+  @@map("package_components")
+}
+
+model Season {
+  id String @id @default(uuid()) @db.Uuid
+  /// Null = applies to every destination.
+  destinationId String? @db.Uuid @map("destination_id")
+  name String @db.VarChar(120)
+  startsOn DateTime @db.Date @map("starts_on")
+  endsOn DateTime @db.Date @map("ends_on")
+  notes String? @db.Text
+  isFictitious Boolean @default(true) @map("is_fictitious")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  destination Destination? @relation(fields: [destinationId], references: [id], onDelete: Restrict)
+  priceRules PriceRule[]
+  @@index([destinationId, startsOn])
+  @@map("seasons")
+}
+
+/// Child/adult ranges by age or by height (no universal child range, §6.3).
+model AgeRule {
+  id String @id @default(uuid()) @db.Uuid
+  name String @db.VarChar(120)
+  category TravelerCategory
+  basis AgeRuleBasis @default(AGE_YEARS)
+  minValue Int? @map("min_value")
+  maxValue Int? @map("max_value")
+  destinationId String? @db.Uuid @map("destination_id")
+  packageId String? @db.Uuid @map("package_id")
+  tourId String? @db.Uuid @map("tour_id")
+  isFictitious Boolean @default(true) @map("is_fictitious")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  destination Destination? @relation(fields: [destinationId], references: [id], onDelete: Restrict)
+  package TourPackage? @relation(fields: [packageId], references: [id], onDelete: Restrict)
+  tour Tour? @relation(fields: [tourId], references: [id], onDelete: Restrict)
+  priceRules PriceRule[]
+  @@map("age_rules")
+}
+
+/// Declarative price data evaluated by the pure PricingService. Exactly one product FK (DB CHECK).
+model PriceRule {
+  id String @id @default(uuid()) @db.Uuid
+  name String @db.VarChar(160)
+  /// Rule-set version stamped on quotes/reservations that used this rule.
+  ruleSetVersion String @db.VarChar(40) @map("rule_set_version")
+  unit PriceUnit
+  amountCents BigInt @map("amount_cents")
+  currency String @default("COP") @db.VarChar(3)
+  priority Int @default(0)
+  packageId String? @db.Uuid @map("package_id")
+  departureId String? @db.Uuid @map("departure_id")
+  roomTypeId String? @db.Uuid @map("room_type_id")
+  tourId String? @db.Uuid @map("tour_id")
+  transportOptionId String? @db.Uuid @map("transport_option_id")
+  addOnId String? @db.Uuid @map("add_on_id")
+  seasonId String? @db.Uuid @map("season_id")
+  ageRuleId String? @db.Uuid @map("age_rule_id")
+  minTravelers Int? @map("min_travelers")
+  maxTravelers Int? @map("max_travelers")
+  occupancy Int?
+  conditions Json?
+  validFrom DateTime? @map("valid_from")
+  validTo DateTime? @map("valid_to")
+  active Boolean @default(true)
+  isFictitious Boolean @default(true) @map("is_fictitious")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  package TourPackage? @relation(fields: [packageId], references: [id], onDelete: Restrict)
+  departure Departure? @relation(fields: [departureId], references: [id], onDelete: Restrict)
+  roomType RoomType? @relation(fields: [roomTypeId], references: [id], onDelete: Restrict)
+  tour Tour? @relation(fields: [tourId], references: [id], onDelete: Restrict)
+  transportOption TransportOption? @relation(fields: [transportOptionId], references: [id], onDelete: Restrict)
+  addOn AddOn? @relation(fields: [addOnId], references: [id], onDelete: Restrict)
+  season Season? @relation(fields: [seasonId], references: [id], onDelete: Restrict)
+  ageRule AgeRule? @relation(fields: [ageRuleId], references: [id], onDelete: Restrict)
+  @@index([ruleSetVersion, active])
+  @@index([packageId])
+  @@index([roomTypeId])
+  @@index([tourId])
+  @@index([transportOptionId])
+  @@map("price_rules")
+}
+
+model Promotion {
+  id String @id @default(uuid()) @db.Uuid
+  code String? @unique @db.VarChar(40)
+  name String @db.VarChar(160)
+  description String? @db.Text
+  discountType DiscountType @map("discount_type")
+  /// Basis points (1000 = 10 %). Used when discountType = PERCENT.
+  percentBps Int? @map("percent_bps")
+  /// Used when discountType = FIXED_AMOUNT.
+  amountOffCents BigInt? @map("amount_off_cents")
+  startsAt DateTime @map("starts_at")
+  endsAt DateTime @map("ends_at")
+  maxRedemptions Int? @map("max_redemptions")
+  redemptionCount Int @default(0) @map("redemption_count")
+  destinationId String? @db.Uuid @map("destination_id")
+  packageId String? @db.Uuid @map("package_id")
+  active Boolean @default(true)
+  isFictitious Boolean @default(true) @map("is_fictitious")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  destination Destination? @relation(fields: [destinationId], references: [id], onDelete: Restrict)
+  package TourPackage? @relation(fields: [packageId], references: [id], onDelete: Restrict)
+  @@index([active, startsAt, endsAt])
+  @@map("promotions")
+}
+
+/// Informative COP -> foreign currency rate (§8). Never used to charge.
+model ExchangeRate {
+  id String @id @default(uuid()) @db.Uuid
+  quoteCurrency String @db.VarChar(3) @map("quote_currency")
+  /// COP per 1 unit of quoteCurrency.
+  copPerUnit Decimal @db.Decimal(14, 4) @map("cop_per_unit")
+  source String? @db.VarChar(120)
+  effectiveAt DateTime @map("effective_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  @@index([quoteCurrency, effectiveAt])
+  @@map("exchange_rates")
 }
 
 model MediaAsset {
@@ -135,9 +783,39 @@ model MediaAsset {
   objectKey String @unique @map("object_key")
   altText String @db.VarChar(250) @map("alt_text")
   mimeType String @db.VarChar(100) @map("mime_type")
+  /// PRIVATE for payment receipts and other non-public evidence.
+  visibility MediaVisibility @default(PUBLIC)
+  sizeBytes Int? @map("size_bytes")
+  sha256 String? @db.Char(64)
+  width Int?
+  height Int?
+  uploadedById String? @db.Uuid @map("uploaded_by_id")
+  deletedAt DateTime? @map("deleted_at")
   createdAt DateTime @default(now()) @map("created_at")
+  uploadedBy User? @relation(fields: [uploadedById], references: [id], onDelete: SetNull)
   packageImages PackageImage[]
+  attachments MediaAttachment[]
+  receipts ManualAbono[]
   @@map("media_assets")
+}
+
+/// Gallery link for destinations, hotels and tours. Exactly one owner FK (DB CHECK).
+model MediaAttachment {
+  id String @id @default(uuid()) @db.Uuid
+  assetId String @db.Uuid @map("asset_id")
+  destinationId String? @db.Uuid @map("destination_id")
+  hotelId String? @db.Uuid @map("hotel_id")
+  tourId String? @db.Uuid @map("tour_id")
+  sortOrder Int @default(0) @map("sort_order")
+  createdAt DateTime @default(now()) @map("created_at")
+  asset MediaAsset @relation(fields: [assetId], references: [id], onDelete: Restrict)
+  destination Destination? @relation(fields: [destinationId], references: [id], onDelete: Cascade)
+  hotel Hotel? @relation(fields: [hotelId], references: [id], onDelete: Cascade)
+  tour Tour? @relation(fields: [tourId], references: [id], onDelete: Cascade)
+  @@index([destinationId, sortOrder])
+  @@index([hotelId, sortOrder])
+  @@index([tourId, sortOrder])
+  @@map("media_attachments")
 }
 
 model PackageImage {
@@ -162,6 +840,7 @@ model ItineraryDay {
   @@map("itinerary_days")
 }
 
+/// Manually managed cupos: 0 <= held, 0 <= sold, held + sold <= capacity (DB CHECK).
 model Departure {
   id String @id @default(uuid()) @db.Uuid
   packageId String @db.Uuid @map("package_id")
@@ -169,16 +848,438 @@ model Departure {
   endsAt DateTime @map("ends_at")
   capacity Int
   heldSeats Int @default(0) @map("held_seats")
-  confirmedSeats Int @default(0) @map("confirmed_seats")
-  price Decimal @db.Decimal(14, 2)
+  /// Sold seats (column name kept from v1).
+  soldSeats Int @default(0) @map("confirmed_seats")
+  availabilityStatus AvailabilityStatus @default(TO_CONFIRM) @map("availability_status")
+  /// Legacy decimal price. Use priceCents.
+  price Decimal? @db.Decimal(14, 2)
+  priceCents BigInt? @map("price_cents")
+  isFictitious Boolean @default(true) @map("is_fictitious")
   currency String @default("COP") @db.VarChar(3)
   published Boolean @default(false)
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
   package TourPackage @relation(fields: [packageId], references: [id])
   bookings Booking[]
+  reservations Reservation[]
+  quotes Quote[]
+  priceRules PriceRule[]
   @@index([packageId, startsAt, published])
   @@map("departures")
 }
 
+// ---------------------------------------------------------------------------
+// Commerce: quotes, reservations
+// ---------------------------------------------------------------------------
+
+model Quote {
+  id String @id @default(uuid()) @db.Uuid
+  reference String @unique @db.VarChar(24)
+  name String @db.VarChar(120)
+  email String @db.VarChar(254)
+  phone String @db.VarChar(25)
+  /// Free-text destination from the v1 form. Catalog link is catalogDestination.
+  destination String? @db.VarChar(120)
+  travelDate DateTime? @map("travel_date")
+  travelers Int
+  budget String? @db.VarChar(80)
+  notes String? @db.Text
+  dataConsentAt DateTime @map("data_consent_at")
+  marketingConsentAt DateTime? @map("marketing_consent_at")
+  status QuoteStatus @default(NEW)
+  assignedToId String? @db.Uuid @map("assigned_to_id")
+  assignedTo User? @relation("quote_assignee", fields: [assignedToId], references: [id])
+  customerId String? @db.Uuid @map("customer_id")
+  destinationId String? @db.Uuid @map("destination_id")
+  packageId String? @db.Uuid @map("package_id")
+  departureId String? @db.Uuid @map("departure_id")
+  transportOptionId String? @db.Uuid @map("transport_option_id")
+  adults Int?
+  children Int?
+  totalCents BigInt? @map("total_cents")
+  currency String @default("COP") @db.VarChar(3)
+  pricingVersion String? @db.VarChar(40) @map("pricing_version")
+  /// Full server-side pricing output at quote time (selection, travelers, breakdown).
+  priceSnapshot Json? @map("price_snapshot")
+  isFictitious Boolean @default(false) @map("is_fictitious")
+  validUntil DateTime? @map("valid_until")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  customer Customer? @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  catalogDestination Destination? @relation(fields: [destinationId], references: [id], onDelete: Restrict)
+  package TourPackage? @relation(fields: [packageId], references: [id], onDelete: Restrict)
+  departure Departure? @relation(fields: [departureId], references: [id], onDelete: Restrict)
+  transportOption TransportOption? @relation(fields: [transportOptionId], references: [id], onDelete: Restrict)
+  lines QuoteLine[]
+  reservation Reservation?
+  consentRecords ConsentRecord[]
+  leadAssignments LeadAssignment[]
+  followUpTasks FollowUpTask[]
+  crmNotes CrmNote[]
+  @@index([status, createdAt])
+  @@index([email])
+  @@index([customerId, createdAt])
+  @@index([assignedToId, status])
+  @@map("quotes")
+}
+
+/// Snapshot line: componentId is NOT a foreign key on purpose (catalog changes never alter quotes).
+model QuoteLine {
+  id String @id @default(uuid()) @db.Uuid
+  quoteId String @db.Uuid @map("quote_id")
+  lineNo Int @map("line_no")
+  kind PriceLineKind
+  componentId String? @db.Uuid @map("component_id")
+  priceRuleId String? @db.Uuid @map("price_rule_id")
+  description String @db.VarChar(250)
+  quantity Int @default(1)
+  unitPriceCents BigInt @map("unit_price_cents")
+  /// Signed: discounts are negative.
+  totalCents BigInt @map("total_cents")
+  breakdown Json
+  pricingVersion String @db.VarChar(40) @map("pricing_version")
+  isFictitious Boolean @default(false) @map("is_fictitious")
+  quote Quote @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  @@unique([quoteId, lineNo])
+  @@map("quote_lines")
+}
+
+/// Supersedes Booking. Status changes go through the domain state machine and ReservationStatusHistory.
+model Reservation {
+  id String @id @default(uuid()) @db.Uuid
+  code String @unique @db.VarChar(24)
+  customerId String @db.Uuid @map("customer_id")
+  quoteId String? @unique @db.Uuid @map("quote_id")
+  destinationId String? @db.Uuid @map("destination_id")
+  packageId String? @db.Uuid @map("package_id")
+  departureId String? @db.Uuid @map("departure_id")
+  transportOptionId String? @db.Uuid @map("transport_option_id")
+  status ReservationStatus @default(DRAFT)
+  adults Int
+  children Int @default(0)
+  startsOn DateTime? @db.Date @map("starts_on")
+  endsOn DateTime? @db.Date @map("ends_on")
+  totalCents BigInt @map("total_cents")
+  requiredDepositCents BigInt @default(0) @map("required_deposit_cents")
+  currency String @default("COP") @db.VarChar(3)
+  /// Display currency shown to the customer and the informative rate used (§8).
+  displayCurrency String? @db.VarChar(3) @map("display_currency")
+  displayRate Decimal? @db.Decimal(14, 4) @map("display_rate")
+  displayRateAt DateTime? @map("display_rate_at")
+  pricingVersion String @db.VarChar(40) @map("pricing_version")
+  priceSnapshot Json @map("price_snapshot")
+  isFictitious Boolean @default(false) @map("is_fictitious")
+  holdExpiresAt DateTime? @map("hold_expires_at")
+  availabilityValidatedAt DateTime? @map("availability_validated_at")
+  validatedById String? @db.Uuid @map("validated_by_id")
+  assignedAdvisorId String? @db.Uuid @map("assigned_advisor_id")
+  /// DIAN invoice number registered manually in v1.
+  invoiceNumber String? @db.VarChar(60) @map("invoice_number")
+  /// Optimistic lock: UPDATE ... WHERE version = n.
+  version Int @default(0)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  quote Quote? @relation(fields: [quoteId], references: [id], onDelete: Restrict)
+  destination Destination? @relation(fields: [destinationId], references: [id], onDelete: Restrict)
+  package TourPackage? @relation(fields: [packageId], references: [id], onDelete: Restrict)
+  departure Departure? @relation(fields: [departureId], references: [id], onDelete: Restrict)
+  transportOption TransportOption? @relation(fields: [transportOptionId], references: [id], onDelete: Restrict)
+  validatedBy User? @relation("reservation_validator", fields: [validatedById], references: [id], onDelete: Restrict)
+  assignedAdvisor User? @relation("reservation_advisor", fields: [assignedAdvisorId], references: [id], onDelete: SetNull)
+  travelers Traveler[]
+  statusHistory ReservationStatusHistory[]
+  payments Payment[]
+  ledgerEntries LedgerEntry[]
+  manualAbonos ManualAbono[]
+  refunds Refund[]
+  savingsPlans SavingsPlan[]
+  consentRecords ConsentRecord[]
+  oneTimeTokens OneTimeToken[]
+  pqrsTickets PqrsTicket[]
+  followUpTasks FollowUpTask[]
+  crmNotes CrmNote[]
+  @@index([customerId, createdAt])
+  @@index([status, createdAt])
+  @@index([departureId, status])
+  @@index([assignedAdvisorId, status])
+  @@map("reservations")
+}
+
+/// Supersedes BookingTraveler. Document data is optional PII, only when the operation requires it.
+model Traveler {
+  id String @id @default(uuid()) @db.Uuid
+  reservationId String @db.Uuid @map("reservation_id")
+  category TravelerCategory @default(ADULT)
+  isResponsible Boolean @default(false) @map("is_responsible")
+  /// PII.
+  fullName String? @db.VarChar(160) @map("full_name")
+  ageYears Int? @map("age_years")
+  heightCm Int? @map("height_cm")
+  /// PII.
+  birthDate DateTime? @db.Date @map("birth_date")
+  /// PII.
+  documentType String? @db.VarChar(20) @map("document_type")
+  /// PII. Never required by default.
+  documentNumber String? @db.VarChar(40) @map("document_number")
+  nationality String? @db.VarChar(2)
+  createdAt DateTime @default(now()) @map("created_at")
+  reservation Reservation @relation(fields: [reservationId], references: [id], onDelete: Cascade)
+  @@index([reservationId])
+  @@map("travelers")
+}
+
+/// Append-only (DB trigger). actorId is null for SYSTEM and for guest customers.
+model ReservationStatusHistory {
+  id String @id @default(uuid()) @db.Uuid
+  reservationId String @db.Uuid @map("reservation_id")
+  /// Null only for the creation row.
+  fromStatus ReservationStatus? @map("from_status")
+  toStatus ReservationStatus @map("to_status")
+  event ReservationEventType?
+  actorId String? @db.Uuid @map("actor_id")
+  role ActorRole
+  reason String? @db.Text
+  at DateTime @default(now())
+  reservation Reservation @relation(fields: [reservationId], references: [id], onDelete: Restrict)
+  actor User? @relation(fields: [actorId], references: [id], onDelete: Restrict)
+  @@index([reservationId, at])
+  @@map("reservation_status_history")
+}
+
+// ---------------------------------------------------------------------------
+// Commerce: payments, ledger, abonos, refunds, savings
+// ---------------------------------------------------------------------------
+
+/// Supersedes the legacy payments table. One reservation admits many payments.
+model Payment {
+  id String @id @default(uuid()) @db.Uuid
+  /// Unique merchant reference sent to the provider, e.g. RT-2026-000123-P1.
+  reference String @unique @db.VarChar(40)
+  customerId String @db.Uuid @map("customer_id")
+  reservationId String? @db.Uuid @map("reservation_id")
+  savingsPlanId String? @db.Uuid @map("savings_plan_id")
+  provider PaymentProvider
+  method PaymentMethod?
+  providerTransactionId String? @unique @db.VarChar(120) @map("provider_transaction_id")
+  idempotencyKey String @unique @db.VarChar(120) @map("idempotency_key")
+  amountCents BigInt @map("amount_cents")
+  currency String @default("COP") @db.VarChar(3)
+  status PaymentStatus @default(PENDING)
+  statusReason String? @db.VarChar(300) @map("status_reason")
+  expiresAt DateTime? @map("expires_at")
+  /// Set when the provider transaction was looked up server-side (§11.3 step 6).
+  verifiedAt DateTime? @map("verified_at")
+  approvedAt DateTime? @map("approved_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  reservation Reservation? @relation(fields: [reservationId], references: [id], onDelete: Restrict)
+  savingsPlan SavingsPlan? @relation(fields: [savingsPlanId], references: [id], onDelete: Restrict)
+  webhookEvents PaymentWebhookEvent[]
+  ledgerEntries LedgerEntry[]
+  manualAbono ManualAbono?
+  refunds Refund[]
+  @@index([customerId, createdAt])
+  @@index([reservationId, status])
+  @@index([status, createdAt])
+  @@map("payment_transactions")
+}
+
+/// Every provider notification, stored before processing. (provider, providerEventId) unique = idempotency.
+model PaymentWebhookEvent {
+  id String @id @default(uuid()) @db.Uuid
+  provider PaymentProvider @default(WOMPI)
+  providerEventId String @db.VarChar(160) @map("provider_event_id")
+  eventType String @db.VarChar(80) @map("event_type")
+  paymentId String? @db.Uuid @map("payment_id")
+  providerTransactionId String? @db.VarChar(120) @map("provider_transaction_id")
+  reportedStatus String? @db.VarChar(40) @map("reported_status")
+  checksumValid Boolean @map("checksum_valid")
+  payloadSha256 String @db.Char(64) @map("payload_sha256")
+  /// Minimised payload (no card data). Optional: the hash is the integrity anchor.
+  payload Json?
+  providerSentAt DateTime? @map("provider_sent_at")
+  receivedAt DateTime @default(now()) @map("received_at")
+  processedAt DateTime? @map("processed_at")
+  processingError String? @db.VarChar(500) @map("processing_error")
+  payment Payment? @relation(fields: [paymentId], references: [id], onDelete: Restrict)
+  @@unique([provider, providerEventId])
+  @@index([paymentId, receivedAt])
+  @@index([processedAt])
+  @@map("payment_webhook_events")
+}
+
+/// Immutable signed money movements (DB trigger blocks UPDATE/DELETE). Balance = SUM(amount_cents).
+/// Positive = money received; negative = reversal/refund. One entry per (source, kind).
+model LedgerEntry {
+  id String @id @default(uuid()) @db.Uuid
+  kind LedgerEntryKind
+  amountCents BigInt @map("amount_cents")
+  currency String @default("COP") @db.VarChar(3)
+  customerId String @db.Uuid @map("customer_id")
+  reservationId String? @db.Uuid @map("reservation_id")
+  savingsPlanId String? @db.Uuid @map("savings_plan_id")
+  paymentId String? @db.Uuid @map("payment_id")
+  manualAbonoId String? @db.Uuid @map("manual_abono_id")
+  refundId String? @db.Uuid @map("refund_id")
+  description String? @db.VarChar(300)
+  createdById String? @db.Uuid @map("created_by_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  reservation Reservation? @relation(fields: [reservationId], references: [id], onDelete: Restrict)
+  savingsPlan SavingsPlan? @relation(fields: [savingsPlanId], references: [id], onDelete: Restrict)
+  payment Payment? @relation(fields: [paymentId], references: [id], onDelete: Restrict)
+  manualAbono ManualAbono? @relation(fields: [manualAbonoId], references: [id], onDelete: Restrict)
+  refund Refund? @relation(fields: [refundId], references: [id], onDelete: Restrict)
+  createdBy User? @relation(fields: [createdById], references: [id], onDelete: Restrict)
+  @@unique([paymentId, kind])
+  @@unique([manualAbonoId, kind])
+  @@unique([refundId, kind])
+  @@index([reservationId, createdAt])
+  @@index([savingsPlanId, createdAt])
+  @@index([customerId, createdAt])
+  @@map("ledger_entries")
+}
+
+/// Transfer/cash abono registered by staff with a private receipt; FINANCE approves.
+model ManualAbono {
+  id String @id @default(uuid()) @db.Uuid
+  customerId String @db.Uuid @map("customer_id")
+  reservationId String? @db.Uuid @map("reservation_id")
+  savingsPlanId String? @db.Uuid @map("savings_plan_id")
+  /// MANUAL-provider Payment created on approval.
+  paymentId String? @unique @db.Uuid @map("payment_id")
+  amountCents BigInt @map("amount_cents")
+  currency String @default("COP") @db.VarChar(3)
+  method PaymentMethod
+  bankReference String? @db.VarChar(120) @map("bank_reference")
+  paidAt DateTime @map("paid_at")
+  receiptMediaId String @db.Uuid @map("receipt_media_id")
+  status ManualAbonoStatus @default(SUBMITTED)
+  registeredById String @db.Uuid @map("registered_by_id")
+  approvedById String? @db.Uuid @map("approved_by_id")
+  approvedAt DateTime? @map("approved_at")
+  rejectionReason String? @db.VarChar(300) @map("rejection_reason")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  reservation Reservation? @relation(fields: [reservationId], references: [id], onDelete: Restrict)
+  savingsPlan SavingsPlan? @relation(fields: [savingsPlanId], references: [id], onDelete: Restrict)
+  payment Payment? @relation(fields: [paymentId], references: [id], onDelete: Restrict)
+  receipt MediaAsset @relation(fields: [receiptMediaId], references: [id], onDelete: Restrict)
+  registeredBy User @relation("abono_registered_by", fields: [registeredById], references: [id], onDelete: Restrict)
+  approvedBy User? @relation("abono_approved_by", fields: [approvedById], references: [id], onDelete: Restrict)
+  ledgerEntries LedgerEntry[]
+  @@index([customerId, createdAt])
+  @@index([reservationId])
+  @@index([status, createdAt])
+  @@map("manual_abonos")
+}
+
+model Refund {
+  id String @id @default(uuid()) @db.Uuid
+  paymentId String @db.Uuid @map("payment_id")
+  reservationId String? @db.Uuid @map("reservation_id")
+  amountCents BigInt @map("amount_cents")
+  currency String @default("COP") @db.VarChar(3)
+  status RefundStatus @default(REQUESTED)
+  reason String @db.Text
+  providerRefundId String? @unique @db.VarChar(120) @map("provider_refund_id")
+  requestedById String @db.Uuid @map("requested_by_id")
+  approvedById String? @db.Uuid @map("approved_by_id")
+  completedAt DateTime? @map("completed_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  payment Payment @relation(fields: [paymentId], references: [id], onDelete: Restrict)
+  reservation Reservation? @relation(fields: [reservationId], references: [id], onDelete: Restrict)
+  requestedBy User @relation("refund_requested_by", fields: [requestedById], references: [id], onDelete: Restrict)
+  approvedBy User? @relation("refund_approved_by", fields: [approvedById], references: [id], onDelete: Restrict)
+  ledgerEntries LedgerEntry[]
+  @@index([paymentId])
+  @@index([reservationId])
+  @@map("refunds")
+}
+
+/// Legacy (bookings). Superseded by SavingsPlan + SavingsPlanInstallment.
+model PaymentPlan {
+  id String @id @default(uuid()) @db.Uuid
+  bookingId String @unique @db.Uuid @map("booking_id")
+  deposit Decimal @db.Decimal(14, 2)
+  status PaymentPlanStatus @default(ACTIVE)
+  booking Booking @relation(fields: [bookingId], references: [id])
+  installments Installment[]
+  @@map("payment_plans")
+}
+
+/// Legacy. See PaymentPlan.
+model Installment {
+  id String @id @default(uuid()) @db.Uuid
+  paymentPlanId String @db.Uuid @map("payment_plan_id")
+  dueAt DateTime @map("due_at")
+  amount Decimal @db.Decimal(14, 2)
+  paymentPlan PaymentPlan @relation(fields: [paymentPlanId], references: [id])
+  @@index([paymentPlanId, dueAt])
+  @@map("installments")
+}
+
+/// Abonos / ahorro programado administered by the agency (§11.4). Balance comes from LedgerEntry.
+model SavingsPlan {
+  id String @id @default(uuid()) @db.Uuid
+  customerId String @db.Uuid @map("customer_id")
+  /// Legacy decimal goal. Use goalCents.
+  goalAmount Decimal? @db.Decimal(14, 2) @map("goal_amount")
+  goalCents BigInt? @map("goal_cents")
+  currency String @default("COP") @db.VarChar(3)
+  status PaymentPlanStatus @default(ACTIVE)
+  name String? @db.VarChar(160)
+  reservationId String? @db.Uuid @map("reservation_id")
+  packageId String? @db.Uuid @map("package_id")
+  targetDate DateTime? @db.Date @map("target_date")
+  completedAt DateTime? @map("completed_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+  customer Customer @relation(fields: [customerId], references: [id])
+  reservation Reservation? @relation(fields: [reservationId], references: [id], onDelete: Restrict)
+  package TourPackage? @relation(fields: [packageId], references: [id], onDelete: Restrict)
+  movements SavingsMovement[]
+  installments SavingsPlanInstallment[]
+  payments Payment[]
+  ledgerEntries LedgerEntry[]
+  manualAbonos ManualAbono[]
+  @@index([customerId])
+  @@index([reservationId])
+  @@map("savings_plans")
+}
+
+model SavingsPlanInstallment {
+  id String @id @default(uuid()) @db.Uuid
+  savingsPlanId String @db.Uuid @map("savings_plan_id")
+  sequence Int
+  dueOn DateTime @db.Date @map("due_on")
+  amountCents BigInt @map("amount_cents")
+  createdAt DateTime @default(now()) @map("created_at")
+  savingsPlan SavingsPlan @relation(fields: [savingsPlanId], references: [id], onDelete: Cascade)
+  @@unique([savingsPlanId, sequence])
+  @@index([dueOn])
+  @@map("savings_plan_installments")
+}
+
+/// Legacy decimal movements. v2 money lives in LedgerEntry.
+model SavingsMovement {
+  id String @id @default(uuid()) @db.Uuid
+  savingsPlanId String @db.Uuid @map("savings_plan_id")
+  amount Decimal @db.Decimal(14, 2)
+  externalReference String? @unique @map("external_reference")
+  createdAt DateTime @default(now()) @map("created_at")
+  savingsPlan SavingsPlan @relation(fields: [savingsPlanId], references: [id])
+  @@map("savings_movements")
+}
+
+// ---------------------------------------------------------------------------
+// Legacy v1 commerce (kept, not written by v2 code)
+// ---------------------------------------------------------------------------
+
+/// Legacy. Superseded by Reservation.
 model Booking {
   id String @id @default(uuid()) @db.Uuid
   code String @unique @db.VarChar(24)
@@ -198,7 +1299,7 @@ model Booking {
   departure Departure @relation(fields: [departureId], references: [id])
   travelers BookingTraveler[]
   paymentPlan PaymentPlan?
-  payments Payment[]
+  payments LegacyPayment[]
   acceptances AgreementAcceptance[]
   pqrsTickets PqrsTicket[]
   @@index([departureId, status])
@@ -206,6 +1307,7 @@ model Booking {
   @@map("bookings")
 }
 
+/// Legacy. Superseded by Traveler.
 model BookingTraveler {
   id String @id @default(uuid()) @db.Uuid
   bookingId String @db.Uuid @map("booking_id")
@@ -214,71 +1316,8 @@ model BookingTraveler {
   @@map("booking_travelers")
 }
 
-model Quote {
-  id String @id @default(uuid()) @db.Uuid
-  reference String @unique @db.VarChar(24)
-  name String @db.VarChar(120)
-  email String @db.VarChar(254)
-  phone String @db.VarChar(25)
-  destination String? @db.VarChar(120)
-  travelDate DateTime? @map("travel_date")
-  travelers Int
-  budget String? @db.VarChar(80)
-  notes String? @db.Text
-  dataConsentAt DateTime @map("data_consent_at")
-  marketingConsentAt DateTime? @map("marketing_consent_at")
-  status QuoteStatus @default(NEW)
-  assignedToId String? @db.Uuid @map("assigned_to_id")
-  assignedTo User? @relation("quote_assignee", fields: [assignedToId], references: [id])
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-  @@index([status, createdAt])
-  @@index([email])
-  @@map("quotes")
-}
-
-model PaymentPlan {
-  id String @id @default(uuid()) @db.Uuid
-  bookingId String @unique @db.Uuid @map("booking_id")
-  deposit Decimal @db.Decimal(14, 2)
-  status PaymentPlanStatus @default(ACTIVE)
-  booking Booking @relation(fields: [bookingId], references: [id])
-  installments Installment[]
-  @@map("payment_plans")
-}
-
-model Installment {
-  id String @id @default(uuid()) @db.Uuid
-  paymentPlanId String @db.Uuid @map("payment_plan_id")
-  dueAt DateTime @map("due_at")
-  amount Decimal @db.Decimal(14, 2)
-  paymentPlan PaymentPlan @relation(fields: [paymentPlanId], references: [id])
-  @@index([paymentPlanId, dueAt])
-  @@map("installments")
-}
-
-model SavingsPlan {
-  id String @id @default(uuid()) @db.Uuid
-  customerId String @db.Uuid @map("customer_id")
-  goalAmount Decimal @db.Decimal(14, 2) @map("goal_amount")
-  currency String @default("COP") @db.VarChar(3)
-  status PaymentPlanStatus @default(ACTIVE)
-  customer Customer @relation(fields: [customerId], references: [id])
-  movements SavingsMovement[]
-  @@map("savings_plans")
-}
-
-model SavingsMovement {
-  id String @id @default(uuid()) @db.Uuid
-  savingsPlanId String @db.Uuid @map("savings_plan_id")
-  amount Decimal @db.Decimal(14, 2)
-  externalReference String? @unique @map("external_reference")
-  createdAt DateTime @default(now()) @map("created_at")
-  savingsPlan SavingsPlan @relation(fields: [savingsPlanId], references: [id])
-  @@map("savings_movements")
-}
-
-model Payment {
+/// Legacy (table payments). Superseded by Payment (table payment_transactions).
+model LegacyPayment {
   id String @id @default(uuid()) @db.Uuid
   bookingId String @db.Uuid @map("booking_id")
   provider String @db.VarChar(50)
@@ -286,24 +1325,26 @@ model Payment {
   idempotencyKey String @unique @map("idempotency_key")
   amount Decimal @db.Decimal(14, 2)
   currency String @default("COP") @db.VarChar(3)
-  status PaymentStatus @default(PENDING)
+  status LegacyPaymentStatus @default(PENDING)
   createdAt DateTime @default(now()) @map("created_at")
   booking Booking @relation(fields: [bookingId], references: [id])
-  events PaymentEvent[]
+  events LegacyPaymentEvent[]
   @@index([bookingId, status])
   @@map("payments")
 }
 
-model PaymentEvent {
+/// Legacy (table payment_events). Superseded by PaymentWebhookEvent.
+model LegacyPaymentEvent {
   id String @id @default(uuid()) @db.Uuid
   paymentId String @db.Uuid @map("payment_id")
   providerEventId String @unique @map("provider_event_id")
   payload Json
   receivedAt DateTime @default(now()) @map("received_at")
-  payment Payment @relation(fields: [paymentId], references: [id])
+  payment LegacyPayment @relation(fields: [paymentId], references: [id])
   @@map("payment_events")
 }
 
+/// Legacy. Superseded by LegalDocument.
 model Agreement {
   id String @id @default(uuid()) @db.Uuid
   version String @unique @db.VarChar(40)
@@ -313,6 +1354,7 @@ model Agreement {
   @@map("agreements")
 }
 
+/// Legacy. Superseded by ConsentRecord (purpose TERMS_ACCEPTANCE).
 model AgreementAcceptance {
   id String @id @default(uuid()) @db.Uuid
   bookingId String @db.Uuid @map("booking_id")
@@ -324,20 +1366,98 @@ model AgreementAcceptance {
   @@map("agreement_acceptances")
 }
 
+// ---------------------------------------------------------------------------
+// Compliance: legal, consent, PQR, audit, settings
+// ---------------------------------------------------------------------------
+
+/// Versioned legal text. Only APPROVED versions may be shown or accepted (PC-6).
+model LegalDocument {
+  id String @id @default(uuid()) @db.Uuid
+  type LegalDocumentType
+  version String @db.VarChar(40)
+  title String @db.VarChar(200)
+  body String @db.Text
+  contentSha256 String @db.Char(64) @map("content_sha256")
+  status LegalDocumentStatus @default(DRAFT)
+  approvedAt DateTime? @map("approved_at")
+  approvedById String? @db.Uuid @map("approved_by_id")
+  effectiveFrom DateTime? @map("effective_from")
+  supersededAt DateTime? @map("superseded_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  approvedBy User? @relation(fields: [approvedById], references: [id], onDelete: Restrict)
+  consentRecords ConsentRecord[]
+  @@unique([type, version])
+  @@index([type, status])
+  @@map("legal_documents")
+}
+
+/// Append-only (DB trigger). Withdrawal is a new row with granted = false.
+model ConsentRecord {
+  id String @id @default(uuid()) @db.Uuid
+  purpose ConsentPurpose
+  legalDocumentId String @db.Uuid @map("legal_document_id")
+  /// Denormalised copy of the accepted LegalDocument.version.
+  legalDocumentVersion String @db.VarChar(40) @map("legal_document_version")
+  granted Boolean
+  userId String? @db.Uuid @map("user_id")
+  customerId String? @db.Uuid @map("customer_id")
+  /// Lowercased; for anonymous forms.
+  email String? @db.VarChar(254)
+  quoteId String? @db.Uuid @map("quote_id")
+  reservationId String? @db.Uuid @map("reservation_id")
+  /// Form or flow that collected the consent, e.g. "quote_form".
+  source String @db.VarChar(80)
+  ipHash String? @db.Char(64) @map("ip_hash")
+  userAgentHash String? @db.Char(64) @map("user_agent_hash")
+  at DateTime @default(now())
+  legalDocument LegalDocument @relation(fields: [legalDocumentId], references: [id], onDelete: Restrict)
+  user User? @relation(fields: [userId], references: [id], onDelete: Restrict)
+  customer Customer? @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  quote Quote? @relation(fields: [quoteId], references: [id], onDelete: Restrict)
+  reservation Reservation? @relation(fields: [reservationId], references: [id], onDelete: Restrict)
+  @@index([customerId, purpose, at])
+  @@index([userId, purpose, at])
+  @@index([email, purpose, at])
+  @@index([reservationId])
+  @@map("consent_records")
+}
+
+/// PQR ticket. customerId is optional in v2 so anyone can file one (requester* fields).
 model PqrsTicket {
   id String @id @default(uuid()) @db.Uuid
   reference String @unique @db.VarChar(24)
-  customerId String @db.Uuid @map("customer_id")
+  customerId String? @db.Uuid @map("customer_id")
   bookingId String? @db.Uuid @map("booking_id")
+  reservationId String? @db.Uuid @map("reservation_id")
   type PqrsType
   status PqrsStatus @default(RECEIVED)
   subject String @db.VarChar(160)
   description String @db.Text
+  /// PII.
+  requesterName String? @db.VarChar(120) @map("requester_name")
+  /// PII. Lowercased.
+  requesterEmail String? @db.VarChar(254) @map("requester_email")
+  /// PII.
+  requesterPhone String? @db.VarChar(25) @map("requester_phone")
+  assignedToId String? @db.Uuid @map("assigned_to_id")
+  /// SLA dates computed by the application from the agency's PQR policy.
+  firstResponseDueAt DateTime? @map("first_response_due_at")
+  resolutionDueAt DateTime? @map("resolution_due_at")
+  firstRespondedAt DateTime? @map("first_responded_at")
+  resolvedAt DateTime? @map("resolved_at")
+  closedAt DateTime? @map("closed_at")
   createdAt DateTime @default(now()) @map("created_at")
-  customer Customer @relation(fields: [customerId], references: [id])
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+  customer Customer? @relation(fields: [customerId], references: [id], onDelete: Restrict)
   booking Booking? @relation(fields: [bookingId], references: [id])
+  reservation Reservation? @relation(fields: [reservationId], references: [id], onDelete: Restrict)
+  assignedTo User? @relation("pqrs_assignee", fields: [assignedToId], references: [id], onDelete: SetNull)
   messages PqrsMessage[]
+  crmNotes CrmNote[]
   @@index([status, createdAt])
+  @@index([customerId, createdAt])
+  @@index([assignedToId, status])
+  @@index([resolutionDueAt])
   @@map("pqrs_tickets")
 }
 
@@ -346,11 +1466,17 @@ model PqrsMessage {
   ticketId String @db.Uuid @map("ticket_id")
   message String @db.Text
   isStaff Boolean @default(false) @map("is_staff")
+  /// Internal staff note, never shown to the requester.
+  isInternal Boolean @default(false) @map("is_internal")
+  authorId String? @db.Uuid @map("author_id")
   createdAt DateTime @default(now()) @map("created_at")
   ticket PqrsTicket @relation(fields: [ticketId], references: [id])
+  author User? @relation(fields: [authorId], references: [id], onDelete: SetNull)
+  @@index([ticketId, createdAt])
   @@map("pqrs_messages")
 }
 
+/// Legacy key/value settings. Typed agency data lives in AgencySetting.
 model SiteSetting {
   key String @id @db.VarChar(100)
   value Json
@@ -358,15 +1484,146 @@ model SiteSetting {
   @@map("site_settings")
 }
 
+/// Singleton (id = 1, DB CHECK). Every value is nullable and must come from the agency, never invented.
+model AgencySetting {
+  id Int @id @default(1)
+  legalName String? @db.VarChar(200) @map("legal_name")
+  tradeName String? @db.VarChar(200) @map("trade_name")
+  nit String? @db.VarChar(30)
+  rnt String? @db.VarChar(30)
+  rntValidUntil DateTime? @db.Date @map("rnt_valid_until")
+  address String? @db.VarChar(250)
+  city String? @db.VarChar(100)
+  phone String? @db.VarChar(25)
+  whatsapp String? @db.VarChar(25)
+  contactEmail String? @db.VarChar(254) @map("contact_email")
+  bookingsEmail String? @db.VarChar(254) @map("bookings_email")
+  businessHours String? @db.VarChar(300) @map("business_hours")
+  facebookUrl String? @db.VarChar(300) @map("facebook_url")
+  instagramUrl String? @db.VarChar(300) @map("instagram_url")
+  tiktokUrl String? @db.VarChar(300) @map("tiktok_url")
+  youtubeUrl String? @db.VarChar(300) @map("youtube_url")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  @@map("agency_settings")
+}
+
 model AuditLog {
   id String @id @default(uuid()) @db.Uuid
   actorId String? @db.Uuid @map("actor_id")
+  actorRole ActorRole? @map("actor_role")
   action String @db.VarChar(120)
   entity String @db.VarChar(120)
   entityId String @db.VarChar(120) @map("entity_id")
   details Json?
+  before Json?
+  after Json?
+  ipHash String? @db.Char(64) @map("ip_hash")
+  requestId String? @db.VarChar(64) @map("request_id")
   createdAt DateTime @default(now()) @map("created_at")
   actor User? @relation(fields: [actorId], references: [id], onDelete: SetNull)
   @@index([entity, entityId, createdAt])
+  @@index([actorId, createdAt])
   @@map("audit_logs")
+}
+
+// ---------------------------------------------------------------------------
+// Content
+// ---------------------------------------------------------------------------
+
+model ContentPage {
+  id String @id @default(uuid()) @db.Uuid
+  slug String @unique @db.VarChar(160)
+  kind ContentKind @default(PAGE)
+  title String @db.VarChar(200)
+  excerpt String? @db.VarChar(500)
+  /// Sanitised before render (rich text from the panel).
+  body String @db.Text
+  status PublicationStatus @default(DRAFT)
+  seoTitle String? @db.VarChar(70) @map("seo_title")
+  seoDescription String? @db.VarChar(170) @map("seo_description")
+  noindex Boolean @default(false)
+  publishedAt DateTime? @map("published_at")
+  deletedAt DateTime? @map("deleted_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  @@index([kind, status, publishedAt])
+  @@map("content_pages")
+}
+
+model FaqItem {
+  id String @id @default(uuid()) @db.Uuid
+  question String @db.VarChar(300)
+  answer String @db.Text
+  topic String? @db.VarChar(80)
+  sortOrder Int @default(0) @map("sort_order")
+  status PublicationStatus @default(DRAFT)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  @@index([status, topic, sortOrder])
+  @@map("faq_items")
+}
+
+// ---------------------------------------------------------------------------
+// Advisor CRM
+// ---------------------------------------------------------------------------
+
+/// History of lead (quote) assignments. Quote.assignedToId is the current pointer.
+model LeadAssignment {
+  id String @id @default(uuid()) @db.Uuid
+  quoteId String @db.Uuid @map("quote_id")
+  advisorId String @db.Uuid @map("advisor_id")
+  assignedById String? @db.Uuid @map("assigned_by_id")
+  reason String? @db.VarChar(300)
+  assignedAt DateTime @default(now()) @map("assigned_at")
+  unassignedAt DateTime? @map("unassigned_at")
+  quote Quote @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  advisor User @relation("lead_advisor", fields: [advisorId], references: [id], onDelete: Restrict)
+  assignedBy User? @relation("lead_assigned_by", fields: [assignedById], references: [id], onDelete: SetNull)
+  @@index([quoteId, assignedAt])
+  @@index([advisorId, unassignedAt])
+  @@map("lead_assignments")
+}
+
+model FollowUpTask {
+  id String @id @default(uuid()) @db.Uuid
+  title String @db.VarChar(200)
+  description String? @db.Text
+  dueAt DateTime @map("due_at")
+  status TaskStatus @default(OPEN)
+  assigneeId String @db.Uuid @map("assignee_id")
+  createdById String? @db.Uuid @map("created_by_id")
+  quoteId String? @db.Uuid @map("quote_id")
+  reservationId String? @db.Uuid @map("reservation_id")
+  customerId String? @db.Uuid @map("customer_id")
+  completedAt DateTime? @map("completed_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  assignee User @relation("task_assignee", fields: [assigneeId], references: [id], onDelete: Restrict)
+  createdBy User? @relation("task_creator", fields: [createdById], references: [id], onDelete: SetNull)
+  quote Quote? @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  reservation Reservation? @relation(fields: [reservationId], references: [id], onDelete: Cascade)
+  customer Customer? @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  @@index([assigneeId, status, dueAt])
+  @@map("follow_up_tasks")
+}
+
+/// Internal notes (AdminNote of the requirements). Never shown to customers.
+model CrmNote {
+  id String @id @default(uuid()) @db.Uuid
+  body String @db.Text
+  authorId String @db.Uuid @map("author_id")
+  quoteId String? @db.Uuid @map("quote_id")
+  reservationId String? @db.Uuid @map("reservation_id")
+  customerId String? @db.Uuid @map("customer_id")
+  pqrsTicketId String? @db.Uuid @map("pqrs_ticket_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  author User @relation(fields: [authorId], references: [id], onDelete: Restrict)
+  quote Quote? @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  reservation Reservation? @relation(fields: [reservationId], references: [id], onDelete: Cascade)
+  customer Customer? @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  pqrsTicket PqrsTicket? @relation(fields: [pqrsTicketId], references: [id], onDelete: Cascade)
+  @@index([quoteId, createdAt])
+  @@index([reservationId, createdAt])
+  @@index([customerId, createdAt])
+  @@map("crm_notes")
 }
