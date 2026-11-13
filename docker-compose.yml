@@ -9,7 +9,7 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-ricaurte_tours}
     ports:
       # Bound to loopback only: the database is not reachable from the LAN.
-      - "127.0.0.1:5432:5432"
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
     volumes:
       - ricaurte_data:/var/lib/postgresql/data
     security_opt:

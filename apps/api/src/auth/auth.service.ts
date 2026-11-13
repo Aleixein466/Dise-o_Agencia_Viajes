@@ -276,11 +276,13 @@ export class AuthService {
       where: { userId: principal.user.id, revokedAt: null },
       orderBy: { createdAt: "desc" },
     });
-    if (
-      !factor ||
-      !this.totp(this.decrypt(factor.secretEncrypted), principal.user.email).validate({ token: code.trim(), window: 1 })
-    )
-      throw genericCredentials();
+    if (!factor) throw genericCredentials();
+    const delta = this.totp(this.decrypt(factor.secretEncrypted), principal.user.email).validate({
+      token: code.trim(),
+      window: 1,
+    });
+    // OTPAuth returns 0 for the current (valid) time-step; only null means no match.
+    if (delta === null) throw genericCredentials();
     await client.$transaction([
       client.mfaFactor.update({
         where: { id: factor.id },
