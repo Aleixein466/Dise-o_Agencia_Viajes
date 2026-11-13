@@ -41,7 +41,7 @@ npm audit
 
 - `src/app`: rutas públicas y API de cotizaciones.
 - `src/components`: navegación, pie, tarjetas, portada fotográfica y galería accesible.
-- `src/lib/demo-data.ts`: contenido editorial reemplazable.
+- `src/content/historical-trips.ts`: contenido editorial reemplazable.
 - `prisma/schema.prisma`: modelo de datos inicial.
 - `docs/propuesta.md`: arquitectura y plan inicial.
 - `docs/auditoria-v2.md`: hallazgos verificados, benchmark, decisiones y QA del rediseño.

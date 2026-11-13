@@ -5,7 +5,8 @@ export type TripPhoto = {
   sourceUrl: string;
 };
 
-export type DemoTrip = {
+export type HistoricalTrip = {
+  kind: "historical";
   slug: string;
   name: string;
   region: string;
@@ -32,9 +33,10 @@ export const postSources = {
   parqueAguas: "https://www.facebook.com/ricaurtetours/posts/pfbid02uEaRdAX1bZnj3NPkzZuBD95NCSiGXt72fxCjquWf7aJP1Krn6bDJPnReX3RpXxQFl",
 } as const;
 
-// Documented past trips from posts supplied by the client. They are not current offers.
-export const demoTrips: DemoTrip[] = [
+// These are documented past trips and historical editorial content. They must never be converted into TourPackage/Departure or shown with price/availability.
+export const historicalTrips: HistoricalTrip[] = [
   {
+    kind: "historical",
     slug: "eje-cafetero",
     name: "Eje Cafetero",
     region: "Colombia",
@@ -52,6 +54,7 @@ export const demoTrips: DemoTrip[] = [
     ],
   },
   {
+    kind: "historical",
     slug: "atacames",
     name: "Atacames",
     region: "Ecuador",
@@ -69,6 +72,7 @@ export const demoTrips: DemoTrip[] = [
     ],
   },
   {
+    kind: "historical",
     slug: "excursion-chevere",
     name: "Excursión Chévere",
     region: "Eje Cafetero · Cartagena · Medellín",
@@ -87,6 +91,7 @@ export const demoTrips: DemoTrip[] = [
     ],
   },
   {
+    kind: "historical",
     slug: "cartagena",
     name: "Cartagena",
     region: "Colombia",
@@ -109,6 +114,7 @@ export const demoTrips: DemoTrip[] = [
     ],
   },
   {
+    kind: "historical",
     slug: "san-andres",
     name: "San Andrés",
     region: "Colombia insular",
@@ -128,6 +134,7 @@ export const demoTrips: DemoTrip[] = [
     ],
   },
   {
+    kind: "historical",
     slug: "parque-de-las-aguas",
     name: "Parque de las Aguas",
     region: "Medellín, Colombia",

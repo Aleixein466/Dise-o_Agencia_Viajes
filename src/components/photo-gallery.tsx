@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { ArrowLeft, ArrowRight, ArrowUpRight, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import type { TripPhoto } from "@/lib/demo-data";
+import type { TripPhoto } from "@/content/historical-trips";
 
 export function PhotoGallery({ photos, variant = "mosaic" }: { photos: TripPhoto[]; variant?: "mosaic" | "detail" }) {
   const [selected, setSelected] = useState<number | null>(null);

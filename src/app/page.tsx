@@ -1,7 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { ArrowDown, ArrowRight, ArrowUpRight, CalendarDays, Camera, Compass, Globe2, Heart, Leaf, MapPin, Search, ShieldCheck, Sun, UsersRound, Wallet } from "lucide-react";
-import { demoTrips, postSources, type TripPhoto } from "@/lib/demo-data";
+import { historicalTrips, postSources, type TripPhoto } from "@/content/historical-trips";
 import { HeroSlider } from "@/components/hero-slider";
 import { PhotoGallery } from "@/components/photo-gallery";
 import { TripCard } from "@/components/trip-card";
@@ -14,8 +14,8 @@ const experiences = [
 ];
 
 const moments: TripPhoto[] = [
-  demoTrips[0].photos[1], demoTrips[3].photos[2], demoTrips[4].photos[2], demoTrips[3].photos[4],
-  demoTrips[1].photos[1], demoTrips[5].photos[3], demoTrips[3].photos[6], demoTrips[2].photos[1],
+  historicalTrips[0].photos[1], historicalTrips[3].photos[2], historicalTrips[4].photos[2], historicalTrips[3].photos[4],
+  historicalTrips[1].photos[1], historicalTrips[5].photos[3], historicalTrips[3].photos[6], historicalTrips[2].photos[1],
 ];
 
 const steps = [
@@ -50,7 +50,7 @@ export default function Home() {
 
     <section className="shell availability-block" id="explorar"><div className="availability-icon"><CalendarDays size={27} /></div><div><span className="eyebrow">PRÓXIMAS AVENTURAS</span><h2>Próximas salidas por anunciar.</h2><p>Las fechas, tarifas y cupos futuros aún no están confirmados. Mientras tanto, descubre lo que ya hemos vivido y guarda una idea para tu próximo viaje.</p></div><Link className="text-link" href="/destinos">Ver experiencias <ArrowUpRight size={17} /></Link></section>
 
-    <section className="shell section-pad" id="destinos"><div className="section-heading"><div><span className="eyebrow">VIAJES DESTACADOS · ARCHIVO REAL</span><h2>Lugares que dejaron <em>huella.</em></h2></div><div className="heading-aside"><p>Fotografías y recuerdos de recorridos publicados por la agencia. Cada ficha cuenta una experiencia pasada.</p><Link href="/destinos" className="text-link">Todas las historias <ArrowUpRight size={17} /></Link></div></div><div className="trip-grid home-trip-grid">{[demoTrips[4], demoTrips[3], demoTrips[0]].map((trip) => <TripCard trip={trip} key={trip.slug} />)}</div></section>
+    <section className="shell section-pad" id="destinos"><div className="section-heading"><div><span className="eyebrow">VIAJES DESTACADOS · ARCHIVO REAL</span><h2>Lugares que dejaron <em>huella.</em></h2></div><div className="heading-aside"><p>Fotografías y recuerdos de recorridos publicados por la agencia. Cada ficha cuenta una experiencia pasada.</p><Link href="/destinos" className="text-link">Todas las historias <ArrowUpRight size={17} /></Link></div></div><div className="trip-grid home-trip-grid">{[historicalTrips[4], historicalTrips[3], historicalTrips[0]].map((trip) => <TripCard trip={trip} key={trip.slug} />)}</div></section>
 
     <section className="place-feature"><div className="shell place-feature-layout"><div className="place-feature-photo"><Image src="/images/social/cartagena-castillo-2022.jpg" alt="Viajeros frente a una fortificación histórica de Cartagena" fill sizes="(max-width: 850px) 100vw, 51vw" /></div><div className="place-feature-copy"><span className="eyebrow">MÁS ALLÁ DEL DESTINO</span><h2>Un lugar se recuerda por <em>lo que vivimos allí.</em></h2><p>Las publicaciones de Cartagena reúnen patrimonio, calles de Getsemaní, playa y una visita al Oceanario. La historia también está en las sonrisas del grupo.</p><div className="place-tags"><span>Patrimonio</span><span>Playa</span><span>Vida marina</span><span>Risas</span></div><Link href="/destinos/cartagena" className="text-link">Conocer esta historia <ArrowUpRight size={17} /></Link></div></div></section>
 
