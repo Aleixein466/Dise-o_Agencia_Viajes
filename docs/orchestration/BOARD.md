@@ -22,7 +22,7 @@ Actualizado: 2026-11-13. Estados: **Pendiente** · **En desarrollo** · **En rev
 | --- | ---------------------------------------------------------------------------- | ---------- | ---------------------------------------------------------- |
 | 1   | Arquitectura backend y contratos (ADR-0001: pnpm, Turborepo, NestJS/Fastify) | Lote 4     | En revisión                                                |
 | 2   | Auth, usuarios, roles y permisos                                             | Prisma v2  | Parcial: PostgreSQL real validado; E2E/usuarios pendientes |
-| 3   | Estructura del panel administrativo                                          | 2          | En desarrollo (UI recuperada)                              |
+| 3   | Estructura del panel administrativo                                          | 2          | En desarrollo (API usuarios; UI pendiente)                 |
 | 4   | CRUD de catálogo                                                             | 2, 3       | Pendiente                                                  |
 | 5   | CRM y asesores                                                               | 2, 3       | Pendiente                                                  |
 | 6   | Constructor y motor de precios                                               | 4          | Pendiente (datos ficticios; PC-4)                          |
