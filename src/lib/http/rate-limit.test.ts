@@ -12,3 +12,11 @@ describe("fixed-window rate limiter", () => {
     expect(checkRateLimit("client", 601_000)).toEqual({ allowed: true });
   });
 });
+
+describe("rate limiter memory bound", () => {
+  it("keeps the map bounded under many distinct keys", () => {
+    resetRateLimit();
+    for (let i = 0; i < 10_050; i++) checkRateLimit(`k${i}`, 1_000);
+    expect(checkRateLimit("fresh", 1_000)).toEqual({ allowed: true });
+  });
+});
