@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getDb } from "@/lib/db";
+import { quoteIntakeOpen } from "@/lib/env";
 import { readJsonLimited } from "@/lib/http/read-json-limited";
 import { checkRateLimit } from "@/lib/http/rate-limit";
 
@@ -20,7 +21,7 @@ const schema = z.object({
 
 export async function POST(request: Request) {
   // Intake is deliberately disabled until the agency approves its privacy notice.
-  if (process.env.QUOTE_INTAKE_ENABLED !== "true" || process.env.PRIVACY_POLICY_APPROVED !== "true" || !process.env.DATABASE_URL) {
+  if (!quoteIntakeOpen()) {
     return NextResponse.json({ message: "Las cotizaciones aún no están habilitadas. La agencia debe aprobar la política de datos y configurar la base de datos." }, { status: 503 });
   }
   if (!request.headers.get("content-type")?.toLowerCase().startsWith("application/json")) return NextResponse.json({ message: "Tipo de contenido inválido." }, { status: 415 });

@@ -43,6 +43,11 @@ export function isQuoteIntakeEnabled(env: ServerEnv = getServerEnv()): boolean {
     env.DATABASE_URL !== undefined;
 }
 
+/** Fail closed: an invalid environment keeps intake disabled instead of throwing. */
+export function quoteIntakeOpen(): boolean {
+  try { return isQuoteIntakeEnabled(); } catch { return false; }
+}
+
 export function resetEnvCache(): void {
   cachedProcessEnv = undefined;
 }

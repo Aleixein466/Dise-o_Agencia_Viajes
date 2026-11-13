@@ -4,6 +4,7 @@ vi.mock("@/lib/db", () => ({ getDb: vi.fn() }));
 
 import { getDb } from "@/lib/db";
 import { resetRateLimit } from "@/lib/http/rate-limit";
+import { resetEnvCache } from "@/lib/env";
 import { POST } from "./route";
 
 const bodyData = { name: "Prueba Ficticia", email: "ficticio@example.test", phone: "3000000000", travelers: 2, dataConsent: "true" };
@@ -15,7 +16,15 @@ const enableAll = () => {
 };
 
 describe("POST /api/quotes", () => {
-  beforeEach(() => { vi.mocked(getDb).mockReset(); resetRateLimit(); });
+  beforeEach(() => { vi.mocked(getDb).mockReset(); resetRateLimit(); resetEnvCache(); });
+
+  it("fails closed with 503 when the environment is invalid", async () => {
+    enableAll();
+    vi.stubEnv("DATABASE_URL", "mysql://not-postgres");
+    const res = await post("{}");
+    expect(res.status).toBe(503);
+    expect(getDb).not.toHaveBeenCalled();
+  });
   afterEach(() => vi.unstubAllEnvs());
 
   it.each([["QUOTE_INTAKE_ENABLED", "false"], ["PRIVACY_POLICY_APPROVED", "false"], ["DATABASE_URL", ""]])("returns 503 and never touches the DB when %s is not enabled", async (key, value) => {
