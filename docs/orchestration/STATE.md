@@ -8,7 +8,7 @@ Requisitos: `docs/requirements/requisitos_plataforma_ricaurte_tours_v2.0.md`.
 - `main` = `99844b7` (sin cambios). **Protegida en GitHub**: PR obligatorio, checks `verify` + `secrets` requeridos (strict), `enforce_admins`, sin force-push ni borrado (verificado por API).
 - PR #1 `integration/f1` → `main` (borrador): F0 + F1 lotes 1–2. CI verde (verify, secrets). No fusionado.
 - PR #2 `integration/batch3` → `integration/f1` (borrador, apilado): lote 3.
-- Vercel está conectado al repo (previews en PR). **Fusionar en `main` probablemente despliega a producción**: confirmar con el usuario antes.
+- PR #3 `integration/batch4` → `integration/batch3` (borrador): lote 4. Vercel: producción automática desde `main` **desactivada** (`vercel.json`); ver `docs/operations/DEPLOYMENT.md`. Tablero: `BOARD.md`.
 - Repo **público**: todo lo versionado (incluida la copia de requisitos) es visible.
 
 ## Protección local
@@ -39,18 +39,21 @@ Verificación local de `integration/batch3`: lint 0 · tsc OK · unit 76/76 · b
 ## Decisiones
 
 - Fijadas por requisitos: Wompi, COP, es-CO, disponibilidad manual v1, stack §27.
-- Propuestas (sin aprobar): ADR-0001 monorepo incremental + NestJS; ADR-0002 IP confiable + limitador PostgreSQL.
+- ADR-0001 **aceptado** (monorepo incremental + NestJS). ADR-0002 propuesto (IP confiable + limitador PostgreSQL).
 - PC-1: logo del repo como referencia **provisional**. PC-2: Playwright local ahora; Docker/CI preparados.
 
 ## Bloqueadores
 
 - PC-1 confirmación de logo · PC-3 dirección visual · PC-4 Excel de costos · PC-5 Wompi · PC-6 textos legales.
-- Docker no instalado: sin integración con PostgreSQL real (migraciones, limitador compartido).
+- Docker no instalado localmente; migraciones probadas en CI (job `database`, PostgreSQL 16) y con `prisma dev`.
 - Docker Hub: sin token; no se publicó nada.
 
-## Próximo lote recomendado (4)
+## Lote 4 (en `integration/batch4`) — completado
 
-1. A11y: corregir `color-contrast` (tokens de `<em>`, eyebrows, `small`) y quitar `test.fail()`.
-2. Formato masivo en un commit dedicado (`npm run format`), aislado de cambios lógicos.
-3. F2-02 esquema Prisma v2 (estados del dominio, ledger, `ConsentRecord`, `LegalDocument`, `PaymentWebhookEvent`) — requiere PostgreSQL de pruebas (servicio en CI) para migrar desde cero.
-4. F1-05 Dependabot + `ASVS_MATRIX.md` inicial.
+Formato masivo aislado, contraste WCAG AA (axe sin violaciones), esquema Prisma v2 + migración aditiva `20261113_schema_v2` (revisión Sonnet: APPROVE), job CI `database`, Dependabot, matriz ASVS, tablero e inventario. Verificación local: lint 0 · tsc OK · unit 80/80 · build OK.
+
+## Siguiente
+
+1. F2-a: pnpm + Turborepo, `apps/web`, `packages/db` (requiere cambiar _Root Directory_ de Vercel a `apps/web`: acción del usuario).
+2. F2-b: `apps/api` NestJS/Fastify + `packages/{domain,validation}`.
+3. Lote 2 auth → lote 3 panel admin → lote 4 catálogo.

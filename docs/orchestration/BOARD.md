@@ -5,16 +5,16 @@ Actualizado: 2026-11-13. Estados: **Pendiente** · **En desarrollo** · **En rev
 
 ## Lote 4 — cierre de la base
 
-| Tarea                                            | Agente                 | Rama                    | Estado        |
-| ------------------------------------------------ | ---------------------- | ----------------------- | ------------- |
-| Bloquear despliegue automático de producción     | Claude                 | `integration/f1` (PR 1) | Completado    |
-| Formato masivo (commit aislado + blame-ignore)   | Claude                 | `integration/batch4`    | Completado    |
-| Contraste WCAG AA y quitar `test.fail()` de axe  | builder (Sonnet)       | `fix/f4-a11y-contrast`  | En desarrollo |
-| Esquema Prisma v2 + migración aditiva            | architect (Opus)       | `feat/f2-prisma-v2`     | En desarrollo |
-| Job CI `database`: migrar desde cero + sin drift | Claude                 | `integration/batch4`    | En revisión   |
-| Dependabot (npm, actions, compose)               | Claude                 | `integration/batch4`    | En revisión   |
-| Matriz ASVS 5.0 L2                               | builder (Sonnet)       | `docs/f1-asvs`          | En desarrollo |
-| Separación preview / staging / producción        | Usuario (panel Vercel) | —                       | Bloqueado     |
+| Tarea                                            | Agente                 | Rama                    | Estado     |
+| ------------------------------------------------ | ---------------------- | ----------------------- | ---------- |
+| Bloquear despliegue automático de producción     | Claude                 | `integration/f1` (PR 1) | Completado |
+| Formato masivo (commit aislado + blame-ignore)   | Claude                 | `integration/batch4`    | Completado |
+| Contraste WCAG AA y quitar `test.fail()` de axe  | builder (Sonnet)       | `fix/f4-a11y-contrast`  | Completado |
+| Esquema Prisma v2 + migración aditiva            | architect (Opus)       | `feat/f2-prisma-v2`     | Completado |
+| Job CI `database`: migrar desde cero + sin drift | Claude                 | `integration/batch4`    | Completado |
+| Dependabot (npm, actions, compose)               | Claude                 | `integration/batch4`    | Completado |
+| Matriz ASVS 5.0 L2                               | builder (Sonnet)       | `docs/f1-asvs`          | Completado |
+| Separación preview / staging / producción        | Usuario (panel Vercel) | —                       | Bloqueado  |
 
 ## Lotes funcionales (orden: 2 → 3 → 4 primero, según el usuario)
 
@@ -44,7 +44,7 @@ Leyenda: **Implementado** (código + pruebas) · **Parcial** · **Ausente** · *
 | Validación de entorno                                                 | Implementado           | `src/lib/env.ts`                                              |
 | Intake de cotizaciones                                                | Parcial (cerrado)      | `src/app/api/quotes`; 503 hasta PC-6 + limitador compartido   |
 | Máquinas de estado reserva/pago                                       | Implementado (dominio) | `src/domain/**`; sin persistencia aún                         |
-| Modelo de datos v2                                                    | En desarrollo          | `feat/f2-prisma-v2`                                           |
+| Modelo de datos v2                                                    | Implementado           | `prisma/schema.prisma`, `docs/data/DATA_MODEL.md`             |
 | Auth, sesiones, MFA, RBAC                                             | Ausente                | Lote 2                                                        |
 | Panel administrativo (dashboard, catálogo, precios, cupos, auditoría) | Ausente                | Lotes 3–4                                                     |
 | Panel de asesores / CRM                                               | Ausente                | Lote 5                                                        |
@@ -55,7 +55,7 @@ Leyenda: **Implementado** (código + pruebas) · **Parcial** · **Ausente** · *
 | PQR                                                                   | Parcial                | Página informativa `src/app/pqrs`; sin flujo                  |
 | Textos legales, RNT, NIT, contactos                                   | Bloqueado por cliente  | PC-6; no se inventan                                          |
 | Identidad visual definitiva                                           | Bloqueado por cliente  | PC-1 (logo provisional), PC-3                                 |
-| E2E + accesibilidad                                                   | Parcial                | `e2e/**`; contraste en corrección                             |
+| E2E + accesibilidad                                                   | Implementado           | `e2e/**`; axe sin violaciones en 6 proyectos                  |
 | CI, gitleaks, protección de `main`                                    | Implementado           | `.github/workflows/*`, protección verificada por API          |
 | Despliegue: producción manual                                         | Implementado           | `vercel.json`, `docs/operations/DEPLOYMENT.md`                |
 | Imagen Docker / Docker Hub                                            | Bloqueado por cliente  | Sin token; no se publica nada                                 |
