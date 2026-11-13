@@ -9,7 +9,10 @@ import type { ServerEnv } from "@/lib/env";
  * - "x-forwarded-for": take the entry appended by the first trusted proxy, counting
  *   TRUSTED_PROXY_HOPS from the right. Entries to the left of it are attacker-controlled.
  */
-export function getClientIp(headers: Headers, env: Pick<ServerEnv, "CLIENT_IP_SOURCE" | "TRUSTED_PROXY_HOPS">): string | null {
+export function getClientIp(
+  headers: Headers,
+  env: Pick<ServerEnv, "CLIENT_IP_SOURCE" | "TRUSTED_PROXY_HOPS">,
+): string | null {
   switch (env.CLIENT_IP_SOURCE) {
     case "none":
       return null;
@@ -17,7 +20,10 @@ export function getClientIp(headers: Headers, env: Pick<ServerEnv, "CLIENT_IP_SO
     case "cf-connecting-ip":
       return validIp(headers.get(env.CLIENT_IP_SOURCE));
     case "x-forwarded-for": {
-      const entries = (headers.get("x-forwarded-for") ?? "").split(",").map((entry) => entry.trim()).filter(Boolean);
+      const entries = (headers.get("x-forwarded-for") ?? "")
+        .split(",")
+        .map((entry) => entry.trim())
+        .filter(Boolean);
       return validIp(entries[entries.length - env.TRUSTED_PROXY_HOPS]);
     }
   }

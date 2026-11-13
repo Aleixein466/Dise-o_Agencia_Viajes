@@ -10,13 +10,13 @@ Fecha: 15 de octubre de 2026. Esta propuesta diferencia hechos comprobados, conc
 
 ### Lectura visual de Turismo Andino
 
-| Elemento observado | Aplicación en Ricaurte Tours |
-| --- | --- |
-| Encabezado blanco con navegación por servicios | Navegación clara con logo real, destinos, experiencias, planes, preguntas y PQRS. |
-| Hero inmersivo y buscador protagonista | Imagen propia con destino, fecha tentativa y viajeros; los datos pasan al formulario de cotización. |
-| Tarjetas de destinos y categorías | Tarjetas y filtros propios con viajes pasados verificados en las publicaciones; se distinguen de cualquier oferta vigente. |
-| Bloques Plan Separa / ahorro programado | Presentación separada, con estado pendiente y sin activar operaciones financieras. |
-| FAQ y llamada a la acción final | Preguntas que describen honestamente el estado del prototipo. |
+| Elemento observado                             | Aplicación en Ricaurte Tours                                                                                               |
+| ---------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| Encabezado blanco con navegación por servicios | Navegación clara con logo real, destinos, experiencias, planes, preguntas y PQRS.                                          |
+| Hero inmersivo y buscador protagonista         | Imagen propia con destino, fecha tentativa y viajeros; los datos pasan al formulario de cotización.                        |
+| Tarjetas de destinos y categorías              | Tarjetas y filtros propios con viajes pasados verificados en las publicaciones; se distinguen de cualquier oferta vigente. |
+| Bloques Plan Separa / ahorro programado        | Presentación separada, con estado pendiente y sin activar operaciones financieras.                                         |
+| FAQ y llamada a la acción final                | Preguntas que describen honestamente el estado del prototipo.                                                              |
 
 La hoja de estilos pública de la referencia usa Rubik y Caveat y repite verde `#1b7e31` y naranja `#ff6b00`. La versión de Ricaurte Tours emplea esos patrones de jerarquía y navegación con una paleta tomada del logo aportado por el cliente, sin reutilizar código ni imágenes de Turismo Andino.
 
@@ -26,17 +26,17 @@ El logo proporcionado por el cliente sustituyó el símbolo provisional; coincid
 
 ### Fotografías de publicaciones
 
-| Archivos locales | Publicación original |
-| --- | --- |
-| `eje-cafetero-2026.jpg`, `eje-cafetero-momento.jpg` | [Eje Cafetero 2026](https://www.facebook.com/ricaurtetours/posts/pfbid02qekU9VFtujNEhXBo1NDofAwCF7KdP7sw6EuRy6HYVjBsg67qAUGm551KMeymmjFgl) |
-| `atacames-2025.jpg`, `atacames-momento.jpg` | [Atacames 2025](https://www.facebook.com/ricaurtetours/posts/pfbid024bTj1rCqxL4D27wYoouNGbTe87HBtVcer3wTQ5sSfnncZRhgC5J4jRbfHHrm5vaNl) |
-| `excursion-la-salle-2024.jpg`, `excursion-momento.jpg` | [Excursión Chévere 2024](https://www.facebook.com/ricaurtetours/posts/pfbid0EV2uYFLFLoME96q6fWpeP52ft68sFeVyfWfVg3Z7BJvLoAh9gT5GdkcnRZGpXLa2l) |
-| `excursion-ie-ricaurte-2024.jpg` | [Excursión IE Ricaurte 2024](https://www.facebook.com/ricaurtetours/posts/pfbid02RYeEvAnDm7gX3QrtknDvAxE1qoKho32xFu2ro4jj8LNw4U7X1MQJ7eBWsT6iw7Gvl) |
-| `cartagena-playa-2022.jpg`, `cartagena-castillo-2022.jpg`, `cartagena-alegria-2022.jpg` | [Visitantes de Ecuador en Cartagena](https://www.facebook.com/ricaurtetours/posts/pfbid03UvHFJ4CiYjZg1PDy7GSA6rcSJr2KejYRVo85BQ4C3pQTaq44A6FskWCvWdVEVuql) |
-| `cartagena-delfines-2022.jpg`, `cartagena-getsemani-2022.jpg` | [Tour Cartagena 2022](https://www.facebook.com/ricaurtetours/posts/pfbid02XQwYJStrikBfnCofdAszzUFtcCAowdkbGCtLXZfCt9BuWTigsSNeVTp4CEKKqLcxl) |
-| `cartagena-oceanario-2022.jpg`, `cartagena-fortaleza-2022.jpg` | [Visitantes en Cartagena](https://www.facebook.com/ricaurtetours/posts/pfbid0pqaAFA7RHYau1trFpB2BD9AJmdiVRpCaFzi1ZDwAj3qnpqyfkQmhpxuy1tCNSwoil) |
-| `san-andres-playa-2022.jpg`, `san-andres-familia-2022.jpg`, `san-andres-diversion-2022.jpg`, `san-andres-mar-2022.jpg` | [Vacaciones familiares en San Andrés](https://www.facebook.com/ricaurtetours/posts/pfbid08nZi3SnRmpBRES81vtEyXd4xcMWZTjM8uwGo41SgcMWRG1R6MbL5hkt8wq6xzdihl) |
-| `parque-aguas-2021.jpg`, `parque-aguas-deslizadero-2021.jpg`, `parque-aguas-rio-2021.jpg`, `parque-aguas-tobogan-2021.jpg` | [Visita al Parque de las Aguas](https://www.facebook.com/ricaurtetours/posts/pfbid02uEaRdAX1bZnj3NPkzZuBD95NCSiGXt72fxCjquWf7aJP1Krn6bDJPnReX3RpXxQFl) |
+| Archivos locales                                                                                                           | Publicación original                                                                                                                                        |
+| -------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `eje-cafetero-2026.jpg`, `eje-cafetero-momento.jpg`                                                                        | [Eje Cafetero 2026](https://www.facebook.com/ricaurtetours/posts/pfbid02qekU9VFtujNEhXBo1NDofAwCF7KdP7sw6EuRy6HYVjBsg67qAUGm551KMeymmjFgl)                  |
+| `atacames-2025.jpg`, `atacames-momento.jpg`                                                                                | [Atacames 2025](https://www.facebook.com/ricaurtetours/posts/pfbid024bTj1rCqxL4D27wYoouNGbTe87HBtVcer3wTQ5sSfnncZRhgC5J4jRbfHHrm5vaNl)                      |
+| `excursion-la-salle-2024.jpg`, `excursion-momento.jpg`                                                                     | [Excursión Chévere 2024](https://www.facebook.com/ricaurtetours/posts/pfbid0EV2uYFLFLoME96q6fWpeP52ft68sFeVyfWfVg3Z7BJvLoAh9gT5GdkcnRZGpXLa2l)              |
+| `excursion-ie-ricaurte-2024.jpg`                                                                                           | [Excursión IE Ricaurte 2024](https://www.facebook.com/ricaurtetours/posts/pfbid02RYeEvAnDm7gX3QrtknDvAxE1qoKho32xFu2ro4jj8LNw4U7X1MQJ7eBWsT6iw7Gvl)         |
+| `cartagena-playa-2022.jpg`, `cartagena-castillo-2022.jpg`, `cartagena-alegria-2022.jpg`                                    | [Visitantes de Ecuador en Cartagena](https://www.facebook.com/ricaurtetours/posts/pfbid03UvHFJ4CiYjZg1PDy7GSA6rcSJr2KejYRVo85BQ4C3pQTaq44A6FskWCvWdVEVuql)  |
+| `cartagena-delfines-2022.jpg`, `cartagena-getsemani-2022.jpg`                                                              | [Tour Cartagena 2022](https://www.facebook.com/ricaurtetours/posts/pfbid02XQwYJStrikBfnCofdAszzUFtcCAowdkbGCtLXZfCt9BuWTigsSNeVTp4CEKKqLcxl)                |
+| `cartagena-oceanario-2022.jpg`, `cartagena-fortaleza-2022.jpg`                                                             | [Visitantes en Cartagena](https://www.facebook.com/ricaurtetours/posts/pfbid0pqaAFA7RHYau1trFpB2BD9AJmdiVRpCaFzi1ZDwAj3qnpqyfkQmhpxuy1tCNSwoil)             |
+| `san-andres-playa-2022.jpg`, `san-andres-familia-2022.jpg`, `san-andres-diversion-2022.jpg`, `san-andres-mar-2022.jpg`     | [Vacaciones familiares en San Andrés](https://www.facebook.com/ricaurtetours/posts/pfbid08nZi3SnRmpBRES81vtEyXd4xcMWZTjM8uwGo41SgcMWRG1R6MbL5hkt8wq6xzdihl) |
+| `parque-aguas-2021.jpg`, `parque-aguas-deslizadero-2021.jpg`, `parque-aguas-rio-2021.jpg`, `parque-aguas-tobogan-2021.jpg` | [Visita al Parque de las Aguas](https://www.facebook.com/ricaurtetours/posts/pfbid02uEaRdAX1bZnj3NPkzZuBD95NCSiGXt72fxCjquWf7aJP1Krn6bDJPnReX3RpXxQFl)      |
 
 Los archivos están en `public/images/social`. Las personas aparecen en fotografías públicas de la página indicada por el cliente; la selección final debe revisarse con la agencia antes de publicar, especialmente las fotos de menores y del encuentro con delfines.
 
@@ -86,14 +86,14 @@ erDiagram
 
 ## Secuencia por fases
 
-| Fase | Entregable | Condición de cierre |
-| --- | --- | --- |
-| 1 | Investigación y diseño | Marca y datos aprobados por el propietario. |
-| 2 | Web pública | Paquetes y fotografías reales revisados; formularios y accesibilidad probados. |
-| 3 | Backend y administración | PostgreSQL migrado, autenticación, roles y CRUD auditado. |
-| 4 | Reservas | Precio calculado en servidor; cupos bloqueados en transacción, expiración y pruebas concurrentes. |
-| 5 | Pagos y acuerdos | Proveedor contratado, sandbox, webhooks firmados, conciliación y documentos jurídicos aprobados. |
-| 6 | Lanzamiento | QA funcional, responsive, seguridad, rendimiento, SEO y respaldo probados. |
+| Fase | Entregable               | Condición de cierre                                                                               |
+| ---- | ------------------------ | ------------------------------------------------------------------------------------------------- |
+| 1    | Investigación y diseño   | Marca y datos aprobados por el propietario.                                                       |
+| 2    | Web pública              | Paquetes y fotografías reales revisados; formularios y accesibilidad probados.                    |
+| 3    | Backend y administración | PostgreSQL migrado, autenticación, roles y CRUD auditado.                                         |
+| 4    | Reservas                 | Precio calculado en servidor; cupos bloqueados en transacción, expiración y pruebas concurrentes. |
+| 5    | Pagos y acuerdos         | Proveedor contratado, sandbox, webhooks firmados, conciliación y documentos jurídicos aprobados.  |
+| 6    | Lanzamiento              | QA funcional, responsive, seguridad, rendimiento, SEO y respaldo probados.                        |
 
 ## Decisiones pendientes
 

@@ -33,7 +33,8 @@ describe("sitemap", () => {
     for (const trip of historicalTrips) expect(urls).toContain(`https://example.com/destinos/${trip.slug}`);
     expect(urls).toEqual(expect.arrayContaining(["https://example.com/", "https://example.com/destinos"]));
     expect(urls).not.toContain("https://example.com/contacto");
-    for (const path of ["/privacidad", "/terminos", "/pqrs", "/cotizar"]) expect(urls).not.toContain(`https://example.com${path}`);
+    for (const path of ["/privacidad", "/terminos", "/pqrs", "/cotizar"])
+      expect(urls).not.toContain(`https://example.com${path}`);
     expect(urls).toHaveLength(8);
   });
 });

@@ -15,7 +15,9 @@ function sourceFiles(dir: string): string[] {
 
 describe("source encoding", () => {
   it("has no double-encoded UTF-8 in src", () => {
-    const offenders = sourceFiles(join(process.cwd(), "src")).filter((file) => MOJIBAKE.test(readFileSync(file, "utf8")));
+    const offenders = sourceFiles(join(process.cwd(), "src")).filter((file) =>
+      MOJIBAKE.test(readFileSync(file, "utf8")),
+    );
     expect(offenders).toEqual([]);
   });
 });

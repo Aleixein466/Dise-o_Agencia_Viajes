@@ -20,11 +20,11 @@ El dominio (pricing, máquina de estados, firmas Wompi) se escribe como **TypeSc
 
 ## Alternativas
 
-| Opción | Pros | Contras |
-| --- | --- | --- |
-| A. Seguir con Next solo (route handlers) | Menos piezas, despliegue único | Contradice §13/§27; guards, módulos y jobs menos estructurados; webhook y panel en el mismo proceso que SSR |
-| **B. Incremental (elegida)** | Cumple el requisito sin romper; cada paso reversible | Dos procesos a desplegar; algo más de infraestructura |
-| C. Big-bang monorepo + API | Llega antes a la estructura final | Alto riesgo, PR enorme, imposible de revisar |
+| Opción                                   | Pros                                                 | Contras                                                                                                     |
+| ---------------------------------------- | ---------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| A. Seguir con Next solo (route handlers) | Menos piezas, despliegue único                       | Contradice §13/§27; guards, módulos y jobs menos estructurados; webhook y panel en el mismo proceso que SSR |
+| **B. Incremental (elegida)**             | Cumple el requisito sin romper; cada paso reversible | Dos procesos a desplegar; algo más de infraestructura                                                       |
+| C. Big-bang monorepo + API               | Llega antes a la estructura final                    | Alto riesgo, PR enorme, imposible de revisar                                                                |
 
 ## Costos y riesgos
 

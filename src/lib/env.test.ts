@@ -16,20 +16,27 @@ describe("server environment", () => {
   });
 
   it("refuses production intake without a trusted IP source and shared limiter", () => {
-    const prod = { NODE_ENV: "production", QUOTE_INTAKE_ENABLED: "true", PRIVACY_POLICY_APPROVED: "true", DATABASE_URL: "postgresql://u:secret-value@db:5432/app" };
+    const prod = {
+      NODE_ENV: "production",
+      QUOTE_INTAKE_ENABLED: "true",
+      PRIVACY_POLICY_APPROVED: "true",
+      DATABASE_URL: "postgresql://u:secret-value@db:5432/app",
+    };
     expect(() => getServerEnv(prod)).toThrow(/QUOTE_INTAKE_ENABLED/);
     expect(() => getServerEnv({ ...prod, CLIENT_IP_SOURCE: "x-real-ip" })).toThrow(/QUOTE_INTAKE_ENABLED/);
-    expect(getServerEnv({ ...prod, CLIENT_IP_SOURCE: "x-real-ip", RATE_LIMIT_STORE: "postgres" }).QUOTE_INTAKE_ENABLED).toBe("true");
+    expect(
+      getServerEnv({ ...prod, CLIENT_IP_SOURCE: "x-real-ip", RATE_LIMIT_STORE: "postgres" }).QUOTE_INTAKE_ENABLED,
+    ).toBe("true");
   });
 
   it("accepts postgres URLs", () => {
-    expect(getServerEnv({ DATABASE_URL: "postgresql://user:pass@localhost:5432/app" }).DATABASE_URL)
-      .toBe("postgresql://user:pass@localhost:5432/app");
+    expect(getServerEnv({ DATABASE_URL: "postgresql://user:pass@localhost:5432/app" }).DATABASE_URL).toBe(
+      "postgresql://user:pass@localhost:5432/app",
+    );
   });
 
   it("rejects other URL schemes", () => {
-    expect(() => getServerEnv({ DATABASE_URL: "https://localhost/database" }))
-      .toThrow(/DATABASE_URL/);
+    expect(() => getServerEnv({ DATABASE_URL: "https://localhost/database" })).toThrow(/DATABASE_URL/);
   });
 
   it("does not include secret values in validation errors", () => {
@@ -61,10 +68,12 @@ describe("server environment", () => {
 
   it("rejects production database placeholders", () => {
     for (const placeholder of ["REPLACE_WITH", "change-me"]) {
-      expect(() => getServerEnv({
-        NODE_ENV: "production",
-        DATABASE_URL: `postgres://user:${placeholder}@localhost:5432/app`,
-      })).toThrow(/DATABASE_URL/);
+      expect(() =>
+        getServerEnv({
+          NODE_ENV: "production",
+          DATABASE_URL: `postgres://user:${placeholder}@localhost:5432/app`,
+        }),
+      ).toThrow(/DATABASE_URL/);
     }
   });
 

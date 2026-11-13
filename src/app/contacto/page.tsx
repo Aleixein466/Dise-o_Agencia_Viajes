@@ -3,4 +3,34 @@ import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
 // noindex until the agency confirms its official contact channels (PC-6 / §26.1).
 export const metadata: Metadata = { alternates: { canonical: "/contacto" }, robots: { index: false, follow: true } };
-export default function Contacto() { return <div className="shell simple-page"><span className="eyebrow">HABLEMOS</span><h1>Un buen viaje empieza<br /><em>con una pregunta.</em></h1><p>Puedes visitar la página de Facebook que Ricaurte Tours compartió para conocer sus publicaciones y contactar a la agencia allí. El número oficial de WhatsApp y el correo aún están pendientes de confirmación.</p><a href="https://www.facebook.com/ricaurtetours" target="_blank" rel="noopener noreferrer" className="btn btn-primary">Ir a Facebook <ArrowUpRight size={18} /></a><p>Para planear una idea de viaje sin enviar datos personales, explora los <Link href="/destinos" className="inline-link">destinos documentados</Link>.</p></div>; }
+export default function Contacto() {
+  return (
+    <div className="shell simple-page">
+      <span className="eyebrow">HABLEMOS</span>
+      <h1>
+        Un buen viaje empieza
+        <br />
+        <em>con una pregunta.</em>
+      </h1>
+      <p>
+        Puedes visitar la página de Facebook que Ricaurte Tours compartió para conocer sus publicaciones y contactar a
+        la agencia allí. El número oficial de WhatsApp y el correo aún están pendientes de confirmación.
+      </p>
+      <a
+        href="https://www.facebook.com/ricaurtetours"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="btn btn-primary"
+      >
+        Ir a Facebook <ArrowUpRight size={18} />
+      </a>
+      <p>
+        Para planear una idea de viaje sin enviar datos personales, explora los{" "}
+        <Link href="/destinos" className="inline-link">
+          destinos documentados
+        </Link>
+        .
+      </p>
+    </div>
+  );
+}

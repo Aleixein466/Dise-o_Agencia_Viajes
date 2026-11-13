@@ -14,13 +14,18 @@ export type Payment = {
 };
 
 /** A provider event that has ALREADY passed signature verification and transaction lookup. */
-export type PaymentEvent = { eventId: string; status: PaymentStatus; amountCents: number; currency: string; reference: string };
+export type PaymentEvent = {
+  eventId: string;
+  status: PaymentStatus;
+  amountCents: number;
+  currency: string;
+  reference: string;
+};
 /** Effects the caller must apply to the reservation ledger: APPROVED adds money, VOIDED/REFUNDED remove it. */
 export type PaymentEffect = "APPROVED" | "VOIDED" | "REFUNDED";
 export type PaymentError = "MISMATCH" | "INVALID_TRANSITION" | "FORBIDDEN" | "INVALID_AMOUNT" | "INVALID_EVENT";
 export type PaymentResult =
-  | { ok: true; changed: boolean; payment: Payment; effect?: PaymentEffect }
-  | { ok: false; error: PaymentError };
+  { ok: true; changed: boolean; payment: Payment; effect?: PaymentEffect } | { ok: false; error: PaymentError };
 
 /** Forward transitions only. Equal or backward (stale) statuses are recorded as no-ops. */
 export const PAYMENT_TRANSITIONS: Readonly<Record<PaymentStatus, readonly PaymentStatus[]>> = Object.freeze({
@@ -33,7 +38,14 @@ export const PAYMENT_TRANSITIONS: Readonly<Record<PaymentStatus, readonly Paymen
   REFUNDED: [],
 });
 
-const RANK: Readonly<Record<PaymentStatus, number>> = { PENDING: 0, ERROR: 1, APPROVED: 2, DECLINED: 2, VOIDED: 2, REFUNDED: 3 };
+const RANK: Readonly<Record<PaymentStatus, number>> = {
+  PENDING: 0,
+  ERROR: 1,
+  APPROVED: 2,
+  DECLINED: 2,
+  VOIDED: 2,
+  REFUNDED: 3,
+};
 
 /**
  * SYSTEM = verified provider pipeline. FINANCE may approve manually registered abonos (transfer/cash
@@ -60,7 +72,11 @@ export function applyPaymentEvent(payment: Payment, evt: PaymentEvent, actor: { 
   if (payment.processedEventIds.includes(evt.eventId)) return { ok: true, changed: false, payment };
 
   // Integrity: the event must describe exactly this payment; never approve on mismatch.
-  if (evt.reference !== payment.reference || evt.currency !== payment.currency || evt.amountCents !== payment.amountCents) {
+  if (
+    evt.reference !== payment.reference ||
+    evt.currency !== payment.currency ||
+    evt.amountCents !== payment.amountCents
+  ) {
     return { ok: false, error: "MISMATCH" };
   }
 
@@ -73,7 +89,8 @@ export function applyPaymentEvent(payment: Payment, evt: PaymentEvent, actor: { 
     return { ok: true, changed: true, payment: { ...recorded, status: evt.status }, ...(effect ? { effect } : {}) };
   }
   // Stale or repeated status (e.g. PENDING arriving after APPROVED): record, never downgrade.
-  if (evt.status === payment.status || RANK[evt.status] < RANK[payment.status]) return { ok: true, changed: false, payment: recorded };
+  if (evt.status === payment.status || RANK[evt.status] < RANK[payment.status])
+    return { ok: true, changed: false, payment: recorded };
   // Conflicting final statuses (e.g. APPROVED after DECLINED) are surfaced for reconciliation, never ignored.
   return { ok: false, error: "INVALID_TRANSITION" };
 }

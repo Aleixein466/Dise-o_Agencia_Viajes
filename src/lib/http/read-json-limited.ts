@@ -1,6 +1,4 @@
-export type ReadJsonResult =
-  | { ok: true; value: unknown }
-  | { ok: false; status: 400 | 413 };
+export type ReadJsonResult = { ok: true; value: unknown } | { ok: false; status: 400 | 413 };
 
 export async function readJsonLimited(request: Request, limit = 16_000): Promise<ReadJsonResult> {
   if (!request.body) return { ok: false, status: 400 };
@@ -23,7 +21,10 @@ export async function readJsonLimited(request: Request, limit = 16_000): Promise
   }
   const bytes = new Uint8Array(size);
   let offset = 0;
-  for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.byteLength; }
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
   try {
     return { ok: true, value: JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes)) };
   } catch {
