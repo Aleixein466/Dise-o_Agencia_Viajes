@@ -22,4 +22,23 @@ export function checkRateLimit(key: string, now = Date.now()): { allowed: true }
 
 export function rateLimitKeyCount(): number { return windows.size; }
 
+export type RateLimitResult = { allowed: true } | { allowed: false; retryAfter: number };
+
+/**
+ * Store contract for a distributed limiter. A shared implementation (planned: PostgreSQL
+ * `INSERT ... ON CONFLICT DO UPDATE ... RETURNING` on a hashed key, see ADR-0002) must be atomic
+ * across instances. Production quote intake is refused by env validation while only "memory" exists.
+ */
+export interface RateLimitStore {
+  consume(key: string, now: number): Promise<RateLimitResult>;
+}
+
+export const memoryRateLimitStore: RateLimitStore = { consume: async (key, now) => checkRateLimit(key, now) };
+
+export function getRateLimitStore(kind: "memory" | "postgres"): RateLimitStore {
+  if (kind === "memory") return memoryRateLimitStore;
+  // Fail closed: the caller must treat this as "intake unavailable".
+  throw new Error("Rate limit store not implemented: postgres");
+}
+
 export function resetRateLimit(): void { windows.clear(); }

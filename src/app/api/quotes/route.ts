@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getDb } from "@/lib/db";
-import { quoteIntakeOpen } from "@/lib/env";
+import { getServerEnv, quoteIntakeOpen } from "@/lib/env";
+import { getClientIp } from "@/lib/http/client-ip";
 import { readJsonLimited } from "@/lib/http/read-json-limited";
-import { checkRateLimit } from "@/lib/http/rate-limit";
+import { getRateLimitStore, type RateLimitResult } from "@/lib/http/rate-limit";
 
 const schema = z.object({
   name: z.string().trim().min(2).max(120),
@@ -33,8 +34,14 @@ export async function POST(request: Request) {
     if (origin !== expectedOrigin) return NextResponse.json({ message: "Origen inválido." }, { status: 403 });
   }
   // Missing Origin is allowed because same-origin fetch may omit it in some browsers.
-  const clientIp = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
-  const rate = checkRateLimit(clientIp);
+  // Only proxy-verified IPs are used; without one, all clients share a single conservative bucket.
+  const env = getServerEnv();
+  let rate: RateLimitResult;
+  try {
+    rate = await getRateLimitStore(env.RATE_LIMIT_STORE).consume(`quotes:${getClientIp(request.headers, env) ?? "unverified"}`, Date.now());
+  } catch {
+    return NextResponse.json({ message: "Las cotizaciones no están disponibles en este momento." }, { status: 503 });
+  }
   if (!rate.allowed) return NextResponse.json({ message: "Demasiadas solicitudes. Intenta más tarde." }, { status: 429, headers: { "Retry-After": String(rate.retryAfter) } });
   const result = await readJsonLimited(request);
   if (!result.ok) return NextResponse.json({ message: result.status === 413 ? "La solicitud es demasiado extensa." : "Solicitud inválida." }, { status: result.status });
