@@ -125,3 +125,8 @@ migrated and the agency confirms; that is out of scope here.
 - Quote validity period, rounding policy and how `pricingVersion` strings are issued (PricingService task).
 - Role/permission seed data (permission keys per role, §12.5 "Operador" maps to `ADVISOR`).
 - Data retention periods for sessions, tokens, webhook payloads and PII (Ley 1581).
+
+## Advertencias de revisión (2026-11-13)
+
+- `users_email_lowercase` es `NOT VALID`: un usuario v1 con correo en mayúsculas fallaría en cualquier `UPDATE`. Antes de desplegar sobre una base con usuarios v1, normalizar con un paso de datos aprobado (`lower(email)`, resolviendo colisiones). Hoy no hay autenticación en producción, así que no se esperan filas.
+- `consent_records` es solo-inserción y con FK `Restrict`: el derecho de supresión (Ley 1581) se atenderá por anonimización mediante una ruta privilegiada y auditada, no con `DELETE`.
