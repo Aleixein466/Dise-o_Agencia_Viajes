@@ -109,6 +109,7 @@ export function LoginForm({ next }: Readonly<{ next: string }>) {
 export function MfaForm({ next }: Readonly<{ next: string }>) {
   const router = useRouter();
   const [recovery, setRecovery] = useState(false);
+  const [enrollment, setEnrollment] = useState<{ url: string; codes: string[] } | null>(null);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const target = safeNextPath(next);
@@ -151,6 +152,26 @@ export function MfaForm({ next }: Readonly<{ next: string }>) {
     else setError("No fue posible verificar el código. Inténtalo de nuevo en unos minutos.");
   }
 
+  async function beginEnrollment() {
+    setPending(true);
+    setError(null);
+    const csrf = await fetchCsrfToken();
+    if (!csrf.csrfToken) {
+      setPending(false);
+      setError("No fue posible iniciar la configuración. Inténtalo de nuevo.");
+      return;
+    }
+    const result = await postJson("/api/v1/auth/mfa/setup", {}, csrf.csrfToken);
+    const data = result.data as { otpauthUrl?: unknown; recoveryCodes?: unknown } | null;
+    if (result.ok && typeof data?.otpauthUrl === "string" && Array.isArray(data.recoveryCodes)) {
+      setEnrollment({
+        url: data.otpauthUrl,
+        codes: data.recoveryCodes.filter((code): code is string => typeof code === "string"),
+      });
+    } else setError("No fue posible iniciar la configuración. Inténtalo de nuevo.");
+    setPending(false);
+  }
+
   return (
     <form method="post" action="/ingresar/mfa" onSubmit={onSubmit} className="admin-form" aria-busy={pending}>
       {recovery ? (
@@ -189,6 +210,19 @@ export function MfaForm({ next }: Readonly<{ next: string }>) {
           />
         </Field>
       )}
+      {enrollment ? (
+        <div className="admin-notice" role="status">
+          <p>
+            Agrega esta URL a tu aplicación de autenticación y guarda los códigos de recuperación en un lugar seguro.
+          </p>
+          <code className="admin-code">{enrollment.url}</code>
+          <p className="admin-recovery-codes">{enrollment.codes.join(" · ")}</p>
+        </div>
+      ) : !recovery ? (
+        <button type="button" className="admin-link-button" onClick={() => void beginEnrollment()} disabled={pending}>
+          Configurar una nueva aplicación de autenticación
+        </button>
+      ) : null}
       <FormError id="mfa-error" message={error} />
       <button type="submit" className="admin-btn admin-btn-primary" disabled={pending}>
         {pending ? "Verificando…" : "Verificar"}

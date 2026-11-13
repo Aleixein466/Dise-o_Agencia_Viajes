@@ -245,6 +245,11 @@ export class AuthService {
     const principal = await this.assertMutation(token, csrf, origin);
     if (!requiresMfa(principal.roles)) throw new ForbiddenException();
     const client = await this.db.client();
+    const confirmedFactor = await client.mfaFactor.findFirst({
+      where: { userId: principal.user.id, revokedAt: null, confirmedAt: { not: null } },
+    });
+    // An initial enrollment is allowed after password verification; replacing an existing factor requires MFA.
+    if (confirmedFactor && principal.session.mfaVerifiedAt === null) throw new ForbiddenException();
     const secret = new Secret({ size: 20 }).base32;
     const codes = Array.from({ length: 10 }, () => randomBytes(9).toString("base64url"));
     await client.$transaction([

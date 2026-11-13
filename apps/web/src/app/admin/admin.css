@@ -129,6 +129,18 @@ body:has(.auth-root) > .site-footer {
   margin: 0 0 12px;
   line-height: 1.6;
 }
+.admin-code,
+.admin-recovery-codes {
+  display: block;
+  overflow-wrap: anywhere;
+  font-size: 12px;
+  line-height: 1.6;
+}
+.admin-code {
+  padding: 10px;
+  border-radius: var(--radius-sm);
+  background: var(--cream);
+}
 
 /* Panel shell */
 .admin-root {
