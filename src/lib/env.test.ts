@@ -8,6 +8,9 @@ describe("server environment", () => {
       QUOTE_INTAKE_ENABLED: "false",
       PRIVACY_POLICY_APPROVED: "false",
       NODE_ENV: "development",
+      SITE_INDEXING: "false",
+      CLIENT_IP_SOURCE: "none",
+      TRUSTED_PROXY_HOPS: 1,
     });
   });
 
