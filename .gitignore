@@ -18,3 +18,4 @@ test-results/
 .claude/worktrees/
 .turbo/
 dist/
+.vercel
