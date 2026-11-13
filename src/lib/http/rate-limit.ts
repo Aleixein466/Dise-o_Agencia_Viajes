@@ -20,4 +20,6 @@ export function checkRateLimit(key: string, now = Date.now()): { allowed: true }
   return { allowed: true };
 }
 
+export function rateLimitKeyCount(): number { return windows.size; }
+
 export function resetRateLimit(): void { windows.clear(); }

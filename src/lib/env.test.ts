@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { getServerEnv, isQuoteIntakeEnabled, resetEnvCache } from "@/lib/env";
 
 describe("server environment", () => {
@@ -59,8 +59,13 @@ describe("server environment", () => {
 
   it("can reset the process environment cache", () => {
     resetEnvCache();
+    vi.stubEnv("QUOTE_INTAKE_ENABLED", "false");
     const first = getServerEnv();
     expect(getServerEnv()).toBe(first);
+    vi.stubEnv("QUOTE_INTAKE_ENABLED", "true");
+    resetEnvCache();
+    expect(getServerEnv().QUOTE_INTAKE_ENABLED).toBe("true");
+    vi.unstubAllEnvs();
     resetEnvCache();
   });
 });

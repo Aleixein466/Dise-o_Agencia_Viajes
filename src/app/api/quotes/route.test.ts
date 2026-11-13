@@ -36,6 +36,8 @@ describe("POST /api/quotes", () => {
 
   it("rejects malformed JSON with 400", async () => { enableAll(); expect((await post("{not json")).status).toBe(400); expect(getDb).not.toHaveBeenCalled(); });
   it("rejects a body without data consent with 400", async () => { enableAll(); expect((await post(JSON.stringify({ ...bodyData, dataConsent: undefined }))).status).toBe(400); expect(getDb).not.toHaveBeenCalled(); });
+  it("keeps the 503 gate ahead of content-type and origin checks", async () => { expect((await post("{}", { "content-type": "text/plain", origin: "https://evil.example" })).status).toBe(503); });
+  it("accepts a same-origin request past the origin check", async () => { enableAll(); vi.stubEnv("NEXT_PUBLIC_SITE_URL", "http://localhost:3000"); expect((await post("{not json", { "content-type": "application/json", origin: "http://localhost:3000" })).status).toBe(400); });
   it("rejects non-JSON content with 415", async () => { enableAll(); expect((await post("{}", { "content-type": "text/plain" })).status).toBe(415); });
   it("rejects a bad origin with 403", async () => { enableAll(); expect((await post("{}", { "content-type": "application/json", origin: "https://evil.example" })).status).toBe(403); });
   it.each([undefined, "1"]) ("rejects streamed bodies above the cap when content-length is %s", async (contentLength) => {
