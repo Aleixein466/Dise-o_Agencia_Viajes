@@ -1,6 +1,6 @@
 # ADR-0001 — Evolución incremental hacia monorepo (pnpm + Turborepo) y API NestJS/Fastify
 
-Estado: **Propuesto** (requiere aprobación del usuario) · Fecha: 2026-11-13
+Estado: **Aceptado** por el usuario (2026-11-13) · Fecha: 2026-11-13
 
 ## Contexto
 
@@ -38,4 +38,4 @@ Cada paso es un PR; revertir el merge restaura el estado anterior. No hay migrac
 
 ## Aprobación requerida
 
-Confirmar B antes de ejecutar F2-a. Sin aprobación, F1 continúa sin cambiar estructura.
+Aprobado: opción B. F2-a se ejecuta tras integrar el lote 4.
