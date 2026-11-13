@@ -1,1 +1,3 @@
+# Fall back to corepack when pnpm is not on PATH.
+command -v pnpm >/dev/null 2>&1 || pnpm() { corepack pnpm "$@"; }
 pnpm exec commitlint --edit "$1"

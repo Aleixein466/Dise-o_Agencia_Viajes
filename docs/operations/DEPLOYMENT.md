@@ -29,7 +29,7 @@ Desde ADR-0001 F2-a el repositorio es un monorepo pnpm + Turborepo y la aplicaci
 
 1. Settings → Build & Deployment → **Root Directory** = `apps/web`, con _Include source files outside of the Root Directory_ activado (la app importa `packages/db`).
 2. Framework Preset _Next.js_; Install Command y Build Command por defecto (Vercel detecta pnpm por `pnpm-lock.yaml` y `packageManager`; el script `build` de `apps/web` ejecuta `prisma generate` de `packages/db` antes de `next build`).
-3. Node.js 24.x (o la versión vigente del proyecto). `vercel.json` permanece en la raíz sin cambios.
+3. Node.js 24.x (o la versión vigente del proyecto). `vercel.json` existe en la raíz y en `apps/web` (Vercel lee el del _Root Directory_): ambos deben mantener `git.deploymentEnabled.main = false`.
 
 Las URL públicas y el comportamiento del sitio no cambian. Los agentes no modifican la configuración de Vercel.
 
