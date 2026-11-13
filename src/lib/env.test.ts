@@ -1,0 +1,66 @@
+import { describe, expect, it } from "vitest";
+import { getServerEnv, isQuoteIntakeEnabled, resetEnvCache } from "@/lib/env";
+
+describe("server environment", () => {
+  it("provides defaults", () => {
+    expect(getServerEnv({})).toEqual({
+      NEXT_PUBLIC_SITE_URL: "http://localhost:3000",
+      QUOTE_INTAKE_ENABLED: "false",
+      PRIVACY_POLICY_APPROVED: "false",
+      NODE_ENV: "development",
+    });
+  });
+
+  it("accepts postgres URLs", () => {
+    expect(getServerEnv({ DATABASE_URL: "postgresql://user:pass@localhost:5432/app" }).DATABASE_URL)
+      .toBe("postgresql://user:pass@localhost:5432/app");
+  });
+
+  it("rejects other URL schemes", () => {
+    expect(() => getServerEnv({ DATABASE_URL: "https://localhost/database" }))
+      .toThrow(/DATABASE_URL/);
+  });
+
+  it("does not include secret values in validation errors", () => {
+    const secret = "fake-password-739";
+    let message = "";
+    try {
+      getServerEnv({ DATABASE_URL: `mysql://user:${secret}@localhost:3306/app` });
+    } catch (error) {
+      message = error instanceof Error ? error.message : String(error);
+    }
+    expect(message).toContain("DATABASE_URL");
+    expect(message).not.toContain(secret);
+  });
+
+  it.each([
+    ["both flags and database", "true", "true", "postgres://user:pass@localhost:5432/app", true],
+    ["intake flag off", "false", "true", "postgres://user:pass@localhost:5432/app", false],
+    ["privacy approval off", "true", "false", "postgres://user:pass@localhost:5432/app", false],
+    ["database missing", "true", "true", undefined, false],
+    ["both flags off", "false", "false", undefined, false],
+  ])("checks intake gate: %s", (_label, intake, privacy, database, expected) => {
+    const env = getServerEnv({
+      QUOTE_INTAKE_ENABLED: intake,
+      PRIVACY_POLICY_APPROVED: privacy,
+      ...(database === undefined ? {} : { DATABASE_URL: database }),
+    });
+    expect(isQuoteIntakeEnabled(env)).toBe(expected);
+  });
+
+  it("rejects production database placeholders", () => {
+    for (const placeholder of ["REPLACE_WITH", "change-me"]) {
+      expect(() => getServerEnv({
+        NODE_ENV: "production",
+        DATABASE_URL: `postgres://user:${placeholder}@localhost:5432/app`,
+      })).toThrow(/DATABASE_URL/);
+    }
+  });
+
+  it("can reset the process environment cache", () => {
+    resetEnvCache();
+    const first = getServerEnv();
+    expect(getServerEnv()).toBe(first);
+    resetEnvCache();
+  });
+});

@@ -2,25 +2,25 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, ArrowUpRight, CalendarDays, Check, MapPin } from "lucide-react";
-import { demoTrips } from "@/lib/demo-data";
+import { historicalTrips } from "@/content/historical-trips";
 import { PhotoGallery } from "@/components/photo-gallery";
 import { TripCard } from "@/components/trip-card";
 import type { Metadata } from "next";
 
 type Props = { params: Promise<{ slug: string }> };
-export async function generateStaticParams() { return demoTrips.map(({ slug }) => ({ slug })); }
+export async function generateStaticParams() { return historicalTrips.map(({ slug }) => ({ slug })); }
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
-  const trip = demoTrips.find((item) => item.slug === slug);
+  const trip = historicalTrips.find((item) => item.slug === slug);
   return { title: trip ? `${trip.name} · Viaje realizado` : "Destino", description: trip?.teaser };
 }
 
 export default async function TripDetail({ params }: Props) {
   const { slug } = await params;
-  const trip = demoTrips.find((item) => item.slug === slug);
+  const trip = historicalTrips.find((item) => item.slug === slug);
   if (!trip) notFound();
-  const related = demoTrips.filter((item) => item.slug !== trip.slug && (item.category === trip.category || item.region === trip.region)).slice(0, 2);
-  if (related.length < 2) related.push(...demoTrips.filter((item) => item.slug !== trip.slug && !related.includes(item)).slice(0, 2 - related.length));
+  const related = historicalTrips.filter((item) => item.slug !== trip.slug && (item.category === trip.category || item.region === trip.region)).slice(0, 2);
+  if (related.length < 2) related.push(...historicalTrips.filter((item) => item.slug !== trip.slug && !related.includes(item)).slice(0, 2 - related.length));
 
   return <>
     <section className="detail-hero"><div className="detail-hero-image"><Image src={trip.image} alt={trip.imageAlt} fill priority sizes="100vw" /><div className="detail-hero-shade" /></div><div className="shell detail-hero-content"><Link href="/destinos" className="detail-back"><ArrowLeft size={17} /> Volver a destinos</Link><span className="detail-label">VIAJE REALIZADO · {trip.duration}</span><h1>{trip.name}</h1><p><MapPin size={19} /> {trip.region} <span>·</span> {trip.category}</p></div></section>
