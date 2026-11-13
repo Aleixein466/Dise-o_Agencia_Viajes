@@ -11,7 +11,15 @@ describe("server environment", () => {
       SITE_INDEXING: "false",
       CLIENT_IP_SOURCE: "none",
       TRUSTED_PROXY_HOPS: 1,
+      RATE_LIMIT_STORE: "memory",
     });
+  });
+
+  it("refuses production intake without a trusted IP source and shared limiter", () => {
+    const prod = { NODE_ENV: "production", QUOTE_INTAKE_ENABLED: "true", PRIVACY_POLICY_APPROVED: "true", DATABASE_URL: "postgresql://u:secret-value@db:5432/app" };
+    expect(() => getServerEnv(prod)).toThrow(/QUOTE_INTAKE_ENABLED/);
+    expect(() => getServerEnv({ ...prod, CLIENT_IP_SOURCE: "x-real-ip" })).toThrow(/QUOTE_INTAKE_ENABLED/);
+    expect(getServerEnv({ ...prod, CLIENT_IP_SOURCE: "x-real-ip", RATE_LIMIT_STORE: "postgres" }).QUOTE_INTAKE_ENABLED).toBe("true");
   });
 
   it("accepts postgres URLs", () => {

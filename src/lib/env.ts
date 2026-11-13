@@ -17,7 +17,14 @@ const envSchema = z.object({
   CLIENT_IP_SOURCE: z.enum(["none", "x-real-ip", "cf-connecting-ip", "x-forwarded-for"]).default("none"),
   // For x-forwarded-for: number of trusted proxies appending to the header (rightmost entries).
   TRUSTED_PROXY_HOPS: z.coerce.number().int().min(1).max(5).default(1),
+  // "memory" is per-instance and only acceptable outside production.
+  RATE_LIMIT_STORE: z.enum(["memory", "postgres"]).default("memory"),
 }).superRefine((env, context) => {
+  // Production intake requires a verified client IP source and a shared limiter.
+  if (env.NODE_ENV === "production" && env.QUOTE_INTAKE_ENABLED === "true" &&
+    (env.CLIENT_IP_SOURCE === "none" || env.RATE_LIMIT_STORE === "memory")) {
+    context.addIssue({ code: "custom", path: ["QUOTE_INTAKE_ENABLED"], message: "Requires trusted client IP and shared rate limit store" });
+  }
   if (
     env.NODE_ENV === "production" &&
     env.DATABASE_URL !== undefined &&

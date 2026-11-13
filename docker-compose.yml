@@ -19,5 +19,19 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+  playwright:
+    image: mcr.microsoft.com/playwright:v1.65.0-noble
+    profiles: ["tools"]
+    working_dir: /work
+    volumes:
+      - ./:/work
+    ipc: host
+    init: true
+    user: pwuser
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      BASE_URL: http://host.docker.internal:3000
+    command: ["npx", "playwright", "test"]
 volumes:
   ricaurte_data:

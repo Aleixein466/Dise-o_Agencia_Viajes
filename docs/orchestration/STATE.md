@@ -1,50 +1,56 @@
 # STATE — Ricaurte Tours 3.0
 
 Actualizado: 2026-11-13. Reanudar leyendo este archivo, `BACKLOG.md`, `RISK_REGISTER.md` y `docs/adr/`.
+Requisitos: `docs/requirements/requisitos_plataforma_ricaurte_tours_v2.0.md`.
 
 ## Estado
 
-- Fase actual: **F0 cerrada · F1 lote 1 aprobado por revisor (Sonnet) e integrado en `integration/f1` · F1 lote 2 en curso (Codex)**.
-- `main` = `99844b7` (sin cambios). `integration/f1` = merge de las 4 ramas; lint 0, typecheck OK, 5/5 tests, build OK.
-- Protección local de `main` (sin `gh`): `.git/hooks/pre-commit` bloquea commits en `main`; `.git/hooks/pre-push` bloquea push a `main` y exige lint+typecheck+test. Probado: commit en `main` rechazado. Protección en GitHub (PR + checks requeridos) pendiente de `gh auth login`.
-- Lote 2 en worktrees `C:\Users\alexi\Desktop\rt-wt\{f1-07-quotes-hardening,f1-04-env,f1-10-history}` (ramas `fix/f1-quotes-hardening`, `feat/f1-env`, `refactor/f1-history`, base `integration/f1`). Codex edita; Claude hace commit; revisor distinto revisa.
-- Requisitos: `docs/requirements/requisitos_plataforma_ricaurte_tours_v2.0.md`.
+- `main` = `99844b7` (sin cambios). **Protegida en GitHub**: PR obligatorio, checks `verify` + `secrets` requeridos (strict), `enforce_admins`, sin force-push ni borrado (verificado por API).
+- PR #1 `integration/f1` → `main` (borrador): F0 + F1 lotes 1–2. CI verde (verify, secrets). No fusionado.
+- PR #2 `integration/batch3` → `integration/f1` (borrador, apilado): lote 3.
+- Vercel está conectado al repo (previews en PR). **Fusionar en `main` probablemente despliega a producción**: confirmar con el usuario antes.
+- Repo **público**: todo lo versionado (incluida la copia de requisitos) es visible.
 
-## Ramas locales (cada una 1 commit sobre `main`)
+## Protección local
 
-| Rama | Contenido | Verificación |
-| --- | --- | --- |
-| `docs/f0-baseline` | Este set de docs F0 + copia de requisitos | — |
-| `feat/f1-security-headers` | Cabeceras de seguridad, `poweredByHeader: false` | build OK; curl muestra 7 cabeceras; `/`, `/destinos/cartagena`, `/cotizar` 200; `POST /api/quotes` 503 |
-| `chore/f1-repo-hygiene` | Ignora `tsconfig.tsbuildinfo`/`next-env.d.ts`; compose con contraseña obligatoria y 127.0.0.1 | build OK; `docker compose config` **no ejecutado** (sin Docker) |
-| `chore/f1-quality-tooling` | ESLint 9.39.5 + eslint-config-next 16.4.2, Vitest 5.1.0, 5 tests, CI GitHub Actions | lint 0 problemas, typecheck OK, 5/5 tests, build OK; CI **no ejecutada** en GitHub |
+- `.git/hooks/pre-commit`: bloquea commits en `main` en cualquier rama/worktree y delega en `.husky/pre-commit` (lint-staged) si existe.
+- `.git/hooks/commit-msg`: commitlint si la rama tiene `commitlint.config.mjs`.
+- `.git/hooks/pre-push`: bloquea push a `main`; lint + typecheck + test.
+- `core.hooksPath` **sin definir a propósito**: con Husky activo, `main` (sin `.husky/`) quedaba sin guard (probado). Pasar a Husky estándar solo tras fusionar en `main`.
 
-Conflicto esperado al integrar: ninguno entre archivos (conjuntos disjuntos), salvo que `chore/f1-quality-tooling` cambia `site-header.tsx` y `postcss.config.mjs` para pasar lint.
+## Lote 3 (en `integration/batch3`)
+
+| Rama                     | Autor                                 | Contenido                                                                                       |
+| ------------------------ | ------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| `feat/f1-trusted-ip`     | Claude                                | `client-ip.ts`, `RateLimitStore`, gate de producción en `env.ts`, ADR-0002                      |
+| `feat/f2-state-machine`  | Codex (borrador) → Claude (reescrito) | `src/domain/**` reserva/pago                                                                    |
+| `feat/f4-seo`            | orchestra:builder (Sonnet)            | robots, sitemap, canonical, OG, `es-CO`                                                         |
+| `chore/f1-format`        | Claude                                | Prettier, Husky, lint-staged, commitlint, `.gitattributes` + correcciones de revisión `70cba38` |
+| `test/f9-e2e-playwright` | orchestra:builder (Sonnet)            | Playwright, axe, `e2e.yml`, servicio Docker `tools`                                             |
+
+Verificación local de `integration/batch3`: lint 0 · tsc OK · unit 76/76 · build OK · E2E 92 passed / 4 skipped / 0 failed. Revisión Sonnet: IP APPROVE; dominio/SEO/F1-06 con cambios obligatorios → corregidos.
+
+## Lecciones de orquestación
+
+- Sandbox de Codex: no escribe refs git ni usa red npm; Vitest y `next build` fallan con `node_modules` enlazado; una vez **perdió todas sus escrituras** (F4-02) y otra introdujo mojibake (F1-07). Claude verifica cada entrega y hace el commit. Worktrees para Codex dentro de `.claude/worktrees/`.
+- Turbopack no compila en worktrees con junction: E2E usa worktree con `npm ci` propio.
+- Worktrees antiguos en `C:\Users\alexi\Desktop\rt-wt\` contienen junctions a `node_modules` real: **no borrar recursivamente**; quitar primero el junction con `rmdir`.
 
 ## Decisiones
 
-- Wompi, COP, español, disponibilidad manual v1, stack §27: fijadas por requisitos (no se preguntan).
-- ADR-0001 (propuesto): migración incremental a monorepo + NestJS en 3 pasos.
-- Zod como único lenguaje de validación (propuesto en ADR-0001).
+- Fijadas por requisitos: Wompi, COP, es-CO, disponibilidad manual v1, stack §27.
+- Propuestas (sin aprobar): ADR-0001 monorepo incremental + NestJS; ADR-0002 IP confiable + limitador PostgreSQL.
+- PC-1: logo del repo como referencia **provisional**. PC-2: Playwright local ahora; Docker/CI preparados.
 
-## Bloqueadores / puntos de control
+## Bloqueadores
 
-- PC-1 logo definitivo · PC-2 Playwright Docker/local · PC-3 dirección visual · PC-4 Excel de costos · PC-5 Wompi · PC-6 textos legales.
-- Docker no instalado → sin integración con PostgreSQL ni Playwright en contenedor.
-- `gh` sin sesión → sin push/PR/protección de rama.
-- Docker Hub: sin credenciales/CLI; solo inventario público (ningún repo de Ricaurte).
-- Codex: su sandbox no escribe refs git ni accede a npm; F1-03 lo hizo Claude.
+- PC-1 confirmación de logo · PC-3 dirección visual · PC-4 Excel de costos · PC-5 Wompi · PC-6 textos legales.
+- Docker no instalado: sin integración con PostgreSQL real (migraciones, limitador compartido).
+- Docker Hub: sin token; no se publicó nada.
 
-## Lote 2 (integrado en integration/f1, revisado por Sonnet: APPROVE)
+## Próximo lote recomendado (4)
 
-- F1-07 fix/f1-quotes-hardening: lectura por stream con tope 16 KB (413), 415, 403 por Origin, 429 por IP, /cotizar evalúa flags por petición. Codex introdujo mojibake UTF-8; Claude lo reparó y añadió src/encoding.test.ts.
-- F1-04 feat/f1-env: src/lib/env.ts (Zod), errores sin valores, quoteIntakeOpen() falla cerrado.
-- F1-10 refactor/f1-history: src/content/historical-trips.ts con kind "historical" y tests de integridad.
-- Verificación integration/f1: 38/38 tests, lint 0, tsc OK, build OK, 8 rutas 200, POST /api/quotes 503.
-- Deuda conocida (baja, endpoint cerrado): IP del limitador viene de XFF controlable por cliente; usar IP de proxy confiable + store compartido antes de abrir intake.
-- Codex: su sandbox no ejecuta Vitest ni next build en worktrees con node_modules enlazado; Claude verifica y hace commit.
-
-## Próximo paso
-
-1. Usuario: gh auth login (push + PR de integration/f1 a main + protección en GitHub), PC-2, aprobar ADR-0001, PC-1.
-2. Lote 3 desbloqueado: F1-06 Prettier/Husky/commitlint, F4-02 SEO técnico (noindex), F2-03 máquina de estados pura (dominio, sin BD).
+1. A11y: corregir `color-contrast` (tokens de `<em>`, eyebrows, `small`) y quitar `test.fail()`.
+2. Formato masivo en un commit dedicado (`npm run format`), aislado de cambios lógicos.
+3. F2-02 esquema Prisma v2 (estados del dominio, ledger, `ConsentRecord`, `LegalDocument`, `PaymentWebhookEvent`) — requiere PostgreSQL de pruebas (servicio en CI) para migrar desde cero.
+4. F1-05 Dependabot + `ASVS_MATRIX.md` inicial.
