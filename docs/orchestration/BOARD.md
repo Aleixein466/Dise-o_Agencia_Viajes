@@ -20,7 +20,7 @@ Actualizado: 2026-11-13. Estados: **Pendiente** · **En desarrollo** · **En rev
 
 | #   | Lote                                                                         | Depende de | Estado                            |
 | --- | ---------------------------------------------------------------------------- | ---------- | --------------------------------- |
-| 1   | Arquitectura backend y contratos (ADR-0001: pnpm, Turborepo, NestJS/Fastify) | Lote 4     | Pendiente                         |
+| 1   | Arquitectura backend y contratos (ADR-0001: pnpm, Turborepo, NestJS/Fastify) | Lote 4     | En revisión                       |
 | 2   | Auth, usuarios, roles y permisos                                             | Prisma v2  | Pendiente                         |
 | 3   | Estructura del panel administrativo                                          | 2          | Pendiente                         |
 | 4   | CRUD de catálogo                                                             | 2, 3       | Pendiente                         |
@@ -43,7 +43,7 @@ Leyenda: **Implementado** (código + pruebas) · **Parcial** · **Ausente** · *
 | Cabeceras de seguridad                                                | Implementado           | `apps/web/next.config.ts`; CSP con nonce pendiente (F1-09)             |
 | Validación de entorno                                                 | Implementado           | `apps/web/src/lib/env.ts`                                              |
 | Intake de cotizaciones                                                | Parcial (cerrado)      | `apps/web/src/app/api/quotes`; 503 hasta PC-6 + limitador compartido   |
-| Máquinas de estado reserva/pago                                       | Implementado (dominio) | `apps/web/src/domain/**`; sin persistencia aún                         |
+| Máquinas de estado reserva/pago                                       | Implementado (dominio) | `packages/domain/src/**`; sin persistencia aún                         |
 | Modelo de datos v2                                                    | Implementado           | `packages/db/prisma/schema.prisma`, `docs/data/DATA_MODEL.md`          |
 | Auth, sesiones, MFA, RBAC                                             | Ausente                | Lote 2                                                                 |
 | Panel administrativo (dashboard, catálogo, precios, cupos, auditoría) | Ausente                | Lotes 3–4                                                              |
