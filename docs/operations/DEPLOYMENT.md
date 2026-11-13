@@ -23,15 +23,17 @@ Estado verificado (2026-11-13, API de GitHub): Vercel desplegó **Production** d
 3. Domains: asignar el dominio de staging a la rama `staging`.
 4. Mantener el dominio de producción sin cambios hasta la decisión de lanzamiento (F10).
 
-## Monorepo: en Vercel, Settings → Build & Deployment → Root Directory = `apps/web` (acción del titular)
+## Monorepo: Vercel Root Directory = `apps/web`
 
-Desde ADR-0001 F2-a el repositorio es un monorepo pnpm + Turborepo y la aplicación Next.js vive en `apps/web`. El titular de la cuenta debe, antes de fusionar a `main` o de generar el siguiente Preview:
+Desde ADR-0001 F2-a el repositorio es un monorepo pnpm + Turborepo y la aplicación Next.js vive en `apps/web`. La configuración del proyecto `agencia-viajes` fue verificada y actualizada a `Root Directory = apps/web` el 2026-11-13; Vercel detecta pnpm y Node 24.x correctamente.
 
 1. Settings → Build & Deployment → **Root Directory** = `apps/web`, con _Include source files outside of the Root Directory_ activado (la app importa `packages/db`).
 2. Framework Preset _Next.js_; Install Command y Build Command por defecto (Vercel detecta pnpm por `pnpm-lock.yaml` y `packageManager`; el script `build` de `apps/web` ejecuta `prisma generate` de `packages/db` antes de `next build`).
 3. Node.js 24.x (o la versión vigente del proyecto). `vercel.json` existe en la raíz y en `apps/web` (Vercel lee el del _Root Directory_): ambos deben mantener `git.deploymentEnabled.main = false`.
 
-Las URL públicas y el comportamiento del sitio no cambian. Los agentes no modifican la configuración de Vercel.
+Preview verificado para `codex/continue-auth-admin`: https://agencia-viajes-q5z4chepi-alexissoto2021-4523s-projects.vercel.app
+
+La vista previa demuestra el sitio y las rutas web, pero no aloja la API NestJS ni una base de datos. Sin `API_INTERNAL_URL` de un entorno de backend autorizado, `/admin` presenta su estado de servicio no disponible; no se simula una sesión administrativa.
 
 ## Procedimiento de lanzamiento manual (F10, con aprobación del cliente)
 
