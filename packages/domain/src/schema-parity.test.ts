@@ -4,10 +4,7 @@ import { describe, expect, it } from "vitest";
 import { PAYMENT_STATUSES } from "./payments/state-machine";
 import { RESERVATION_EVENTS, RESERVATION_STATES, ROLES } from "./reservations/state-machine";
 
-const schema = readFileSync(
-  fileURLToPath(new URL("../../../../packages/db/prisma/schema.prisma", import.meta.url)),
-  "utf8",
-);
+const schema = readFileSync(fileURLToPath(new URL("../../db/prisma/schema.prisma", import.meta.url)), "utf8");
 
 function enumValues(name: string): string[] {
   const block = new RegExp(`^enum ${name} \\{([\\s\\S]*?)^\\}`, "m").exec(schema);

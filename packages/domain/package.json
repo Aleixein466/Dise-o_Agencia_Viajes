@@ -1,0 +1,20 @@
+{
+  "name": "@ricaurte/domain",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Pure TypeScript domain logic (state machines, money). No framework, no I/O.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@types/node": "24.19.2",
+    "eslint": "9.39.5",
+    "typescript": "5.9.3",
+    "vitest": "5.1.0"
+  }
+}
