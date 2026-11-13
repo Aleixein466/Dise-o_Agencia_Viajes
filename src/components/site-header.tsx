@@ -17,7 +17,9 @@ const links = [
 export function SiteHeader() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
-  useEffect(() => { setOpen(false); }, [pathname]);
+  // Close the menu on navigation by adjusting state during render (no extra effect pass).
+  const [lastPathname, setLastPathname] = useState(pathname);
+  if (lastPathname !== pathname) { setLastPathname(pathname); setOpen(false); }
   useEffect(() => {
     if (!open) return;
     const closeOnEscape = (event: KeyboardEvent) => { if (event.key === "Escape") setOpen(false); };
