@@ -8,13 +8,13 @@ Agentes: **C** = Claude (orquestador/arquitectura), **CX** = Codex (implementaci
 | F1-02 | P0 | Cabeceras de seguridad base, sin `x-powered-by` | — | C | `next.config.ts` | curl cabeceras, rutas 200 | `feat/f1-security-headers` | ✅ |
 | F1-03 | P0 | ESLint + Vitest + CI (lint, types, test, build, audit, gitleaks) | — | C (CX falló) | `eslint.config.mjs`, `vitest.config.ts`, `.github/workflows/ci.yml` | 5 tests | `chore/f1-quality-tooling` | ✅ |
 | F0-DOC | P0 | Baseline, gaps, riesgos, amenazas, ADR | — | C | `docs/**` | — | `docs/f0-baseline` | ✅ |
-| F1-04 | P0 | Validación de entorno con Zod (`src/lib/env.ts`), fallo temprano en prod | F1-03 | CX | `src/lib/env.ts`, `db.ts` | unit | `feat/f1-env` | ⏳ |
+| F1-04 | P0 | Validación de entorno con Zod (`src/lib/env.ts`), fallo temprano en prod | F1-03 | CX | `src/lib/env.ts`, `db.ts` | unit | `feat/f1-env` | ✅ |
 | F1-05 | P0 | Protección de rama `main`, PR obligatorio, checks requeridos, Dependabot | F1-03, gh login | C (usuario) | `.github/dependabot.yml` | — | `chore/f1-repo-policy` | ⛔ gh sin sesión |
 | F1-06 | P0 | Prettier + Husky/lint-staged + commitlint | F1-03 | CX | configs | hook local | `chore/f1-format` | ⏳ |
-| F1-07 | P0 | Endurecer `api/quotes`: lectura acotada por stream, check `Origin`, rate limit, `/cotizar` dinámica respecto a flags | F1-03 | CX + R | `api/quotes/*`, `cotizar/page.tsx` | unit 413/403/429 | `fix/f1-quotes-hardening` | ⏳ |
+| F1-07 | P0 | Endurecer `api/quotes`: lectura acotada por stream, check `Origin`, rate limit, `/cotizar` dinámica respecto a flags | F1-03 | CX + R | `api/quotes/*`, `cotizar/page.tsx` | unit 413/403/429 | `fix/f1-quotes-hardening` | ✅ |
 | F1-08 | P0 | Docker de pruebas: Postgres efímero + `prisma migrate deploy` + test integración | Docker instalado | CX | `docker-compose.yml` (perfil test), `vitest.integration` | integración | `chore/f1-test-db` | ⛔ sin Docker |
 | F1-09 | P1 | CSP con nonce vía `proxy` (Next 16) para scripts/estilos | F1-02 | C | `src/proxy.ts`, `next.config.ts` | E2E consola limpia | `feat/f1-csp-nonce` | ⏳ |
-| F1-10 | P1 | Separar datos históricos (`content/history`) de catálogo; tipado explícito `HistoricalTrip` | — | CX | `src/lib/demo-data.ts` → `src/content/` | unit | `refactor/f1-history` | ⏳ |
+| F1-10 | P1 | Separar datos históricos (`content/history`) de catálogo; tipado explícito `HistoricalTrip` | — | CX | `src/lib/demo-data.ts` → `src/content/` | unit | `refactor/f1-history` | ✅ |
 | F2-01 | P0 | ADR-0001 aprobado: estrategia monorepo/NestJS | Usuario | C | `docs/adr/` | — | `docs/f0-baseline` | ⏳ revisión |
 | F2-02 | P0 | Esquema v2: estados de reserva/pago del requisito, ledger, `ConsentRecord`, `LegalDocument`, `PaymentWebhookEvent` | F2-01, F1-08 | C + R | `prisma/**` | migrate from zero | `feat/f2-schema-v2` | ⏳ |
 | F2-03 | P0 | Máquina de estados reserva/pago pura + tests exhaustivos | F2-02 | C | `src/domain/reservations/*` | unit + property | `feat/f2-state-machine` | ⏳ |
