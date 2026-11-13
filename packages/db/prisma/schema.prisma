@@ -165,7 +165,7 @@ enum PriceLineKind {
   FEE
   ADJUSTMENT
 }
-/// Must equal domain RESERVATION_STATES (src/domain/reservations/state-machine.ts).
+/// Must equal domain RESERVATION_STATES (packages/domain/src/reservations/state-machine.ts).
 enum ReservationStatus {
   DRAFT
   REQUEST_RECEIVED
@@ -193,7 +193,7 @@ enum ReservationEventType {
   REFUND_COMPLETED
   COMPLETE
 }
-/// Must equal domain PAYMENT_STATUSES (src/domain/payments/state-machine.ts).
+/// Must equal domain PAYMENT_STATUSES (packages/domain/src/payments/state-machine.ts).
 enum PaymentStatus {
   PENDING
   APPROVED

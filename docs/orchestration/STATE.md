@@ -23,7 +23,7 @@ Requisitos: `docs/requirements/requisitos_plataforma_ricaurte_tours_v2.0.md`.
 | Rama                     | Autor                                 | Contenido                                                                                       |
 | ------------------------ | ------------------------------------- | ----------------------------------------------------------------------------------------------- |
 | `feat/f1-trusted-ip`     | Claude                                | `client-ip.ts`, `RateLimitStore`, gate de producción en `env.ts`, ADR-0002                      |
-| `feat/f2-state-machine`  | Codex (borrador) → Claude (reescrito) | `src/domain/**` reserva/pago                                                                    |
+| `feat/f2-state-machine`  | Codex (borrador) → Claude (reescrito) | `packages/domain/src/**` reserva/pago                                                           |
 | `feat/f4-seo`            | orchestra:builder (Sonnet)            | robots, sitemap, canonical, OG, `es-CO`                                                         |
 | `chore/f1-format`        | Claude                                | Prettier, Husky, lint-staged, commitlint, `.gitattributes` + correcciones de revisión `70cba38` |
 | `test/f9-e2e-playwright` | orchestra:builder (Sonnet)            | Playwright, axe, `e2e.yml`, servicio Docker `tools`                                             |

@@ -11,19 +11,19 @@ Sitio responsive en Next.js para explorar viajes anteriores y preparar una idea 
 
 ## Ejecución local
 
-Requiere Node.js 20.19+ (se probó con Node 24) y npm.
+Monorepo pnpm + Turborepo (`apps/web`, `packages/db`). Requiere Node.js 20.19+ (se probó con Node 24) y pnpm, que se activa con Corepack (`corepack enable`; la versión exacta está fijada en `packageManager` de `package.json`).
 
 ```powershell
-npm install
-npm run dev
+pnpm install
+pnpm dev
 ```
 
-Abrir `http://localhost:3000`. Para preparar PostgreSQL, copiar `.env.example` a `.env` y reemplazar `REPLACE_WITH_LOCAL_DEV_PASSWORD` (en `POSTGRES_PASSWORD` y `DATABASE_URL`) por una contraseña local única. `docker-compose.yml` exige esa variable, publica PostgreSQL solo en `127.0.0.1` y es exclusivo para desarrollo local:
+Abrir `http://localhost:3000`. Para preparar PostgreSQL, copiar `.env.example` a `.env` **en la raíz del repositorio** (lo leen `apps/web` y `packages/db`) y reemplazar `REPLACE_WITH_LOCAL_DEV_PASSWORD` (en `POSTGRES_PASSWORD` y `DATABASE_URL`) por una contraseña local única. `docker-compose.yml` exige esa variable, publica PostgreSQL solo en `127.0.0.1` y es exclusivo para desarrollo local:
 
 ```powershell
 docker compose up -d
-npm run db:generate
-npm run db:migrate
+pnpm db:generate
+pnpm db:migrate
 ```
 
 La API solo acepta y guarda solicitudes cuando existe `DATABASE_URL`, las migraciones están aplicadas, `QUOTE_INTAKE_ENABLED=true` y `PRIVACY_POLICY_APPROVED=true`. **Antes de activar ambas variables se debe sustituir la página provisional de privacidad por la política aprobada por la agencia.** En el estado actual, `/cotizar` solo permite explorar destino, fecha y viajeros; no pide datos personales. Docker no estaba instalado en el entorno donde se preparó el proyecto; por ello no se ejecutó una migración contra una base real.
@@ -31,18 +31,26 @@ La API solo acepta y guarda solicitudes cuando existe `DATABASE_URL`, las migrac
 ## Verificaciones
 
 ```powershell
-npx prisma validate
-npm run typecheck
-npm run build
-npm audit
+pnpm --filter @ricaurte/db validate
+pnpm lint
+pnpm typecheck
+pnpm test
+pnpm build
+pnpm test:e2e
+pnpm audit --prod
 ```
 
 ## Estructura
 
-- `src/app`: rutas públicas y API de cotizaciones.
-- `src/components`: navegación, pie, tarjetas, portada fotográfica y galería accesible.
-- `src/content/historical-trips.ts`: contenido editorial reemplazable.
-- `prisma/schema.prisma`: modelo de datos inicial.
+- `apps/web`: aplicación Next.js (paquete `@ricaurte/web`).
+  - `apps/web/src/app`: rutas públicas y API de cotizaciones.
+  - `apps/web/src/components`: navegación, pie, tarjetas, portada fotográfica y galería accesible.
+  - `apps/web/src/content/historical-trips.ts`: contenido editorial reemplazable.
+  - `apps/web/e2e`: pruebas Playwright.
+- `packages/db`: Prisma (`@ricaurte/db`): `prisma/schema.prisma` (modelo de datos), migraciones y cliente generado en `src/generated/` (ignorado por git; `pnpm db:generate`).
+- `apps/api`: API NestJS + Fastify (`@ricaurte/api`), prefijo `/api/v1`; `GET /api/v1/health` (liveness) y `/api/v1/health/ready` (PostgreSQL). `pnpm --filter @ricaurte/api dev` (puerto 4000, solo loopback). Web la expone mismo-origen con `API_INTERNAL_URL` (rewrite `/api/v1/*`, leído en `next build`).
+- `packages/domain`: dominio puro en TypeScript (`@ricaurte/domain`): máquinas de estado de reserva/pago y dinero en centavos.
+- `packages/validation`: esquemas Zod compartidos (`@ricaurte/validation`): `healthResponse`, `problem` (RFC 9457).
 - `docs/propuesta.md`: arquitectura y plan inicial.
 - `docs/auditoria-v2.md`: hallazgos verificados, benchmark, decisiones y QA del rediseño.
 

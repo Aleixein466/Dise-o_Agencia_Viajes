@@ -1,7 +1,11 @@
 version: 2
 updates:
   - package-ecosystem: npm
-    directory: /
+    # pnpm workspaces: root manifest plus each workspace package; all share pnpm-lock.yaml.
+    directories:
+      - /
+      - /apps/*
+      - /packages/*
     schedule:
       interval: weekly
       day: monday

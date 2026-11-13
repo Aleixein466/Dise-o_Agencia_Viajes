@@ -1,9 +1,8 @@
 import { defineConfig, globalIgnores } from "eslint/config";
-import nextVitals from "eslint-config-next/core-web-vitals";
-import nextTs from "eslint-config-next/typescript";
+import tseslint from "typescript-eslint";
 
+// Shared by every workspace except apps/web, which keeps its own Next.js config.
 export default defineConfig([
-  ...nextVitals,
-  ...nextTs,
-  globalIgnores([".next/**", "out/**", "build/**", "coverage/**", "next-env.d.ts", "src/generated/**", ".claude/**"]),
+  ...tseslint.configs.recommended,
+  globalIgnores(["**/dist/**", "**/coverage/**", "**/src/generated/**", "**/.next/**", ".claude/**"]),
 ]);

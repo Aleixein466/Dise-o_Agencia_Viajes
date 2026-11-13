@@ -1,0 +1,14 @@
+packages:
+  - apps/*
+  - packages/*
+
+# Lifecycle scripts are blocked by default; only Prisma's engine download/setup is allowed.
+allowBuilds:
+  "@prisma/engines": true
+  prisma: true
+  # esbuild ships its binary as a platform package; its postinstall is only an optimisation.
+  esbuild: false
+
+# @nestjs/platform-fastify pins fastify 5.11.3, which has high advisories fixed in 5.12.2.
+overrides:
+  fastify: 5.12.7

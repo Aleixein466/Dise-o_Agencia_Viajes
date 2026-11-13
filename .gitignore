@@ -6,7 +6,7 @@ node_modules
 !.env.example
 *.log
 .DS_Store
-src/generated/prisma
+**/src/generated/prisma
 tmp/
 # Generated
 *.tsbuildinfo
@@ -16,3 +16,5 @@ playwright-report/
 test-results/
 .orchestra/
 .claude/worktrees/
+.turbo/
+dist/

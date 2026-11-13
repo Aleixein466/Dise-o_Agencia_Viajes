@@ -1,10 +1,11 @@
 node_modules
 .next
+.turbo
 coverage
 playwright-report
 test-results
-src/generated
+**/src/generated
 .claude
-package-lock.json
+pnpm-lock.yaml
 public
 docs/requirements

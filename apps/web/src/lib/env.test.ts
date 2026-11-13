@@ -35,6 +35,11 @@ describe("server environment", () => {
     );
   });
 
+  it("accepts an http(s) API_INTERNAL_URL and rejects other schemes", () => {
+    expect(getServerEnv({ API_INTERNAL_URL: "http://127.0.0.1:4000" }).API_INTERNAL_URL).toBe("http://127.0.0.1:4000");
+    expect(() => getServerEnv({ API_INTERNAL_URL: "ftp://api.internal" })).toThrow(/API_INTERNAL_URL/);
+  });
+
   it("rejects other URL schemes", () => {
     expect(() => getServerEnv({ DATABASE_URL: "https://localhost/database" })).toThrow(/DATABASE_URL/);
   });

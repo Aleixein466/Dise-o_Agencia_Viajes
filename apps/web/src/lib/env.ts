@@ -7,6 +7,8 @@ const databaseUrlSchema = z
 const envSchema = z
   .object({
     DATABASE_URL: databaseUrlSchema.optional(),
+    // Server-only base URL of apps/api; when set, next.config.ts proxies /api/v1/* to it.
+    API_INTERNAL_URL: z.url({ protocol: /^https?$/ }).optional(),
     NEXT_PUBLIC_SITE_URL: z.url().default("http://localhost:3000"),
     QUOTE_INTAKE_ENABLED: z.enum(["true", "false"]).default("false"),
     PRIVACY_POLICY_APPROVED: z.enum(["true", "false"]).default("false"),
