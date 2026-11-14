@@ -8,6 +8,11 @@ if (-not (Test-Path -LiteralPath $CredentialsPath)) {
   throw "E2E credentials were not found at $CredentialsPath."
 }
 $credentials = Get-Content -LiteralPath $CredentialsPath -Raw | ConvertFrom-Json
+$target = [Uri]$credentials.databaseUrl
+if ($target.AbsolutePath.TrimStart('/') -ne "ricaurte_cartagena_e2e" -or $target.Host -notin @("127.0.0.1", "localhost")) {
+  throw "Refusing to migrate/seed: databaseUrl must point to the local ricaurte_cartagena_e2e database."
+}
+Write-Host "[seed] target database: $($target.Host):$($target.Port)/ricaurte_cartagena_e2e"
 $env:DATABASE_URL = $credentials.databaseUrl
 $env:BOOTSTRAP_ADMIN_EMAIL = $credentials.adminEmail
 $env:BOOTSTRAP_ADMIN_PASSWORD = $credentials.adminPassword
