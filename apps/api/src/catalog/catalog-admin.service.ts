@@ -231,6 +231,14 @@ export class CatalogAdminService {
     });
     return { ...rate, amountCents: rate.amountCents.toString() };
   }
+  async rateHistory(id: string) {
+    const client = await this.db.client();
+    return client.auditLog.findMany({
+      where: { entity: "price_rule", entityId: id, action: "pricing.draft_updated" },
+      orderBy: { createdAt: "desc" },
+      select: { id: true, actorId: true, before: true, after: true, createdAt: true },
+    });
+  }
   async tours(destinationId: string | undefined, current: number, pageSize: number) {
     const client = await this.db.client();
     const where = { deletedAt: null, ...(destinationId ? { destinationId } : {}) };

@@ -177,6 +177,10 @@ export class CatalogAdminController {
     const actor = await this.write(request, csrf, origin);
     return this.catalog.updateRate(id, parsed.data.amountCents, actor.user.id);
   }
+  @Get("rates/:id/history") async rateHistory(@Param("id") id: string, @Req() request: FastifyRequest) {
+    await this.auth.requireReadPermission(token(request, this.auth.cookieName()), "catalog:write");
+    return this.catalog.rateHistory(id);
+  }
   @Get("tours") async tours(@Req() request: FastifyRequest, @Query() query: unknown) {
     await this.auth.requireReadPermission(token(request, this.auth.cookieName()), "catalog:write");
     const p = pagination.safeParse(query);
