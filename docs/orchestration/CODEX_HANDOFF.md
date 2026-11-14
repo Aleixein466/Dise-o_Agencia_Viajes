@@ -52,6 +52,14 @@ Los comandos raíz de Turbo y el script de build del paquete web no pudieron inv
 
 ## Próximo paso desbloqueado
 
+## Actualización: galería privada y filtros de tarifa (2026-11-13)
+
+- Se amplió la API existente de galería, sin crear un catálogo paralelo: GET /api/v1/gallery, asociación, actualización de metadatos/orden/portada y desvinculación. Todas las mutaciones conservan MFA, catalog:write, CSRF y auditoría; las lecturas de binarios siguen exigiendo sesión autorizada y emiten Cache-Control: private, no-store.
+- GalleryService valida propietario antes de persistir, conserva el archivo si el activo tiene otras asociaciones y sólo permite borrado físico una vez sin referencias. El almacenamiento local permanece fuera de public/ y Git.
+- /admin/galeria ahora carga, filtra y visualiza miniaturas privadas, permite alt text, portada, orden, asociación, retiro confirmado y reemplazo seguro. /admin/tarifas añade filtros por paquete, destino, hotel, duración y estado sin reconstruir el historial.
+- Pruebas añadidas: 7 casos binarios (JPEG/PNG/WebP válidos y ejecutable, SVG, corrupción y tamaño rechazados) y 2 límites de controlador (401 y rechazo de mutación antes de asociación). Resultado actual: **26 API**, **55 web**; API lint/typecheck/build pasan, web lint/typecheck/build pasan.
+- E2E Cartagena no se ejecutó en este lote: no hay AUTH_E2E_* en el entorno, docker.exe no está disponible mediante PATH ni en las ubicaciones habituales, aunque se detectaron servidores locales existentes. No se usó una prueba omitida como resultado satisfactorio.
+
 Restaurar el CLI Docker de Windows, validar `docker compose config`, levantar únicamente `postgres` y ejecutar migraciones, bootstrap y E2E de autenticación. Solo después debe avanzarse al CRUD del catálogo y CRM.
 
 ## Actualización: usuarios conectados (2026-11-13)

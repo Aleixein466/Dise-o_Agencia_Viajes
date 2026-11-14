@@ -41,6 +41,8 @@ Actualizado: 2026-11-13. Estados: **Pendiente** · **En desarrollo** · **En rev
 
 ## Inventario funcional
 
+Actualización 2026-11-13: la galería administrativa privada está implementada en la rama de trabajo. Permite cargar JPEG/PNG/WebP (máximo 5 MB), recodificarlos a WebP fuera del repositorio, ver miniaturas autenticadas, asociar/desvincular contenidos, establecer portada/orden, editar texto alternativo y reemplazar una asociación sin borrar un archivo compartido. Las tarifas tienen filtros combinables locales sobre los registros ya autorizados. La verificación E2E Cartagena sigue pendiente de credenciales de prueba y CLI Docker disponibles; no se declara aprobada.
+
 Actualización 2026-11-13: **Destinos** está parcialmente funcional con CRUD de borradores, publicación/archivo RBAC y auditoría. Paquetes, hoteles, tours, tarifas y galería continúan pendientes; el portafolio comercial no está disponible localmente.
 
 Actualización 2026-11-13: importación de portafolio validada en PostgreSQL aislado (6 destinos, 10 variantes, 21 hoteles, 35 tarifas borrador). La interfaz completa para paquetes, hoteles, tours, tarifas y galería sigue pendiente.

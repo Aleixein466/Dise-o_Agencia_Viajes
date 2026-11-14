@@ -35,6 +35,11 @@ export function PackagesManager({ session }: Readonly<{ session: AdminSession }>
   const [message, setMessage] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const [history, setHistory] = useState<{ rate: string; rows: History[] } | null>(null);
+  const [query, setQuery] = useState("");
+  const [destination, setDestination] = useState("");
+  const [hotel, setHotel] = useState("");
+  const [duration, setDuration] = useState("");
+  const [status, setStatus] = useState("");
   const load = useCallback(async () => {
     const r = await requestJson("/api/v1/catalog/packages?pageSize=50", "GET");
     if (r.ok && typeof r.data === "object" && r.data && Array.isArray((r.data as { items?: unknown }).items))
@@ -86,6 +91,18 @@ export function PackagesManager({ session }: Readonly<{ session: AdminSession }>
     }
     setHistory({ rate: rate.conditions?.label ?? rate.name, rows: r.data as History[] });
   }
+  const destinations = [...new Set(items.map((item) => item.destination.name))].sort();
+  const hotels = [...new Set(items.flatMap((item) => item.hotels.map((itemHotel) => itemHotel.name)))].sort();
+  const visible = items.filter((item) => {
+    const needle = query.trim().toLocaleLowerCase("es-CO");
+    return (
+      (!needle || [item.title, item.slug].some((value) => value.toLocaleLowerCase("es-CO").includes(needle))) &&
+      (!destination || item.destination.name === destination) &&
+      (!hotel || item.hotels.some((itemHotel) => itemHotel.name === hotel)) &&
+      (!duration || String(item.durationDays) === duration) &&
+      (!status || item.status === status)
+    );
+  });
   return (
     <div className="admin-users">
       <section className="admin-panel">
@@ -95,6 +112,50 @@ export function PackagesManager({ session }: Readonly<{ session: AdminSession }>
             {message}
           </p>
         ) : null}
+        <div className="admin-form" aria-label="Filtros de tarifas">
+          <label className="admin-field">
+            Buscar paquete
+            <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Nombre o referencia" />
+          </label>
+          <label className="admin-field">
+            Destino
+            <select value={destination} onChange={(event) => setDestination(event.target.value)}>
+              <option value="">Todos</option>
+              {destinations.map((value) => (
+                <option key={value}>{value}</option>
+              ))}
+            </select>
+          </label>
+          <label className="admin-field">
+            Hotel
+            <select value={hotel} onChange={(event) => setHotel(event.target.value)}>
+              <option value="">Todos</option>
+              {hotels.map((value) => (
+                <option key={value}>{value}</option>
+              ))}
+            </select>
+          </label>
+          <label className="admin-field">
+            Duración
+            <select value={duration} onChange={(event) => setDuration(event.target.value)}>
+              <option value="">Todas</option>
+              {[...new Set(items.map((item) => item.durationDays))].sort().map((value) => (
+                <option key={String(value)} value={String(value)}>
+                  {value} días
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="admin-field">
+            Estado
+            <select value={status} onChange={(event) => setStatus(event.target.value)}>
+              <option value="">Todos</option>
+              {[...new Set(items.map((item) => item.status))].sort().map((value) => (
+                <option key={value}>{value}</option>
+              ))}
+            </select>
+          </label>
+        </div>
         <div className="admin-table-wrap">
           <table className="admin-table">
             <thead>
@@ -107,7 +168,7 @@ export function PackagesManager({ session }: Readonly<{ session: AdminSession }>
               </tr>
             </thead>
             <tbody>
-              {items.map((p) => (
+              {visible.map((p) => (
                 <tr key={p.id}>
                   <td>
                     <strong>{p.title}</strong>
@@ -129,6 +190,7 @@ export function PackagesManager({ session }: Readonly<{ session: AdminSession }>
             </tbody>
           </table>
         </div>
+        {!visible.length ? <p className="admin-empty">No hay tarifas de borrador para esos filtros.</p> : null}
       </section>
       {chosen ? (
         <section className="admin-panel">
