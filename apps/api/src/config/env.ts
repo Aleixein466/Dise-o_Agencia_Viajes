@@ -1,4 +1,14 @@
 import { z } from "zod";
+import { parseDaysByType, parseHolidayList } from "../pqrs/deadlines";
+
+const tryParse = (fn: () => unknown) => {
+  try {
+    fn();
+    return true;
+  } catch {
+    return false;
+  }
+};
 
 const databaseUrl = z.url().refine((value) => value.startsWith("postgres://") || value.startsWith("postgresql://"));
 
@@ -21,7 +31,21 @@ const envSchema = z
     PUBLIC_QUOTE_REQUESTS_ENABLED: z.enum(["true", "false"]).default("false"),
     // PQRS intake stays closed until the agency approves its legal texts and channels.
     PQRS_INTAKE_ENABLED: z.enum(["true", "false"]).default("false"),
+    // Default term in business days; per-type overrides, holiday calendar and extra (decreed) holidays are legal
+    // decisions — see docs/operations/PQRS_PLAZOS.md. Holidays stay off ("none") until legal confirms them.
     PQRS_RESPONSE_BUSINESS_DAYS: z.coerce.number().int().min(1).max(30).default(15),
+    PQRS_RESPONSE_DAYS_BY_TYPE: z
+      .string()
+      .default("")
+      .refine(
+        (value) => tryParse(() => parseDaysByType(value)),
+        "PETITION|COMPLAINT|CLAIM|SUGGESTION=1..30, comma separated",
+      ),
+    PQRS_HOLIDAYS: z.enum(["none", "colombia"]).default("none"),
+    PQRS_EXTRA_HOLIDAYS: z
+      .string()
+      .default("")
+      .refine((value) => tryParse(() => parseHolidayList(value)), "YYYY-MM-DD dates, comma separated"),
     WEB_ORIGIN: z.url().default("http://localhost:3000"),
     // Required when a staff member provisions or verifies TOTP. Base64-encoded 32-byte AES-256 key.
     MFA_ENCRYPTION_KEY: z.string().min(1).optional(),

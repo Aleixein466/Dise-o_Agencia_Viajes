@@ -12,6 +12,7 @@ import {
 import { ENV, type ApiEnv } from "../config/env";
 import { DbService } from "../db/db.service";
 import { NotificationsService } from "../notifications/notifications.service";
+import { parseDaysByType, parseHolidayList, responseDueAt } from "./deadlines";
 
 export const PQRS_TYPES = ["PETITION", "COMPLAINT", "CLAIM", "SUGGESTION"] as const;
 export const PQRS_STATUSES = ["RECEIVED", "IN_REVIEW", "WAITING_FOR_CUSTOMER", "ANSWERED", "CLOSED"] as const;
@@ -37,17 +38,7 @@ const newTrackingCode = () =>
     .join("-");
 const newReference = () => `PQR-${randomBytes(6).toString("hex").toUpperCase()}`;
 
-/** Monday–Friday only. Colombian holidays are not applied yet (PENDIENTE DE CONFIRMACIÓN legal). */
-export function addBusinessDays(from: Date, days: number): Date {
-  const result = new Date(from);
-  let left = days;
-  while (left > 0) {
-    result.setUTCDate(result.getUTCDate() + 1);
-    const weekday = result.getUTCDay();
-    if (weekday !== 0 && weekday !== 6) left -= 1;
-  }
-  return result;
-}
+export { addBusinessDays } from "./deadlines";
 
 export type PublicPqrsInput = {
   type: PqrsType;
@@ -102,8 +93,17 @@ export class PqrsService {
     return legal;
   }
 
-  private dueAt(now: Date) {
-    return addBusinessDays(now, this.env.PQRS_RESPONSE_BUSINESS_DAYS);
+  private dueAt(now: Date, type: PqrsType) {
+    return responseDueAt(
+      {
+        defaultDays: this.env.PQRS_RESPONSE_BUSINESS_DAYS,
+        daysByType: parseDaysByType(this.env.PQRS_RESPONSE_DAYS_BY_TYPE),
+        holidays: this.env.PQRS_HOLIDAYS,
+        extraHolidays: parseHolidayList(this.env.PQRS_EXTRA_HOLIDAYS),
+      },
+      type,
+      now,
+    );
   }
 
   private async notify(
@@ -147,7 +147,7 @@ export class PqrsService {
       };
     const code = newTrackingCode();
     const now = new Date();
-    const due = this.dueAt(now);
+    const due = this.dueAt(now, input.type);
     const email = input.email.trim().toLowerCase();
     try {
       const ticket = await client.$transaction(async (tx) => {
@@ -337,7 +337,7 @@ export class PqrsService {
         responseDueAt: replay.resolutionDueAt?.toISOString() ?? null,
       };
     const now = new Date();
-    const due = this.dueAt(now);
+    const due = this.dueAt(now, input.type);
     try {
       return await client.$transaction(async (tx) => {
         const created = await tx.pqrsTicket.create({

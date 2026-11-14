@@ -3,7 +3,14 @@ import { ROLE_PERMISSIONS } from "@ricaurte/domain";
 import { describe, expect, it, vi } from "vitest";
 import { addBusinessDays, PQRS_TRANSITIONS, PqrsService } from "./pqrs.service";
 
-const env = { PQRS_INTAKE_ENABLED: "true", PQRS_RESPONSE_BUSINESS_DAYS: 15, WEB_ORIGIN: "http://127.0.0.1:3201" };
+const env = {
+  PQRS_INTAKE_ENABLED: "true",
+  PQRS_RESPONSE_BUSINESS_DAYS: 15,
+  PQRS_RESPONSE_DAYS_BY_TYPE: "",
+  PQRS_HOLIDAYS: "none",
+  PQRS_EXTRA_HOLIDAYS: "",
+  WEB_ORIGIN: "http://127.0.0.1:3201",
+};
 const KEY = "00000000-0000-4000-8000-000000000002";
 const TICKET = "00000000-0000-4000-8000-0000000000aa";
 const input = {

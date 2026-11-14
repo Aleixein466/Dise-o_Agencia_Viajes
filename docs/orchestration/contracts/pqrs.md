@@ -7,8 +7,8 @@ Status: API by Claude, web by builder. Base path `/api/v1`. Money-free. All text
 - `PQRS_INTAKE_ENABLED` (default `"false"`): public and customer creation return **503** "Servicio no disponible" while
   false. Also 503 when no APPROVED `DATA_TREATMENT_AUTHORIZATION` legal document exists (same rule as quotes).
   Staff routes and tracking work regardless (existing tickets must stay answerable).
-- `PQRS_RESPONSE_BUSINESS_DAYS` (default `15`, 1..30): `firstResponseDueAt = resolutionDueAt = created + N business
-days` (Mon–Fri, Colombian holidays NOT applied yet → **PENDIENTE DE CONFIRMACIÓN legal**).
+- Plazos: `PQRS_RESPONSE_BUSINESS_DAYS` (default 15), `PQRS_RESPONSE_DAYS_BY_TYPE`, `PQRS_HOLIDAYS` (`none` | `colombia`),
+  `PQRS_EXTRA_HOLIDAYS`; días hábiles en hora de Colombia. Ver `docs/operations/PQRS_PLAZOS.md` (**PENDIENTE DE CONFIRMACIÓN legal**).
 - E2E runner sets `PQRS_INTAKE_ENABLED=true` on the isolated database only.
 
 ## Types / statuses
@@ -22,7 +22,7 @@ days` (Mon–Fri, Colombian holidays NOT applied yet → **PENDIENTE DE CONFIRMA
 
 - `POST /public/pqrs` body
   `{ type, subject(5..160), description(20..5000), name(2..120), email, phone?(7..25), dataConsent: true,
-   idempotencyKey: uuid, website: "" }` (honeypot `website` non-empty → fake 201 with empty reference).
+ idempotencyKey: uuid, website: "" }` (honeypot `website` non-empty → fake 201 with empty reference).
   → **201** `{ reference: "PQR-XXXXXXXXXXXX", trackingCode: "XXXX-XXXX-…", status: "RECEIVED", responseDueAt: ISO }`.
   Replay of the same `idempotencyKey` → **200** same reference, `trackingCode: null`. Rate limit 5 / 10 min per IP → 429.
   The tracking code is shown once; only its SHA-256 is stored; it is never emailed.
