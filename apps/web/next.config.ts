@@ -33,6 +33,8 @@ function apiRewrites() {
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
+  // A second isolated E2E instance builds into .next-ci so it never replaces files a running demo is serving.
+  distDir: process.env.NEXT_DIST_DIR || ".next",
   transpilePackages: ["@ricaurte/db"],
   async rewrites() {
     return apiRewrites();

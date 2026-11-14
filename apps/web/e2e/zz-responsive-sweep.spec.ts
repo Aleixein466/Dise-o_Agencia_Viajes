@@ -1,9 +1,9 @@
 import { mkdirSync } from "node:fs";
-import { tmpdir } from "node:os";
+
 import { join } from "node:path";
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
-import { adminStatePath, financeStatePath } from "./e2e-state";
+import { adminStatePath, financeStatePath, stateDir } from "./e2e-state";
 
 // Milestone 6 sweep: every main screen at phone, tablet and desktop widths must not scroll horizontally, must pass
 // WCAG 2.2 AA automated checks and must not log console errors. Screenshots go to %TEMP% for manual review.
@@ -12,7 +12,7 @@ const viewports = [
   { name: "tablet", width: 768, height: 1024 },
   { name: "desktop", width: 1366, height: 900 },
 ];
-const shots = join(tmpdir(), "ricaurte-e2e", "sweep");
+const shots = join(stateDir, "sweep");
 mkdirSync(shots, { recursive: true });
 
 async function firstDestination(page: Page): Promise<string> {

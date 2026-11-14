@@ -1,18 +1,24 @@
 [CmdletBinding()]
 param(
-  [string]$CredentialsPath = (Join-Path $env:TEMP "ricaurte-cartagena-e2e-credentials.json")
+  [ValidateSet("default", "ci")][string]$Instance = "default",
+  [string]$CredentialsPath
 )
 
 $ErrorActionPreference = "Stop"
+$dbName = if ($Instance -eq "ci") { "ricaurte_cartagena_e2e_ci" } else { "ricaurte_cartagena_e2e" }
+if (-not $CredentialsPath) {
+  $suffix = if ($Instance -eq "ci") { "-ci" } else { "" }
+  $CredentialsPath = Join-Path $env:TEMP "ricaurte-cartagena-e2e$suffix-credentials.json"
+}
 if (-not (Test-Path -LiteralPath $CredentialsPath)) {
   throw "E2E credentials were not found at $CredentialsPath."
 }
 $credentials = Get-Content -LiteralPath $CredentialsPath -Raw | ConvertFrom-Json
 $target = [Uri]$credentials.databaseUrl
-if ($target.AbsolutePath.TrimStart('/') -ne "ricaurte_cartagena_e2e" -or $target.Host -notin @("127.0.0.1", "localhost")) {
-  throw "Refusing to migrate/seed: databaseUrl must point to the local ricaurte_cartagena_e2e database."
+if ($target.AbsolutePath.TrimStart('/') -ne $dbName -or $target.Host -notin @("127.0.0.1", "localhost")) {
+  throw "Refusing to migrate/seed: databaseUrl must point to the local $dbName database."
 }
-Write-Host "[seed] target database: $($target.Host):$($target.Port)/ricaurte_cartagena_e2e"
+Write-Host "[seed] target database: $($target.Host):$($target.Port)/$dbName"
 $env:DATABASE_URL = $credentials.databaseUrl
 $env:BOOTSTRAP_ADMIN_EMAIL = $credentials.adminEmail
 $env:BOOTSTRAP_ADMIN_PASSWORD = $credentials.adminPassword

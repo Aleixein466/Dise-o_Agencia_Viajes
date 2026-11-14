@@ -1,6 +1,9 @@
 [CmdletBinding()]
 param(
-  [string]$CredentialsPath = (Join-Path $env:TEMP "ricaurte-cartagena-e2e-credentials.json"),
+  # "ci" runs a second, fully isolated instance (database ricaurte_cartagena_e2e_ci, ports 4200/3301, build in
+  # apps/web/.next-ci, logs in %TEMP%\ricaurte-e2e-ci) so tests never disturb a demo served by the default instance.
+  [ValidateSet("default", "ci")][string]$Instance = "default",
+  [string]$CredentialsPath,
   [switch]$SkipBuild,
   # Start API + web and keep them up for inspection/demo (no tests). Bounded: stops after -ServeMinutes or when
   # the file %TEMP%\ricaurte-e2e\stop appears.
@@ -17,7 +20,15 @@ param(
 # when it exceeds its timeout, so a hang shows which stage failed instead of waiting silently.
 $ErrorActionPreference = "Stop"
 $root = Resolve-Path (Join-Path $PSScriptRoot "..")
-$logDir = Join-Path $env:TEMP "ricaurte-e2e"
+$ci = $Instance -eq "ci"
+$suffix = if ($ci) { "-ci" } else { "" }
+$dbName = if ($ci) { "ricaurte_cartagena_e2e_ci" } else { "ricaurte_cartagena_e2e" }
+$apiPort = if ($ci) { 4200 } else { 4100 }
+$webPort = if ($ci) { 3301 } else { 3201 }
+if (-not $CredentialsPath) { $CredentialsPath = Join-Path $env:TEMP "ricaurte-cartagena-e2e$suffix-credentials.json" }
+$logDir = Join-Path $env:TEMP "ricaurte-e2e$suffix"
+$env:E2E_STATE_DIR = $logDir
+if ($ci) { $env:NEXT_DIST_DIR = ".next-ci" } else { Remove-Item Env:NEXT_DIST_DIR -ErrorAction SilentlyContinue }
 New-Item -ItemType Directory -Force $logDir | Out-Null
 function Log([string]$Stage, [string]$Message) { Write-Host ("[{0:HH:mm:ss}] [{1}] {2}" -f (Get-Date), $Stage, $Message) }
 
@@ -71,24 +82,25 @@ foreach ($name in "databaseUrl", "adminEmail", "adminPassword", "restrictedEmail
   if ([string]::IsNullOrWhiteSpace([string]$credentials.$name)) { throw "E2E credential '$name' is missing." }
 }
 $target = [Uri]$credentials.databaseUrl
-if ($target.AbsolutePath.TrimStart('/') -ne "ricaurte_cartagena_e2e" -or $target.Host -notin @("127.0.0.1", "localhost")) {
-  throw "Refusing to run: databaseUrl must point to the local ricaurte_cartagena_e2e database."
+if ($target.AbsolutePath.TrimStart('/') -ne $dbName -or $target.Host -notin @("127.0.0.1", "localhost")) {
+  throw "Refusing to run: databaseUrl must point to the local $dbName database."
 }
 # Never kill unknown services: abort if the test ports are already taken.
-$busy = Get-NetTCPConnection -State Listen -LocalPort 4100, 3201 -ErrorAction SilentlyContinue
+$busy = Get-NetTCPConnection -State Listen -LocalPort $apiPort, $webPort -ErrorAction SilentlyContinue
 if ($busy) { throw "Ports in use: $(($busy | ForEach-Object { "$($_.LocalPort)/pid $($_.OwningProcess)" }) -join ', '). Stop them first." }
 $pg = Test-NetConnection -ComputerName 127.0.0.1 -Port 5433 -WarningAction SilentlyContinue
 if (-not $pg.TcpTestSucceeded) { throw "PostgreSQL is not reachable on 127.0.0.1:5433." }
-Log "preflight" "ok (db ricaurte_cartagena_e2e, logs in $logDir)"
+Log "preflight" "ok (db $dbName, logs in $logDir)"
 
 $env:DATABASE_URL = $credentials.databaseUrl
 $env:HOST = "127.0.0.1"
-$env:PORT = "4100"
-$env:APP_ORIGIN = "http://127.0.0.1:3201"
-$env:WEB_ORIGIN = "http://127.0.0.1:3201"
+$env:PORT = "$apiPort"
+$env:APP_ORIGIN = "http://127.0.0.1:$webPort"
+$env:WEB_ORIGIN = "http://127.0.0.1:$webPort"
 # Public intake is opened only for this isolated E2E run; it stays "false" by default until legal approval.
 $env:PUBLIC_QUOTE_REQUESTS_ENABLED = "true"
 $env:PQRS_INTAKE_ENABLED = "true"
+$env:PQRS_HOLIDAYS = "colombia"
 # Simulated payment provider (no money moves); refused by the API in production.
 $env:PAYMENT_ADAPTER = "sandbox_test"
 # Test-only mail sink (customer login codes); refused by the API in production.
@@ -107,8 +119,8 @@ if (Test-Path -LiteralPath $env:MAIL_SINK_DIR) { Get-ChildItem -LiteralPath $env
 $env:MFA_ENCRYPTION_KEY = $credentials.mfaKey
 $env:MEDIA_STORAGE_DIR = Join-Path $env:TEMP "RicaurteTours\e2e-private-media"
 $env:LOG_LEVEL = "warn"
-$env:API_INTERNAL_URL = "http://127.0.0.1:4100"
-$env:CARTAGENA_E2E_BASE_URL = "http://127.0.0.1:3201"
+$env:API_INTERNAL_URL = "http://127.0.0.1:$apiPort"
+$env:CARTAGENA_E2E_BASE_URL = "http://127.0.0.1:$webPort"
 $env:CARTAGENA_E2E_ADMIN_EMAIL = $credentials.adminEmail
 $env:CARTAGENA_E2E_ADMIN_PASSWORD = $credentials.adminPassword
 $env:CARTAGENA_E2E_RESTRICTED_EMAIL = $credentials.restrictedEmail
@@ -130,17 +142,17 @@ if (-not $SkipBuild) {
 $api = $null; $web = $null; $exitCode = 1
 try {
   $env:NODE_ENV = "development"
-  Log "api" "starting on :4100"
+  Log "api" "starting on :$apiPort"
   $api = Start-Logged "api" "corepack pnpm --filter @ricaurte/api start"
-  Wait-Ready "api" $api "http://127.0.0.1:4100/api/v1/auth/session" 401 $ReadyTimeoutSec
-  Log "web" "starting on :3201"
-  $web = Start-Logged "web" "set NODE_ENV=production&& corepack pnpm --filter @ricaurte/web exec next start -H 127.0.0.1 -p 3201"
-  Wait-Ready "web" $web "http://127.0.0.1:3201/ingresar" 200 $ReadyTimeoutSec
+  Wait-Ready "api" $api "http://127.0.0.1:$apiPort/api/v1/auth/session" 401 $ReadyTimeoutSec
+  Log "web" "starting on :$webPort"
+  $web = Start-Logged "web" "set NODE_ENV=production&& corepack pnpm --filter @ricaurte/web exec next start -H 127.0.0.1 -p $webPort"
+  Wait-Ready "web" $web "http://127.0.0.1:$webPort/ingresar" 200 $ReadyTimeoutSec
   if ($ServeOnly) {
     $stopFile = Join-Path $logDir "stop"
     Remove-Item -LiteralPath $stopFile -ErrorAction SilentlyContinue
     $until = (Get-Date).AddMinutes($ServeMinutes)
-    Log "serve" "web http://127.0.0.1:3201 - api http://127.0.0.1:4100 - until $($until.ToString('HH:mm')) or until '$stopFile' exists"
+    Log "serve" "web http://127.0.0.1:$webPort - api http://127.0.0.1:$apiPort - until $($until.ToString('HH:mm')) or until '$stopFile' exists"
     while ((Get-Date) -lt $until -and -not (Test-Path -LiteralPath $stopFile)) {
       if ($api.Process.HasExited -or $web.Process.HasExited) { throw "a server exited while serving" }
       Start-Sleep -Seconds 2
@@ -160,8 +172,8 @@ try {
   Stop-Tree $web
   Stop-Tree $api
   Start-Sleep -Seconds 1
-  $left = Get-NetTCPConnection -State Listen -LocalPort 4100, 3201 -ErrorAction SilentlyContinue
-  if ($left) { Log "cleanup" "WARNING ports still open: $(($left | ForEach-Object { $_.LocalPort }) -join ', ')" } else { Log "cleanup" "servers stopped, ports 4100/3201 free" }
+  $left = Get-NetTCPConnection -State Listen -LocalPort $apiPort, $webPort -ErrorAction SilentlyContinue
+  if ($left) { Log "cleanup" "WARNING ports still open: $(($left | ForEach-Object { $_.LocalPort }) -join ', ')" } else { Log "cleanup" "servers stopped, ports $apiPort/$webPort free" }
 }
 Log "done" ("exit code {0}" -f $exitCode)
 exit $exitCode

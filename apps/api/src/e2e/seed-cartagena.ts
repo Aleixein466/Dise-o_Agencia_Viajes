@@ -15,10 +15,10 @@ async function main() {
   // Hard guard before any write or cleanup: this seeder only ever touches the isolated E2E database.
   const target = new URL(url);
   if (
-    target.pathname.replace(/^\//, "") !== "ricaurte_cartagena_e2e" ||
+    !/^ricaurte_cartagena_e2e(_ci)?$/.test(target.pathname.replace(/^\//, "")) ||
     !["127.0.0.1", "localhost"].includes(target.hostname)
   )
-    throw new Error("Refusing to seed: DATABASE_URL must point to the local ricaurte_cartagena_e2e database");
+    throw new Error("Refusing to seed: DATABASE_URL must point to a local ricaurte_cartagena_e2e[_ci] database");
   const db = createDbClient(url);
   try {
     const admin = await db.user.update({
