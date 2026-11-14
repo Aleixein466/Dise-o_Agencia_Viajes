@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import helmet from "@fastify/helmet";
+import multipart from "@fastify/multipart";
 import type { NestFastifyApplication } from "@nestjs/platform-fastify";
 import { FastifyAdapter } from "@nestjs/platform-fastify";
 import type { FastifyServerOptions } from "fastify";
@@ -49,6 +50,7 @@ export async function configureApp(app: NestFastifyApplication): Promise<void> {
   await app.register(helmet, {
     contentSecurityPolicy: { directives: { defaultSrc: ["'none'"], frameAncestors: ["'none'"] } },
   });
+  await app.register(multipart, { limits: { files: 1, fileSize: 5 * 1024 * 1024, fields: 4, parts: 5 } });
 
   const fastify = app.getHttpAdapter().getInstance();
   fastify.addHook("onRequest", async (request, reply) => {
