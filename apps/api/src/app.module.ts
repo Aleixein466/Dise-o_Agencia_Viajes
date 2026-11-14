@@ -9,13 +9,15 @@ import { UsersService } from "./users/users.service";
 import { DestinationsController } from "./catalog/destinations.controller";
 import { DestinationsService } from "./catalog/destinations.service";
 import { PortfolioImportService } from "./catalog/portfolio-import.service";
+import { CatalogAdminController } from "./catalog/catalog-admin.controller";
+import { CatalogAdminService } from "./catalog/catalog-admin.service";
 
 @Module({})
 export class AppModule {
   static register(env: ApiEnv): DynamicModule {
     return {
       module: AppModule,
-      controllers: [HealthController, AuthController, UsersController, DestinationsController],
+      controllers: [HealthController, AuthController, UsersController, DestinationsController, CatalogAdminController],
       providers: [
         { provide: ENV, useValue: env },
         DbService,
@@ -23,6 +25,7 @@ export class AppModule {
         UsersService,
         DestinationsService,
         PortfolioImportService,
+        CatalogAdminService,
       ],
     };
   }

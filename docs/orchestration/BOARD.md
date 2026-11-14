@@ -45,6 +45,8 @@ Actualización 2026-11-13: **Destinos** está parcialmente funcional con CRUD de
 
 Actualización 2026-11-13: importación de portafolio validada en PostgreSQL aislado (6 destinos, 10 variantes, 21 hoteles, 35 tarifas borrador). La interfaz completa para paquetes, hoteles, tours, tarifas y galería sigue pendiente.
 
+Actualización 2026-11-13: paquetes y hoteles ya tienen consulta/edición protegida en API y navegador. Tours, galería y administración independiente de tarifas siguen pendientes.
+
 Leyenda: **Implementado** (código + pruebas) · **Parcial** · **Ausente** · **Bloqueado por cliente**.
 
 | Área                                                                  | Estado                 | Evidencia / nota                                                       |
