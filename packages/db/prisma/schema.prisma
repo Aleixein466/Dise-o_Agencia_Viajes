@@ -38,6 +38,8 @@ enum BookingStatus {
   REFUNDED
 }
 enum QuoteStatus {
+  DRAFT
+  REQUIRES_MANUAL_REVIEW
   NEW
   ASSIGNED
   PROPOSAL_SENT
@@ -287,6 +289,7 @@ model User {
   updatedAt DateTime @updatedAt @map("updated_at")
   customer Customer?
   assignedQuotes Quote[] @relation("quote_assignee")
+  createdQuotes Quote[] @relation("quote_creator")
   auditLogs AuditLog[]
   roles UserRoleAssignment[] @relation("user_role_user")
   rolesGranted UserRoleAssignment[] @relation("user_role_granter")
@@ -874,20 +877,22 @@ model Departure {
 model Quote {
   id String @id @default(uuid()) @db.Uuid
   reference String @unique @db.VarChar(24)
-  name String @db.VarChar(120)
-  email String @db.VarChar(254)
-  phone String @db.VarChar(25)
+  name String? @db.VarChar(120)
+  email String? @db.VarChar(254)
+  phone String? @db.VarChar(25)
   /// Free-text destination from the v1 form. Catalog link is catalogDestination.
   destination String? @db.VarChar(120)
   travelDate DateTime? @map("travel_date")
   travelers Int
   budget String? @db.VarChar(80)
   notes String? @db.Text
-  dataConsentAt DateTime @map("data_consent_at")
+  dataConsentAt DateTime? @map("data_consent_at")
   marketingConsentAt DateTime? @map("marketing_consent_at")
   status QuoteStatus @default(NEW)
   assignedToId String? @db.Uuid @map("assigned_to_id")
+  createdById String? @db.Uuid @map("created_by_id")
   assignedTo User? @relation("quote_assignee", fields: [assignedToId], references: [id])
+  createdBy User? @relation("quote_creator", fields: [createdById], references: [id], onDelete: SetNull)
   customerId String? @db.Uuid @map("customer_id")
   destinationId String? @db.Uuid @map("destination_id")
   packageId String? @db.Uuid @map("package_id")
@@ -901,6 +906,8 @@ model Quote {
   /// Full server-side pricing output at quote time (selection, travelers, breakdown).
   priceSnapshot Json? @map("price_snapshot")
   isFictitious Boolean @default(false) @map("is_fictitious")
+  reviewReasons Json? @map("review_reasons")
+  revision Int @default(1)
   validUntil DateTime? @map("valid_until")
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")

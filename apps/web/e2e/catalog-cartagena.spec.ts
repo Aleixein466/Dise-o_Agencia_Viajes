@@ -89,7 +89,19 @@ test.describe("Cartagena E2E catalog", () => {
     await page.getByRole("button", { name: /Subir fotografía/ }).click();
     expect((await upload).status()).toBe(201);
     await expect(page.getByRole("status")).toContainText(/Fotografía privada subida/);
-    await expect(page.locator('img[alt="Cartagena E2E privada"]')).toBeVisible();
+    await expect(page.locator('img[alt="Cartagena E2E privada"]').first()).toBeVisible();
+
+    await page.goto("/admin/cotizaciones");
+    await page.getByLabel(/Destino y paquete/).selectOption({ index: 1 });
+    await expect(page.getByLabel(/Regla base de borrador/)).toBeVisible();
+    await page.getByLabel(/Hotel/).selectOption({ label: "Hotel Cartagena E2E" });
+    await page.getByLabel(/Regla base de borrador/).selectOption({ index: 1 });
+    await page.getByRole("button", { name: /Calcular desglose/ }).click();
+    await expect(page.getByText(/Total:/)).toBeVisible();
+    await page.getByRole("button", { name: /Guardar cotización/ }).click();
+    await expect(page.getByRole("status")).toContainText(/Cotización administrativa guardada/);
+    await page.reload();
+    await expect(page.getByText(/ADM-/).first()).toBeVisible();
 
     const asset = await page.evaluate(async () => {
       const destination = await (await fetch("/api/v1/catalog/destinations")).json();

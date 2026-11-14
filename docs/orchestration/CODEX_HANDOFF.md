@@ -52,6 +52,14 @@ Los comandos raíz de Turbo y el script de build del paquete web no pudieron inv
 
 ## Próximo paso desbloqueado
 
+## Actualización: cotizaciones administrativas (2026-11-14)
+
+- Se reutilizaron Quote, QuoteLine y PriceRule; la migración 20261114_admin_quotes añade creador, revisión optimista, razones de revisión y los estados DRAFT/REQUIRES_MANUAL_REVIEW. Las cotizaciones internas no exigen PII ni consentimiento y no se convierten en reservas.
+- Motor puro en packages/domain/src/quotes/pricing.ts: cantidades en bigint, líneas y total únicamente desde reglas explícitas. Niños, transporte o tours/adicionales sin precio generan REQUIRES_MANUAL_REVIEW; no hay prorrateo ni precio inventado.
+- API protegida: GET/POST /api/v1/quotes, POST /preview, GET /catalog/:packageId, GET /:id, GET /:id/history y POST /:id/recalculate. Mutaciones exigen MFA, quotes:write, Origin y CSRF; recálculo exige revisión esperada y rechaza sobrescrituras concurrentes.
+- /admin/cotizaciones permite seleccionar paquete, hotel, regla de borrador, viajeros y tours, ver desglose o razones y guardar una cotización real. Los datos de catálogo siguen siendo borradores internos.
+- PostgreSQL E2E confirmó una fila ADM-FD2E610E-0|DRAFT|123460000|1|true con instantánea. La E2E Cartagena 1/1 incluye creación/recarga de la cotización, además del flujo de catálogo previo.
+
 ## Actualización: E2E Cartagena y Docker (2026-11-14)
 
 - Docker Desktop fue verificado en C:\\Users\\alexi\\AppData\\Local\\Programs\\DockerDesktop\\resources\\bin\\docker.exe: Engine 29.9.3, Docker Desktop 4.99.0 y Compose 5.7.0. PostgreSQL local estaba sano y limitado a 127.0.0.1:5433.

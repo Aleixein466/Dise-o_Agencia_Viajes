@@ -13,6 +13,8 @@ import { CatalogAdminController } from "./catalog/catalog-admin.controller";
 import { CatalogAdminService } from "./catalog/catalog-admin.service";
 import { GalleryController } from "./catalog/gallery.controller";
 import { GalleryService } from "./catalog/gallery.service";
+import { AdminQuotesController } from "./quotes/admin-quotes.controller";
+import { AdminQuotesService } from "./quotes/admin-quotes.service";
 
 @Module({})
 export class AppModule {
@@ -26,6 +28,7 @@ export class AppModule {
         DestinationsController,
         CatalogAdminController,
         GalleryController,
+        AdminQuotesController,
       ],
       providers: [
         { provide: ENV, useValue: env },
@@ -36,6 +39,7 @@ export class AppModule {
         PortfolioImportService,
         CatalogAdminService,
         GalleryService,
+        AdminQuotesService,
       ],
     };
   }

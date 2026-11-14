@@ -63,6 +63,12 @@ async function main() {
       },
       select: { id: true },
     });
+    const media = await db.mediaAttachment.findMany({
+      where: { destinationId: destination.id },
+      select: { assetId: true },
+    });
+    await db.mediaAttachment.deleteMany({ where: { destinationId: destination.id } });
+    if (media.length) await db.mediaAsset.deleteMany({ where: { id: { in: media.map((item) => item.assetId) } } });
     const hotel = await db.hotel.upsert({
       where: { slug: "e2e-hotel-cartagena" },
       update: { destinationId: destination.id, name: "Hotel Cartagena E2E", status: "DRAFT", deletedAt: null },
