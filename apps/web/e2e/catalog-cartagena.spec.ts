@@ -92,7 +92,8 @@ test.describe("Cartagena E2E catalog", () => {
     await expect(page.locator('img[alt="Cartagena E2E privada"]').first()).toBeVisible();
 
     await page.goto("/admin/cotizaciones");
-    await page.getByLabel(/Destino y paquete/).selectOption({ index: 1 });
+    // Select by name, not position: other E2E packages (e.g. the public builder one) share this database.
+    await page.getByLabel(/Destino y paquete/).selectOption({ label: "Cartagena E2E · Cartagena E2E 4 días 3 noches" });
     await expect(page.getByLabel(/Regla base de borrador/)).toBeVisible();
     await page.getByLabel(/Hotel/).selectOption({ label: "Hotel Cartagena E2E" });
     await page.getByLabel(/Regla base de borrador/).selectOption({ index: 1 });

@@ -1,31 +1,25 @@
 import type { Metadata } from "next";
-import { connection } from "next/server";
-import { quoteIntakeOpen } from "@/lib/env";
-import { QuoteForm } from "./quote-form";
+import { TripWizard } from "@/components/public/trip-wizard";
 export const metadata: Metadata = {
   title: "Prepara tu viaje",
   alternates: { canonical: "/cotizar" },
   robots: { index: false, follow: true },
 };
-export default async function Cotizar() {
-  await connection();
-  const enabled = quoteIntakeOpen();
+export default function Cotizar() {
   return (
-    <div className="shell form-page form-grid">
-      <div className="form-intro">
+    <div className="shell form-page">
+      <div className="form-intro wizard-intro">
         <span className="eyebrow">UNA IDEA PARA EL FUTURO</span>
         <h1>
           Empecemos por <em>imaginarlo.</em>
         </h1>
         <p>
-          Guarda un destino, una fecha tentativa y el tamaño del grupo mientras la agencia prepara su canal de
-          cotizaciones.
+          Elige un destino, un paquete y el tamaño de tu grupo. Si hay una tarifa aprobada verás un valor estimado; si
+          no, un asesor confirmará el valor contigo.
         </p>
-        <p>
-          El envío de datos personales y las reservas aún no están habilitados. No se realizan pagos desde esta página.
-        </p>
+        <p>No se realizan reservas ni pagos desde esta página. Enviar una solicitud no garantiza cupos ni precios.</p>
       </div>
-      <QuoteForm enabled={enabled} />
+      <TripWizard />
     </div>
   );
 }

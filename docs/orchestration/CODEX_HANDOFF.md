@@ -126,3 +126,14 @@ Restaurar el CLI Docker de Windows, validar `docker compose config`, levantar ú
 - `admin` and `auth` have uncommitted changes and remain protected. `api`, `asvs`, `e2e`, `f4-02-seo`, `monorepo`, and `prisma-v2` had no exclusive commits; their HEADs are already ancestors of `codex/continue-auth-admin` and their branches remain intact.
 - `e2e` was removed through `git worktree remove` without deleting its branch. `api` remains as an unregistered residue because Windows has open handles below `node_modules`; no force deletion or process termination was attempted.
 - Only clean-worktree `node_modules`, `.next`, `dist`, `.turbo`, and test reports are low-risk and regenerable. Worktrees with changes, user-level configuration, and Docker volumes are explicitly out of scope.
+
+## Actualización: constructor público y aprobación de tarifas (2026-11-14)
+
+- Contrato: `docs/orchestration/contracts/public-quotes.md`. API pública (`apps/api/src/public/`): destinos/paquetes `PUBLISHED`, builder sin importes, preview, solicitud idempotente (`idempotencyKey` único; repetición → 200 misma referencia, sin código) y seguimiento (`trackingCode` de 128 bits, solo hash SHA-256, comparación en tiempo constante). Rate limit en memoria por IP.
+- Precio público: solo reglas `active && !isFictitious` vigentes. Base = regla de paquete con `conditions.roomTypeId` de la acomodación; si no, la única regla de paquete sin vincular; varias → `REQUIRES_MANUAL_REVIEW`. Tours/transporte/adicionales por su propia regla (una regla = un destino, CHECK `price_rules_target_valid`).
+- Envío cerrado por defecto: exige `PUBLIC_QUOTE_REQUESTS_ENABLED=true` **y** una `DATA_TREATMENT_AUTHORIZATION` `APPROVED`; el consentimiento queda ligado a esa versión. `consent_records` es append-only (trigger).
+- Admin: `POST /catalog/price-rules/:id/approve|deactivate` (MFA, `catalog:publish`, CSRF, `expectedUpdatedAt` → 409, auditoría antes/después). `/admin/tarifas` y `/admin/paquetes` muestran Borrador/Aprobada/Desactivada; la edición de importe solo en borradores.
+- Web: asistente de 10 pasos en `/cotizar` (`apps/web/src/components/public/`), `/seguimiento`. Migración aditiva `20261114_public_quote_requests`.
+- E2E (`scripts/run-cartagena-e2e.ps1`): etapas con log en `%TEMP%
+icaurte-e2e\`, timeouts por etapa, parada del árbol de procesos y verificación de puertos. Causa del bloqueo anterior: salida retenida por `| tail` y servidores huérfanos (se mataba solo `cmd.exe`). Resultado: **3/3** (Cartagena + flujo público + 360 px).
+- Siguiente: CRM (bandeja de solicitudes públicas, asignación, notas, cambio de estado) sobre `Quote`/`LeadAssignment`/`CrmNote`.

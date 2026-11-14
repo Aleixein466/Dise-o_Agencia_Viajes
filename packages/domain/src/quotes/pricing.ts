@@ -31,6 +31,19 @@ export type DraftPricing = {
   reasons: string[];
 };
 
+/** The public catalog must never use draft, fictitious, or expired rules. */
+export function isApprovedPublicPriceRule(
+  rule: { active: boolean; isFictitious: boolean; validFrom?: Date | null; validTo?: Date | null },
+  now = new Date(),
+): boolean {
+  return (
+    rule.active &&
+    !rule.isFictitious &&
+    (!rule.validFrom || rule.validFrom <= now) &&
+    (!rule.validTo || rule.validTo >= now)
+  );
+}
+
 /**
  * Administrative draft pricing intentionally only prices explicit, persisted rules.
  * It never derives child, transport, or optional-tour prices from a base adult rule.

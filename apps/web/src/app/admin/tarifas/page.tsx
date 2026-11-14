@@ -8,7 +8,10 @@ export default async function Page() {
   return (
     <>
       <h1 className="admin-title">Tarifas de borrador</h1>
-      <p className="admin-lead">Selecciona un paquete para filtrar y editar reglas de precio inactivas.</p>
+      <p className="admin-lead">
+        Selecciona un paquete para filtrar y editar reglas de precio inactivas. Con permiso de publicación puedes
+        aprobar o desactivar cada regla.
+      </p>
       <PackagesManager session={r.session} />
     </>
   );

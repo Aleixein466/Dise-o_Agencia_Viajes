@@ -15,12 +15,14 @@ import { GalleryController } from "./catalog/gallery.controller";
 import { GalleryService } from "./catalog/gallery.service";
 import { AdminQuotesController } from "./quotes/admin-quotes.controller";
 import { AdminQuotesService } from "./quotes/admin-quotes.service";
+import { PublicModule } from "./public/public.module";
 
 @Module({})
 export class AppModule {
   static register(env: ApiEnv): DynamicModule {
     return {
       module: AppModule,
+      imports: [PublicModule.register(env)],
       controllers: [
         HealthController,
         AuthController,

@@ -2,7 +2,16 @@
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import { fetchCsrfToken, requestJson } from "@/lib/auth/client";
 import type { AdminSession } from "@/lib/auth/types";
-type Rate = { id: string; name: string; amountCents: string; currency: string; conditions: { label?: string } | null };
+type Rate = {
+  id: string;
+  name: string;
+  amountCents: string;
+  currency: string;
+  conditions: { label?: string } | null;
+  active?: boolean;
+  isFictitious?: boolean;
+  updatedAt?: string;
+};
 type History = {
   id: string;
   actorId: string | null;
@@ -32,6 +41,7 @@ export function PackagesManager({ session }: Readonly<{ session: AdminSession }>
   const [items, setItems] = useState<Pkg[]>([]);
   const [chosen, setChosen] = useState<Pkg | null>(null);
   const [csrf, setCsrf] = useState(session.csrfToken);
+  const canPublish = session.permissions.includes("catalog:publish");
   const [message, setMessage] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const [history, setHistory] = useState<{ rate: string; rows: History[] } | null>(null);
@@ -78,6 +88,33 @@ export function PackagesManager({ session }: Readonly<{ session: AdminSession }>
     if (r.ok && chosen) {
       const detail = await requestJson(`/api/v1/catalog/packages/${chosen.id}/preview`, "GET");
       if (detail.ok) setChosen(detail.data as Pkg);
+      await load();
+    }
+  }
+  async function review(rate: Rate, action: "approve" | "deactivate") {
+    if (!rate.updatedAt) return;
+    const label = rate.conditions?.label ?? rate.name;
+    if (
+      action === "approve" &&
+      !window.confirm(`¿Aprobar la tarifa "${label}" (${money(rate.amountCents)})? Quedará visible para el público.`)
+    )
+      return;
+    setPending(true);
+    const r = await requestJson(
+      `/api/v1/catalog/price-rules/${rate.id}/${action}`,
+      "POST",
+      { expectedUpdatedAt: rate.updatedAt },
+      csrf,
+    );
+    setPending(false);
+    if (r.status === 409) setMessage("Otro usuario modificó la tarifa, recarga.");
+    else if (r.ok) setMessage(action === "approve" ? "Tarifa aprobada." : "Tarifa desactivada.");
+    else setMessage(action === "approve" ? "No se pudo aprobar la tarifa." : "No se pudo desactivar la tarifa.");
+    if (r.ok || r.status === 409) {
+      if (chosen) {
+        const detail = await requestJson(`/api/v1/catalog/packages/${chosen.id}/preview`, "GET");
+        if (detail.ok) setChosen(detail.data as Pkg);
+      }
       await load();
     }
   }
@@ -224,17 +261,41 @@ export function PackagesManager({ session }: Readonly<{ session: AdminSession }>
               </li>
             ))}
           </ol>
-          <h3>Tarifas de borrador</h3>
+          <h3>Tarifas</h3>
           <ul className="admin-activity">
             {chosen.priceRules.map((r) => (
               <li key={r.id}>
                 <strong>{r.conditions?.label ?? r.name}</strong>: {money(r.amountCents)}{" "}
-                <button className="admin-link-button" onClick={() => void rate(r)}>
-                  Editar tarifa
-                </button>
+                <span className="admin-role">
+                  {r.isFictitious === false ? (r.active ? "Aprobada" : "Desactivada") : "Borrador"}
+                </span>{" "}
+                {r.isFictitious !== false && !r.active ? (
+                  <button className="admin-link-button" onClick={() => void rate(r)}>
+                    Editar tarifa
+                  </button>
+                ) : null}
                 <button className="admin-link-button" onClick={() => void showHistory(r)}>
                   Ver historial
                 </button>
+                {canPublish ? (
+                  r.active && r.isFictitious === false ? (
+                    <button
+                      className="admin-link-button"
+                      disabled={pending || !r.updatedAt}
+                      onClick={() => void review(r, "deactivate")}
+                    >
+                      Desactivar
+                    </button>
+                  ) : (
+                    <button
+                      className="admin-link-button"
+                      disabled={pending || !r.updatedAt}
+                      onClick={() => void review(r, "approve")}
+                    >
+                      Aprobar
+                    </button>
+                  )
+                ) : null}
               </li>
             ))}
           </ul>

@@ -19,7 +19,7 @@ const packageSelect = {
     select: { hotel: { select: { id: true, name: true, slug: true } } },
   },
   priceRules: {
-    where: { active: false },
+    // Approved rules stay listed so they can be audited and deactivated; amounts stay editable only while draft.
     select: {
       id: true,
       name: true,
@@ -27,6 +27,7 @@ const packageSelect = {
       currency: true,
       conditions: true,
       active: true,
+      isFictitious: true,
       updatedAt: true,
     },
   },
@@ -246,6 +247,42 @@ export class CatalogAdminService {
       orderBy: { createdAt: "desc" },
       select: { id: true, actorId: true, before: true, after: true, createdAt: true },
     });
+  }
+  private async transitionPriceRule(id: string, expectedUpdatedAt: Date, actorId: string, active: boolean) {
+    const client = await this.db.client();
+    const before = await client.priceRule.findUnique({
+      where: { id },
+      select: { id: true, active: true, isFictitious: true, updatedAt: true },
+    });
+    if (!before) throw new NotFoundException();
+    if (before.updatedAt.getTime() !== expectedUpdatedAt.getTime())
+      throw new ConflictException("La regla fue modificada por otro usuario");
+    const changed = await client.priceRule.updateMany({
+      where: { id, updatedAt: expectedUpdatedAt },
+      data: active ? { active: true, isFictitious: false } : { active: false },
+    });
+    if (changed.count !== 1) throw new ConflictException("La regla fue modificada por otro usuario");
+    const after = await client.priceRule.findUniqueOrThrow({
+      where: { id },
+      select: { id: true, active: true, isFictitious: true, updatedAt: true },
+    });
+    await client.auditLog.create({
+      data: {
+        actorId,
+        action: active ? "pricing.approved" : "pricing.deactivated",
+        entity: "price_rule",
+        entityId: id,
+        before: { active: before.active, isFictitious: before.isFictitious, updatedAt: before.updatedAt.toISOString() },
+        after: { active: after.active, isFictitious: after.isFictitious, updatedAt: after.updatedAt.toISOString() },
+      },
+    });
+    return after;
+  }
+  approvePriceRule(id: string, expectedUpdatedAt: Date, actorId: string) {
+    return this.transitionPriceRule(id, expectedUpdatedAt, actorId, true);
+  }
+  deactivatePriceRule(id: string, expectedUpdatedAt: Date, actorId: string) {
+    return this.transitionPriceRule(id, expectedUpdatedAt, actorId, false);
   }
   async tours(destinationId: string | undefined, current: number, pageSize: number) {
     const client = await this.db.client();

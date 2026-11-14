@@ -14,6 +14,9 @@ const envSchema = z.object({
   TRUST_PROXY_HOPS: z.coerce.number().int().min(0).max(5).default(0),
   // Origin checked on every cookie-authenticated mutation. It is intentionally not inferred from Host.
   APP_ORIGIN: z.url().default("http://localhost:3000"),
+  // Public quote intake remains opt-in until the data policy is approved.
+  PUBLIC_QUOTE_REQUESTS_ENABLED: z.enum(["true", "false"]).default("false"),
+  WEB_ORIGIN: z.url().default("http://localhost:3000"),
   // Required when a staff member provisions or verifies TOTP. Base64-encoded 32-byte AES-256 key.
   MFA_ENCRYPTION_KEY: z.string().min(1).optional(),
 });

@@ -47,6 +47,10 @@ enum QuoteStatus {
   DECLINED
   CLOSED
 }
+enum QuoteSource {
+  ADMIN
+  PUBLIC
+}
 /// Legacy (payments table). Superseded by PaymentStatus. DB type name kept as "PaymentStatus".
 enum LegacyPaymentStatus {
   PENDING
@@ -877,6 +881,9 @@ model Departure {
 model Quote {
   id String @id @default(uuid()) @db.Uuid
   reference String @unique @db.VarChar(24)
+  trackingCodeHash String? @unique @db.Char(64) @map("tracking_code_hash")
+  idempotencyKey String? @unique @db.Uuid @map("idempotency_key")
+  source QuoteSource @default(ADMIN)
   name String? @db.VarChar(120)
   email String? @db.VarChar(254)
   phone String? @db.VarChar(25)

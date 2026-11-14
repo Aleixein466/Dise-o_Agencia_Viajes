@@ -53,6 +53,7 @@ const rateInput = z.object({
     .transform((v) => BigInt(v))
     .refine((v) => v > 0n && v <= 999_999_999_999n),
 });
+const priceRuleTransition = z.object({ expectedUpdatedAt: z.string().datetime() });
 const packageCreate = z.object({
   destinationId: z.uuid(),
   slug: z
@@ -100,6 +101,9 @@ export class CatalogAdminController {
   ) {}
   private write(request: FastifyRequest, csrf: string | undefined, origin: string | undefined) {
     return this.auth.requirePermission(token(request, this.auth.cookieName()), csrf, origin, "catalog:write");
+  }
+  private publish(request: FastifyRequest, csrf: string | undefined, origin: string | undefined) {
+    return this.auth.requirePermission(token(request, this.auth.cookieName()), csrf, origin, "catalog:publish");
   }
   @Get("packages") async packages(@Req() request: FastifyRequest, @Query() query: unknown) {
     await this.auth.requireReadPermission(token(request, this.auth.cookieName()), "catalog:write");
@@ -180,6 +184,30 @@ export class CatalogAdminController {
   @Get("rates/:id/history") async rateHistory(@Param("id") id: string, @Req() request: FastifyRequest) {
     await this.auth.requireReadPermission(token(request, this.auth.cookieName()), "catalog:write");
     return this.catalog.rateHistory(id);
+  }
+  @Post("price-rules/:id/approve") async approvePriceRule(
+    @Param("id") id: string,
+    @Body() body: unknown,
+    @Req() request: FastifyRequest,
+    @Headers("x-csrf-token") csrf?: string,
+    @Headers("origin") origin?: string,
+  ) {
+    const parsed = priceRuleTransition.safeParse(body);
+    if (!z.uuid().safeParse(id).success || !parsed.success) throw new BadRequestException();
+    const actor = await this.publish(request, csrf, origin);
+    return this.catalog.approvePriceRule(id, new Date(parsed.data.expectedUpdatedAt), actor.user.id);
+  }
+  @Post("price-rules/:id/deactivate") async deactivatePriceRule(
+    @Param("id") id: string,
+    @Body() body: unknown,
+    @Req() request: FastifyRequest,
+    @Headers("x-csrf-token") csrf?: string,
+    @Headers("origin") origin?: string,
+  ) {
+    const parsed = priceRuleTransition.safeParse(body);
+    if (!z.uuid().safeParse(id).success || !parsed.success) throw new BadRequestException();
+    const actor = await this.publish(request, csrf, origin);
+    return this.catalog.deactivatePriceRule(id, new Date(parsed.data.expectedUpdatedAt), actor.user.id);
   }
   @Get("tours") async tours(@Req() request: FastifyRequest, @Query() query: unknown) {
     await this.auth.requireReadPermission(token(request, this.auth.cookieName()), "catalog:write");
