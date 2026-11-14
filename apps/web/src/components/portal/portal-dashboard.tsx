@@ -5,6 +5,7 @@ import { useEffect, useRef } from "react";
 import { formatCop } from "@/components/public/money";
 import { normalizePlan, planStatusLabel, type PlanView } from "@/components/admin/finance/finance-logic";
 import { asList, type QuoteSummary, type ReservationSummary } from "./portal-api";
+import { PortalPqrsSection } from "./portal-pqrs";
 import { formatDay, portalErrorMessage, quoteStatusLabel, reservationStatusLabel } from "./portal-logic";
 import { useResource, type ResourceState } from "./use-resource";
 
@@ -177,6 +178,7 @@ export function PortalDashboard() {
           )}
         </SectionState>
       </section>
+      <PortalPqrsSection />
     </div>
   );
 }

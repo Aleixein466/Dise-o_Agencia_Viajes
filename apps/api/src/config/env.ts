@@ -19,6 +19,9 @@ const envSchema = z
     APP_ORIGIN: z.url().default("http://localhost:3000"),
     // Public quote intake remains opt-in until the data policy is approved.
     PUBLIC_QUOTE_REQUESTS_ENABLED: z.enum(["true", "false"]).default("false"),
+    // PQRS intake stays closed until the agency approves its legal texts and channels.
+    PQRS_INTAKE_ENABLED: z.enum(["true", "false"]).default("false"),
+    PQRS_RESPONSE_BUSINESS_DAYS: z.coerce.number().int().min(1).max(30).default(15),
     WEB_ORIGIN: z.url().default("http://localhost:3000"),
     // Required when a staff member provisions or verifies TOTP. Base64-encoded 32-byte AES-256 key.
     MFA_ENCRYPTION_KEY: z.string().min(1).optional(),

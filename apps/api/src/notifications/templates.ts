@@ -8,6 +8,8 @@ export const NOTIFICATION_KINDS = [
   "payment.approved",
   "savings.installment_reminder",
   "pqrs.received",
+  "pqrs.answered",
+  "pqrs.status_changed",
 ] as const;
 export type NotificationKind = (typeof NOTIFICATION_KINDS)[number];
 
@@ -28,6 +30,10 @@ const STATUS_LABELS: Record<string, string> = {
   PARTIALLY_PAID: "Pago parcial",
   CONFIRMED: "Confirmada",
   COMPLETED: "Finalizada",
+  RECEIVED: "Recibida",
+  WAITING_FOR_CUSTOMER: "Esperando tu respuesta",
+  ANSWERED: "Respondida",
+  CLOSED: "Cerrada",
 };
 
 export function escapeHtml(value: string): string {
@@ -139,6 +145,21 @@ function spec(kind: NotificationKind, data: Record<string, unknown>): Spec {
       return {
         subject: `Recibimos tu PQRS${ref}`,
         lines: ["Recibimos tu solicitud. Te responderemos dentro de los plazos legales."],
+        path: "/pqrs",
+      };
+    // The answer itself is never put in the mail: the requester reads it with their reference and tracking code.
+    case "pqrs.answered":
+      return {
+        subject: `Respondimos tu PQRS${ref}`,
+        lines: [
+          "Hay una nueva respuesta de la agencia. Consúltala con tu número de radicado y tu código de seguimiento.",
+        ],
+        path: "/pqrs",
+      };
+    case "pqrs.status_changed":
+      return {
+        subject: `Actualización de tu PQRS${ref}`,
+        lines: [`El estado de tu PQRS cambió${statusLabel ? ` a: ${statusLabel}` : ""}.`],
         path: "/pqrs",
       };
   }

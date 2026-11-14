@@ -30,6 +30,8 @@ import { SandboxTestGateway } from "./payments/sandbox-gateway";
 import { FinanceController } from "./finance/finance.controller";
 import { FinanceService } from "./finance/finance.service";
 import { NotificationsService } from "./notifications/notifications.service";
+import { CustomerPqrsController, PublicPqrsController, StaffPqrsController } from "./pqrs/pqrs.controller";
+import { PqrsService } from "./pqrs/pqrs.service";
 
 @Module({})
 export class AppModule {
@@ -51,6 +53,9 @@ export class AppModule {
         PaymentsController,
         FinanceController,
         CustomerAuthController,
+        PublicPqrsController,
+        CustomerPqrsController,
+        StaffPqrsController,
       ],
       providers: [
         { provide: ENV, useValue: env },
@@ -70,6 +75,7 @@ export class AppModule {
         SandboxTestGateway,
         FinanceService,
         NotificationsService,
+        PqrsService,
       ],
     };
   }

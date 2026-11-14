@@ -1462,6 +1462,7 @@ model ConsentRecord {
   email String? @db.VarChar(254)
   quoteId String? @db.Uuid @map("quote_id")
   reservationId String? @db.Uuid @map("reservation_id")
+  pqrsTicketId String? @db.Uuid @map("pqrs_ticket_id")
   /// Form or flow that collected the consent, e.g. "quote_form".
   source String @db.VarChar(80)
   ipHash String? @db.Char(64) @map("ip_hash")
@@ -1472,10 +1473,12 @@ model ConsentRecord {
   customer Customer? @relation(fields: [customerId], references: [id], onDelete: Restrict)
   quote Quote? @relation(fields: [quoteId], references: [id], onDelete: Restrict)
   reservation Reservation? @relation(fields: [reservationId], references: [id], onDelete: Restrict)
+  pqrsTicket PqrsTicket? @relation(fields: [pqrsTicketId], references: [id], onDelete: Restrict)
   @@index([customerId, purpose, at])
   @@index([userId, purpose, at])
   @@index([email, purpose, at])
   @@index([reservationId])
+  @@index([pqrsTicketId])
   @@map("consent_records")
 }
 
@@ -1503,6 +1506,12 @@ model PqrsTicket {
   firstRespondedAt DateTime? @map("first_responded_at")
   resolvedAt DateTime? @map("resolved_at")
   closedAt DateTime? @map("closed_at")
+  /// SHA-256 of the public tracking code (the code itself is shown once and never stored).
+  trackingCodeHash String? @db.Char(64) @map("tracking_code_hash")
+  idempotencyKey String? @unique @db.Uuid @map("idempotency_key")
+  dataConsentAt DateTime? @map("data_consent_at")
+  /// Optimistic concurrency for staff status changes.
+  version Int @default(0)
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
   customer Customer? @relation(fields: [customerId], references: [id], onDelete: Restrict)
@@ -1511,6 +1520,7 @@ model PqrsTicket {
   assignedTo User? @relation("pqrs_assignee", fields: [assignedToId], references: [id], onDelete: SetNull)
   messages PqrsMessage[]
   crmNotes CrmNote[]
+  consents ConsentRecord[]
   @@index([status, createdAt])
   @@index([customerId, createdAt])
   @@index([assignedToId, status])

@@ -91,3 +91,8 @@ Leyenda: **Implementado** (código + pruebas) · **Parcial** · **Ausente** · *
 | Clean integrated worktrees        | Recoverable                    | No exclusive commits; branches retained. `e2e` was removed.                   |
 | `.claude/worktrees/api` residue   | Locally blocked                | No `.git`; Windows has open handles in `node_modules`. Do not force deletion. |
 | Skills/MCP/sessions               | Not under repository `.claude` | No user configuration or Orchestra resource was touched.                      |
+
+## PQRS y demo (2026-11-14)
+
+- PQRS completo (API + web + E2E); radicación pública apagada por defecto (`PQRS_INTAKE_ENABLED`). Festivos en el plazo: pendiente legal.
+- Demo local verificada en navegador: `scripts/start-demo.ps1 -Populate` / `scripts/stop-demo.ps1`. Ver `CODEX_HANDOFF.md`.

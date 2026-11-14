@@ -92,6 +92,7 @@ test("back-office screens are responsive and accessible", async ({ browser }) =>
   for (const [path, label] of [
     ["/admin", "admin"],
     ["/admin/solicitudes", "crm"],
+    ["/admin/pqrs", "pqrs-admin"],
     ["/admin/cotizaciones", "cotizaciones"],
     ["/admin/reservas", "reservas"],
     ["/admin/galeria", "galeria"],
