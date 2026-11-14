@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { adminStatePath } from "./e2e-state";
 
 const adminEmail = process.env.CARTAGENA_E2E_ADMIN_EMAIL;
 const adminPassword = process.env.CARTAGENA_E2E_ADMIN_PASSWORD;
@@ -28,6 +29,8 @@ test.describe("Cartagena E2E catalog", () => {
     if (!adminEmail || !adminPassword || !restrictedEmail || !restrictedPassword)
       throw new Error("Cartagena E2E credentials are required.");
     await loginAndCompleteInitialMfa(page, adminEmail!, adminPassword!, "/admin/tarifas");
+    // Later specs (public-crm) reuse this MFA-complete session; stored in %TEMP%, never in the repository.
+    await page.context().storageState({ path: adminStatePath });
     await page.getByPlaceholder("Nombre o referencia").fill("Cartagena E2E");
     const cartagenaRow = page.getByRole("row", { name: /Cartagena E2E/ });
     await expect(cartagenaRow).toBeVisible();

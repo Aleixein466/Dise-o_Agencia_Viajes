@@ -16,6 +16,8 @@ import { GalleryService } from "./catalog/gallery.service";
 import { AdminQuotesController } from "./quotes/admin-quotes.controller";
 import { AdminQuotesService } from "./quotes/admin-quotes.service";
 import { PublicModule } from "./public/public.module";
+import { CrmController } from "./crm/crm.controller";
+import { CrmService } from "./crm/crm.service";
 
 @Module({})
 export class AppModule {
@@ -31,6 +33,7 @@ export class AppModule {
         CatalogAdminController,
         GalleryController,
         AdminQuotesController,
+        CrmController,
       ],
       providers: [
         { provide: ENV, useValue: env },
@@ -42,6 +45,7 @@ export class AppModule {
         CatalogAdminService,
         GalleryService,
         AdminQuotesService,
+        CrmService,
       ],
     };
   }

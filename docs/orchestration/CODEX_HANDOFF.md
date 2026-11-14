@@ -137,3 +137,11 @@ Restaurar el CLI Docker de Windows, validar `docker compose config`, levantar ú
 - E2E (`scripts/run-cartagena-e2e.ps1`): etapas con log en `%TEMP%
 icaurte-e2e\`, timeouts por etapa, parada del árbol de procesos y verificación de puertos. Causa del bloqueo anterior: salida retenida por `| tail` y servidores huérfanos (se mataba solo `cmd.exe`). Resultado: **3/3** (Cartagena + flujo público + 360 px).
 - Siguiente: CRM (bandeja de solicitudes públicas, asignación, notas, cambio de estado) sobre `Quote`/`LeadAssignment`/`CrmNote`.
+
+## Actualización: CRM de solicitudes (2026-11-14)
+
+- Contrato `docs/orchestration/contracts/crm.md`. API `apps/api/src/crm/` (Codex): bandeja paginada con filtros (estado, asesor o `unassigned`, origen, referencia), detalle, asesores, asignación (`LeadAssignment`), estados, notas (`CrmNote` solo de agregar) y estadísticas. Mutaciones: MFA, `quotes:write`, CSRF y `expectedRevision` (409). El contacto se oculta sin `customers:read`. Auditoría `crm.*` sin PII.
+- Transiciones de estado en el dominio puro `packages/domain/src/quotes/crm-status.ts`, probadas en los 64 pares.
+- Web `/admin/solicitudes` (Sonnet): estadísticas, filtros, tabla, detalle, asignar, cambiar estado y nota. Navegación: módulo "Solicitudes".
+- E2E 4 `apps/web/e2e/public-crm.spec.ts`: solicitud pública → bandeja → asignar → nota → "Propuesta enviada"; verifica en el servidor auditoría, 409 por revisión obsoleta y 403 sin CSRF. Reutiliza la sesión MFA que guarda la spec de Cartagena en `%TEMP%`. Runner: **4/4**.
+- Siguiente: portal del cliente (consulta de solo sus solicitudes; IDOR) y reservas desde cotizaciones aceptadas (confirmación manual).
