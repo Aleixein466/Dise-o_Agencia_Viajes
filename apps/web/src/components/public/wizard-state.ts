@@ -32,6 +32,7 @@ export type WizardState = {
   optionalTourIds: string[];
   addOnIds: string[];
   travelDate: string;
+  promotionCode: string;
 };
 
 export const INITIAL_STATE: WizardState = {
@@ -46,6 +47,7 @@ export const INITIAL_STATE: WizardState = {
   optionalTourIds: [],
   addOnIds: [],
   travelDate: "",
+  promotionCode: "",
 };
 
 export function resizeChildAges(ages: string[], count: number): string[] {
@@ -92,6 +94,8 @@ export function toSelection(state: WizardState): Selection | null {
     childAges: state.childAges.map(Number),
     optionalTourIds: state.optionalTourIds,
     addOnIds: state.addOnIds,
+    ...(/^\d{4}-\d{2}-\d{2}$/.test(state.travelDate) ? { travelDate: state.travelDate } : {}),
+    ...(state.promotionCode.trim() ? { promotionCode: state.promotionCode.trim() } : {}),
   };
 }
 
@@ -142,6 +146,7 @@ export function loadState(storage: Pick<Storage, "getItem"> | undefined): Wizard
       optionalTourIds: list(parsed.optionalTourIds),
       addOnIds: list(parsed.addOnIds),
       travelDate: str(parsed.travelDate),
+      promotionCode: str(parsed.promotionCode).slice(0, 40),
     };
   } catch {
     return null;

@@ -46,6 +46,10 @@ export type Selection = {
   childAges: number[];
   optionalTourIds: string[];
   addOnIds: string[];
+  /** YYYY-MM-DD; seasonal rates need it. */
+  travelDate?: string;
+  /** Entered by the customer; an unknown code only produces a notice. */
+  promotionCode?: string;
 };
 
 export type PreviewLine = { label: string; quantity: number; unitAmountCents: Money; totalCents: Money };
@@ -55,6 +59,9 @@ export type QuotePreview = {
   totalCents: Money;
   lines: PreviewLine[];
   reasons: string[];
+  travelDateRequired?: boolean;
+  notices?: string[];
+  promotion?: { code: string; name: string; discountCents: Money } | null;
 };
 
 export type Contact = { name: string; email: string; phone: string };

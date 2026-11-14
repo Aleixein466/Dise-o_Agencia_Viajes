@@ -11,5 +11,19 @@ import { NotificationsService } from "../notifications/notifications.service";
 
 @Module({})
 export class PublicModule {
-  static register(env: ApiEnv): DynamicModule { return { module: PublicModule, controllers: [PublicCatalogController, PublicQuotesController], providers: [{ provide: ENV, useValue: env }, DbService, PublicCatalogService, PublicQuotesService, PublicRateLimiter, MailAdapter, NotificationsService] }; }
+  static register(env: ApiEnv): DynamicModule {
+    return {
+      module: PublicModule,
+      controllers: [PublicCatalogController, PublicQuotesController],
+      providers: [
+        { provide: ENV, useValue: env },
+        DbService,
+        PublicCatalogService,
+        PublicQuotesService,
+        PublicRateLimiter,
+        MailAdapter,
+        NotificationsService,
+      ],
+    };
+  }
 }

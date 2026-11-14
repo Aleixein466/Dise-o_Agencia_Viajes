@@ -89,6 +89,47 @@ function Choice({
   );
 }
 
+/** Optional customer-entered code; the server decides whether it applies and explains when it does not. */
+function PromotionCodeField({
+  applied,
+  notices,
+  promotionName,
+  onApply,
+}: Readonly<{ applied: string; notices: string[]; promotionName: string | null; onApply: (code: string) => void }>) {
+  const [draft, setDraft] = useState(applied);
+  const apply = () => onApply(draft.trim().slice(0, 40));
+  return (
+    <div className="wz-promo">
+      <div className="wz-promo-row">
+        <label className="field">
+          Código promocional (opcional)
+          <input
+            name="promotionCode"
+            value={draft}
+            maxLength={40}
+            autoComplete="off"
+            spellCheck={false}
+            onChange={(event) => setDraft(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") {
+                event.preventDefault();
+                apply();
+              }
+            }}
+            aria-describedby="wz-promo-status"
+          />
+        </label>
+        <button type="button" className="btn btn-text" onClick={apply}>
+          Aplicar
+        </button>
+      </div>
+      <p id="wz-promo-status" className="wz-note" role="status">
+        {promotionName ? `Promoción aplicada: ${promotionName}.` : notices.join(" ")}
+      </p>
+    </div>
+  );
+}
+
 function Notice({ error, onRetry }: Readonly<{ error: string; onRetry?: () => void }>) {
   return (
     <div className="form-status error" role="alert">
@@ -111,6 +152,7 @@ export function TripWizard() {
   const [builderTry, setBuilderTry] = useState(0);
   const [previewLoad, setPreviewLoad] = useState<Loaded<QuotePreview> | null>(null);
   const [previewTry, setPreviewTry] = useState(0);
+  const [seasonal, setSeasonal] = useState(false);
   const [contact, setContact] = useState<ContactForm>(EMPTY_CONTACT);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [blocker, setBlocker] = useState<string | null>(null);
@@ -188,6 +230,7 @@ export function TripWizard() {
       signal: controller.signal,
     }).then((response) => {
       if (controller.signal.aborted) return;
+      if (response.ok && response.data.travelDateRequired) setSeasonal(true);
       setPreviewLoad(
         response.ok
           ? { id: selectionKey, status: "ok", data: response.data }
@@ -543,8 +586,9 @@ export function TripWizard() {
         ));
       case "precio": {
         if (!selection) return <p className="wz-note">Completa los pasos anteriores para ver el valor estimado.</p>;
+        let body: ReactNode;
         if (previewEntry?.status === "error")
-          return (
+          body = (
             <Notice
               error={previewEntry.message}
               onRetry={() => {
@@ -553,13 +597,41 @@ export function TripWizard() {
               }}
             />
           );
-        if (!preview)
-          return (
+        else if (!preview)
+          body = (
             <p className="wz-note" role="status">
               Calculando el valor estimado…
             </p>
           );
-        return <PriceSummary preview={preview} />;
+        else body = <PriceSummary preview={preview} />;
+        return (
+          <>
+            {seasonal || preview?.travelDateRequired ? (
+              <div className="wz-season">
+                <p className="wz-note">
+                  La tarifa de este viaje depende de la temporada. Indica tu fecha tentativa para calcular el valor.
+                </p>
+                <label className="field">
+                  Fecha tentativa de viaje
+                  <input
+                    name="previewTravelDate"
+                    type="date"
+                    min={minDate}
+                    value={state.travelDate}
+                    onChange={(event) => patch({ travelDate: event.target.value })}
+                  />
+                </label>
+              </div>
+            ) : null}
+            {body}
+            <PromotionCodeField
+              applied={state.promotionCode}
+              notices={preview?.notices ?? []}
+              promotionName={preview?.promotion?.name ?? null}
+              onApply={(code) => patch({ promotionCode: code })}
+            />
+          </>
+        );
       }
       case "contacto":
         return builderGate((data) => (

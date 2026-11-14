@@ -22,6 +22,17 @@ describe("child age inputs", () => {
     expect(toSelection({ ...INITIAL_STATE, packageId: "p", childAges: ["3", ""] })).toBeNull();
     expect(toSelection({ ...INITIAL_STATE, packageId: "p", childAges: ["3", "0"] })?.childAges).toEqual([3, 0]);
   });
+  it("sends the travel date and promotion code only when present", () => {
+    const empty = toSelection({ ...INITIAL_STATE, packageId: "p", travelDate: "2026-1", promotionCode: "  " });
+    expect(empty).not.toHaveProperty("travelDate");
+    expect(empty).not.toHaveProperty("promotionCode");
+    expect(
+      toSelection({ ...INITIAL_STATE, packageId: "p", travelDate: "2026-12-20", promotionCode: " verano " }),
+    ).toMatchObject({
+      travelDate: "2026-12-20",
+      promotionCode: "verano",
+    });
+  });
 });
 
 describe("price summary", () => {

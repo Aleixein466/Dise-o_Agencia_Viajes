@@ -40,3 +40,11 @@ Body `{ reference, trackingCode }`. Rate limit. Comparación en tiempo constante
 ## POST /catalog/price-rules/:id/approve · POST /catalog/price-rules/:id/deactivate (admin)
 
 MFA + `catalog:publish` + CSRF + Origin. Body `{ expectedUpdatedAt: ISO }`; si está desactualizado → `409`. `approve` pone `active=true, isFictitious=false`; `deactivate` pone `active=false`. AuditLog `pricing.approved` / `pricing.deactivated` con actor y valores antes/después. `200 { id, active, isFictitious, updatedAt }`.
+
+## Reglas comerciales (2026-11-14)
+
+- Entradas nuevas en `quote-preview` y `quote-requests`: `travelDate?` (AAAA-MM-DD, define la temporada) y `promotionCode?`.
+  `optionalTourIds` y `addOnIds` no admiten repetidos (400).
+- Respuesta de preview: `travelDateRequired`, `notices` (avisos no bloqueantes; un código inexistente, agotado o fuera
+  de alcance recibe el mismo texto genérico) y `promotion` (línea negativa cuando aplica).
+- Reglas, códigos de motivo y redención atómica: `contracts/pricing-rules.md`.

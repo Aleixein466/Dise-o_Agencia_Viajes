@@ -253,3 +253,20 @@
     order: -1;
   }
 }
+.wz-season,
+.wz-promo {
+  margin-top: 16px;
+}
+.wz-promo-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 8px;
+  align-items: flex-end;
+}
+.wz-promo-row .field {
+  flex: 1 1 200px;
+  min-width: 0;
+}
+.wz-promo-row input {
+  text-transform: uppercase;
+}
