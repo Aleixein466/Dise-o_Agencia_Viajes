@@ -41,6 +41,9 @@ type Principal = {
   session: { id: string; mfaVerifiedAt: Date | null };
 };
 
+/** Minimum duration of a login-code request (account enumeration by timing). */
+export const CUSTOMER_CODE_RESPONSE_FLOOR_MS = 750;
+
 @Injectable()
 export class AuthService {
   constructor(
@@ -209,6 +212,16 @@ export class AuthService {
     const email = emailInput.trim().toLowerCase();
     this.limiter?.check(ip, "customer-code-ip", 10, 15 * 60_000);
     this.limiter?.check(email, "customer-code-email", 5, 15 * 60_000);
+    // Known and unknown emails take the same minimum time, so response timing does not reveal accounts.
+    const started = Date.now();
+    try {
+      await this.issueCustomerCode(client, email);
+    } finally {
+      const wait = CUSTOMER_CODE_RESPONSE_FLOOR_MS - (Date.now() - started);
+      if (wait > 0) await new Promise((resolve) => setTimeout(resolve, wait));
+    }
+  }
+  private async issueCustomerCode(client: Awaited<ReturnType<DbService["client"]>>, email: string): Promise<void> {
     const exists = await client.customer.findFirst({ where: { email, deletedAt: null }, select: { id: true } });
     if (!exists) return;
     const code = String(randomInt(10_000_000, 100_000_000));
@@ -255,7 +268,13 @@ export class AuthService {
     });
     if (
       !row ||
-      (await client.oneTimeToken.updateMany({ where: { id: row.id, usedAt: null }, data: { usedAt: now } })).count !== 1
+      // Expiry is re-checked in the consuming update: a code that expires between lookup and use is refused.
+      (
+        await client.oneTimeToken.updateMany({
+          where: { id: row.id, usedAt: null, expiresAt: { gt: new Date() } },
+          data: { usedAt: now },
+        })
+      ).count !== 1
     )
       throw new BadRequestException();
     let user = await client.user.findUnique({ where: { email }, include: { roles: true } });

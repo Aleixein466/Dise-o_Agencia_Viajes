@@ -1171,6 +1171,8 @@ model ManualAbono {
   bankReference String? @db.VarChar(120) @map("bank_reference")
   paidAt DateTime @map("paid_at")
   receiptMediaId String @db.Uuid @map("receipt_media_id")
+  /// SHA-256 of the uploaded receipt bytes; unique among non-rejected abonos (partial index in SQL).
+  receiptSha256 String? @db.Char(64) @map("receipt_sha256")
   status ManualAbonoStatus @default(SUBMITTED)
   registeredById String @db.Uuid @map("registered_by_id")
   approvedById String? @db.Uuid @map("approved_by_id")

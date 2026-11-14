@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import { parseEnv } from "../config/env";
 import { MailAdapter } from "../notifications/mail";
 import { PublicRateLimiter } from "../public/public-rate-limiter";
-import { AuthService } from "./auth.service";
+import { AuthService, CUSTOMER_CODE_RESPONSE_FLOOR_MS } from "./auth.service";
 
 const env = parseEnv({ CUSTOMER_CODE_SECRET: "test-secret-test-secret-test-secret-00" });
 
@@ -82,5 +82,29 @@ describe("customer code secret", () => {
   it("refuses the development default in production", () => {
     expect(() => parseEnv({ NODE_ENV: "production" })).toThrow(/CUSTOMER_CODE_SECRET/);
     expect(parseEnv({ NODE_ENV: "production", CUSTOMER_CODE_SECRET: "x".repeat(32) }).NODE_ENV).toBe("production");
+  });
+});
+
+describe("Codex audit fixes (OTP)", () => {
+  it("unknown and known emails share the same minimum response time", async () => {
+    const client = { customer: { findFirst: vi.fn().mockResolvedValue(null) } };
+    const service = new AuthService({ client: async () => client } as never, env, undefined, new PublicRateLimiter());
+    const started = Date.now();
+    await service.requestCustomerCode("nadie2@example.test", "2.2.2.2");
+    expect(Date.now() - started).toBeGreaterThanOrEqual(CUSTOMER_CODE_RESPONSE_FLOOR_MS - 20);
+  });
+
+  it("re-checks expiry when consuming the code", async () => {
+    const updateMany = vi.fn().mockResolvedValue({ count: 0 });
+    const client = { oneTimeToken: { findFirst: vi.fn().mockResolvedValue({ id: "t1" }), updateMany } };
+    const service = new AuthService({ client: async () => client } as never, env, undefined, new PublicRateLimiter());
+    await expect(service.verifyCustomerCode("late@example.test", "12345678", "2.2.2.3")).rejects.toBeInstanceOf(
+      BadRequestException,
+    );
+    expect(updateMany.mock.calls[0][0].where).toMatchObject({
+      id: "t1",
+      usedAt: null,
+      expiresAt: { gt: expect.any(Date) },
+    });
   });
 });

@@ -320,3 +320,46 @@ describe("adjustments and savings", () => {
     expect(findFirst.mock.calls[0][0].where).toEqual({ id: resId, customer: { userId: registrar, deletedAt: null } });
   });
 });
+
+describe("Codex audit fixes (finance)", () => {
+  it("a concurrent duplicate receipt hits the partial unique index and is reported as a duplicate receipt", async () => {
+    const { client } = registerClient({
+      createError: Object.assign(new Error("dup"), { code: "P2002", meta: { target: ["receipt_sha256"] } }),
+    });
+    await expect(service(client).registerAbono(registrar, input, pdf("race body"))).rejects.toThrow(
+      "Este comprobante ya fue registrado",
+    );
+  });
+
+  it("a positive adjustment that funds a savings plan completes it", async () => {
+    const planId = "00000000-0000-4000-8000-0000000000cc";
+    const tx = {
+      $queryRaw: vi.fn(),
+      savingsPlan: {
+        findUnique: vi.fn().mockResolvedValue({
+          id: planId,
+          name: "P",
+          status: "ACTIVE",
+          goalCents: 100n,
+          customerId: "c1",
+          currency: "COP",
+        }),
+        findUniqueOrThrow: vi.fn().mockResolvedValue({ goalCents: 100n, status: "ACTIVE" }),
+        update: vi.fn(),
+      },
+      ledgerEntry: {
+        aggregate: vi
+          .fn()
+          .mockResolvedValueOnce({ _sum: { amountCents: 60n } })
+          .mockResolvedValue({ _sum: { amountCents: 100n } }),
+        create: vi.fn().mockResolvedValue({ id: "l1" }),
+      },
+      auditLog: { create: vi.fn() },
+    };
+    const client = { $transaction: vi.fn((work: (t: typeof tx) => Promise<unknown>) => work(tx)) };
+    await service(client).adjust(approver, { savingsPlanId: planId }, 40n, "Bono de fidelidad aprobado");
+    expect(tx.savingsPlan.update).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ status: "COMPLETED" }) }),
+    );
+  });
+});

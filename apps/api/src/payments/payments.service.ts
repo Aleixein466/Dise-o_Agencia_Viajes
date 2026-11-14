@@ -325,6 +325,10 @@ export class PaymentsService {
     }
 
     await client.$transaction(async (tx) => {
+      // Lock the reservation before touching money, so a concurrent manual approval (which takes the same lock)
+      // always sees this payment's ledger entry and cannot approve against a stale balance.
+      if (payment.reservationId)
+        await tx.$queryRaw`SELECT id FROM reservations WHERE id = ${payment.reservationId}::uuid FOR UPDATE`;
       const now = new Date();
       const next = result.payment.status;
       const updated = await tx.payment.updateMany({

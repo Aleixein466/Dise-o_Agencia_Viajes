@@ -106,7 +106,7 @@ export class FinanceService {
     if (!target.payable) throw new ConflictException("El destino no admite abonos en su estado actual");
     if (input.amountCents > target.balance) throw new ConflictException("El valor supera el saldo pendiente");
     const duplicateReceipt = await client.manualAbono.findFirst({
-      where: { status: { not: "REJECTED" }, receipt: { sha256: receipt.sha256 } },
+      where: { status: { not: "REJECTED" }, receiptSha256: receipt.sha256 },
       select: { id: true },
     });
     if (duplicateReceipt) throw new ConflictException("Este comprobante ya fue registrado");
@@ -139,6 +139,7 @@ export class FinanceService {
             bankReference,
             paidAt: new Date(`${input.paidAt}T12:00:00.000Z`),
             receiptMediaId: asset.id,
+            receiptSha256: receipt.sha256,
             registeredById: actorId,
           },
           select: { id: true, status: true },
@@ -161,7 +162,13 @@ export class FinanceService {
       });
     } catch (error) {
       await removeReceipt(objectKey);
-      if (isUnique(error)) throw new ConflictException("Esta referencia bancaria ya fue registrada para ese método");
+      if (isUnique(error))
+        throw new ConflictException(
+          /receipt_sha256/.test(String(record(error).message ?? "")) ||
+            /receipt_sha256/.test(JSON.stringify(record(error).meta ?? {}))
+            ? "Este comprobante ya fue registrado"
+            : "Esta referencia bancaria ya fue registrada para ese método",
+        );
       throw error;
     }
   }
@@ -398,6 +405,8 @@ export class FinanceService {
           after: { ledgerEntryId: entry.id, amountCents: amountCents.toString() },
         },
       });
+      if (target.savingsPlanId && amountCents > 0n)
+        await this.completeIfFunded(tx, target.savingsPlanId, actorId, new Date());
       return { id: entry.id, paidCents: (state.paid + amountCents).toString() };
     });
   }

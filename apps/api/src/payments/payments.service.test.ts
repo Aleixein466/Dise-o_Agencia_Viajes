@@ -50,15 +50,13 @@ function webhookClient(
   const client = {
     paymentWebhookEvent: { create: vi.fn().mockResolvedValue({ id: "evt1" }), update: vi.fn() },
     sandboxTestTransaction: {
-      findUnique: vi
-        .fn()
-        .mockResolvedValue({
-          id: txId,
-          paymentReference: payment.reference,
-          amountCents: 3000n,
-          currency: "COP",
-          status: lookupStatus,
-        }),
+      findUnique: vi.fn().mockResolvedValue({
+        id: txId,
+        paymentReference: payment.reference,
+        amountCents: 3000n,
+        currency: "COP",
+        status: lookupStatus,
+      }),
     },
     payment: { findUnique: vi.fn().mockResolvedValue(payment) },
     $transaction: vi.fn((work: (t: typeof tx) => Promise<unknown>) => work(tx)),
@@ -257,15 +255,13 @@ describe("staff CONFIRM uses verified ledger money", () => {
   function confirmClient(paid: bigint, deposit: bigint) {
     return {
       reservation: {
-        findUnique: vi
-          .fn()
-          .mockResolvedValue({
-            status: "PARTIALLY_PAID",
-            version: 5,
-            totalCents: 10000n,
-            requiredDepositCents: deposit,
-            availabilityValidatedAt: new Date(),
-          }),
+        findUnique: vi.fn().mockResolvedValue({
+          status: "PARTIALLY_PAID",
+          version: 5,
+          totalCents: 10000n,
+          requiredDepositCents: deposit,
+          availabilityValidatedAt: new Date(),
+        }),
       },
       ledgerEntry: { aggregate: vi.fn().mockResolvedValue({ _sum: { amountCents: paid } }) },
       $transaction: vi.fn().mockRejectedValue(new Error("reached write")),
@@ -381,5 +377,15 @@ describe("closing a reservation voids pending payment intents", () => {
       where: { reservationId: resId, status: "PENDING" },
       data: expect.objectContaining({ status: "VOIDED" }),
     });
+  });
+});
+
+describe("Codex audit fixes (webhook)", () => {
+  it("locks the reservation before updating the payment or writing the ledger", async () => {
+    const { client, tx } = webhookClient("APPROVED");
+    await service(client).handleEvent(event("APPROVED"));
+    const lockOrder = tx.$queryRaw.mock.invocationCallOrder[0];
+    expect(lockOrder).toBeLessThan(tx.payment.updateMany.mock.invocationCallOrder[0]);
+    expect(lockOrder).toBeLessThan(tx.ledgerEntry.create.mock.invocationCallOrder[0]);
   });
 });
