@@ -25,9 +25,13 @@ const list = z.object({
   pageSize: z.coerce.number().int().min(1).max(50).default(20),
 });
 const event = z.object({
-  event: z.enum(["START_VALIDATION", "APPROVE_FOR_PAYMENT", "REJECT", "CANCEL"]),
+  event: z.enum(["START_VALIDATION", "APPROVE_FOR_PAYMENT", "CONFIRM", "REJECT", "CANCEL"]),
   expectedVersion: z.number().int().min(0),
   reason: z.string().trim().max(500).optional(),
+  requiredDepositCents: z
+    .string()
+    .regex(/^\d{1,15}$/)
+    .optional(),
 });
 const note = z.object({ body: z.string().trim().min(1).max(2000) });
 const assign = z.object({ advisorId: z.uuid(), expectedVersion: z.number().int().min(0) });
@@ -91,6 +95,7 @@ export class ReservationsController {
       input.event,
       input.expectedVersion,
       input.reason,
+      input.requiredDepositCents === undefined ? undefined : BigInt(input.requiredDepositCents),
     );
     return this.reservations.adminDetail(parse(uuid, reservationId), principal.permissions.includes("customers:read"));
   }

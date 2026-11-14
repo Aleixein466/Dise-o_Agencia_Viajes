@@ -24,6 +24,9 @@ import { PortalController } from "./portal/portal.controller";
 import { ReservationsController } from "./reservations/reservations.controller";
 import { ReservationsService } from "./reservations/reservations.service";
 import { CustomerAuthController } from "./customer-auth/customer-auth.controller";
+import { PaymentsController } from "./payments/payments.controller";
+import { PaymentsService } from "./payments/payments.service";
+import { SandboxTestGateway } from "./payments/sandbox-gateway";
 
 @Module({})
 export class AppModule {
@@ -42,6 +45,7 @@ export class AppModule {
         CrmController,
         PortalController,
         ReservationsController,
+        PaymentsController,
         CustomerAuthController,
       ],
       providers: [
@@ -58,6 +62,8 @@ export class AppModule {
         MailAdapter,
         PublicRateLimiter,
         ReservationsService,
+        PaymentsService,
+        SandboxTestGateway,
       ],
     };
   }

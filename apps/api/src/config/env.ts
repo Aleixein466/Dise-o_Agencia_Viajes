@@ -26,9 +26,15 @@ const envSchema = z
     CUSTOMER_CODE_SECRET: z.string().min(32).default(DEV_CUSTOMER_CODE_SECRET),
     MAIL_ADAPTER: z.enum(["disabled", "file"]).default("disabled"),
     MAIL_SINK_DIR: z.string().min(1).default(".mail-sink"),
+    // Online payments. "sandbox_test" is a simulated provider (no money moves) and is refused in production.
+    PAYMENT_ADAPTER: z.enum(["disabled", "sandbox_test"]).default("disabled"),
+    SANDBOX_PAYMENT_EVENTS_SECRET: z.string().min(32).default("development-sandbox-events-secret-not-for-production"),
   })
   .refine((env) => env.NODE_ENV !== "production" || env.CUSTOMER_CODE_SECRET !== DEV_CUSTOMER_CODE_SECRET, {
     path: ["CUSTOMER_CODE_SECRET"],
+  })
+  .refine((env) => env.NODE_ENV !== "production" || env.PAYMENT_ADAPTER !== "sandbox_test", {
+    path: ["PAYMENT_ADAPTER"],
   });
 
 export type ApiEnv = z.infer<typeof envSchema>;

@@ -212,6 +212,8 @@ enum PaymentStatus {
 enum PaymentProvider {
   WOMPI
   MANUAL
+  /// Test-only simulated provider (no money moves). Refused in production.
+  SANDBOX_TEST
 }
 enum PaymentMethod {
   CARD
@@ -1287,6 +1289,17 @@ model SavingsMovement {
   createdAt DateTime @default(now()) @map("created_at")
   savingsPlan SavingsPlan @relation(fields: [savingsPlanId], references: [id])
   @@map("savings_movements")
+}
+
+/// The simulated provider's own record of a test transaction, looked up server-side like a real gateway.
+model SandboxTestTransaction {
+  id String @id @default(uuid()) @db.Uuid
+  paymentReference String @unique @db.VarChar(40) @map("payment_reference")
+  amountCents BigInt @map("amount_cents")
+  currency String @default("COP") @db.VarChar(3)
+  status PaymentStatus
+  createdAt DateTime @default(now()) @map("created_at")
+  @@map("sandbox_test_transactions")
 }
 
 // ---------------------------------------------------------------------------

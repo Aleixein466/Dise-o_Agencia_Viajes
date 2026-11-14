@@ -123,9 +123,10 @@ describe("ReservationsService — staff transitions", () => {
     requiredDepositCents: 0n,
     availabilityValidatedAt: null,
   };
+  const ledgerEntry = { aggregate: vi.fn().mockResolvedValue({ _sum: { amountCents: null } }) };
 
   it("rejects a stale version with 409 before any write", async () => {
-    const client = { reservation: { findUnique: vi.fn().mockResolvedValue(row) }, $transaction: vi.fn() };
+    const client = { reservation: { findUnique: vi.fn().mockResolvedValue(row) }, ledgerEntry, $transaction: vi.fn() };
     await expect(
       service(client).staffEvent(resId, { id: staff, role: "ADMIN" }, "APPROVE_FOR_PAYMENT", 3),
     ).rejects.toBeInstanceOf(ConflictException);
@@ -133,7 +134,7 @@ describe("ReservationsService — staff transitions", () => {
   });
 
   it("only staff may confirm availability; a customer is forbidden", async () => {
-    const client = { reservation: { findUnique: vi.fn().mockResolvedValue(row) }, $transaction: vi.fn() };
+    const client = { reservation: { findUnique: vi.fn().mockResolvedValue(row) }, ledgerEntry, $transaction: vi.fn() };
     await expect(
       service(client).staffEvent(resId, { id: userA, role: "CUSTOMER" }, "APPROVE_FOR_PAYMENT", 4),
     ).rejects.toBeInstanceOf(ForbiddenException);
@@ -147,6 +148,7 @@ describe("ReservationsService — staff transitions", () => {
     };
     const client = {
       reservation: { findUnique: vi.fn().mockResolvedValueOnce(row).mockResolvedValue(null) },
+      ledgerEntry,
       $transaction: vi.fn((work: (t: typeof tx) => Promise<unknown>) => work(tx)),
     };
     await expect(
@@ -160,7 +162,7 @@ describe("ReservationsService — staff transitions", () => {
   });
 
   it("rejects an invalid transition (CONFIRM is not offered; START_VALIDATION from PENDING_VALIDATION) with 409", async () => {
-    const client = { reservation: { findUnique: vi.fn().mockResolvedValue(row) }, $transaction: vi.fn() };
+    const client = { reservation: { findUnique: vi.fn().mockResolvedValue(row) }, ledgerEntry, $transaction: vi.fn() };
     await expect(
       service(client).staffEvent(resId, { id: staff, role: "ADMIN" }, "START_VALIDATION", 4),
     ).rejects.toBeInstanceOf(ConflictException);

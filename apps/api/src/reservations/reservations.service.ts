@@ -6,9 +6,12 @@ import {
   Inject,
   Injectable,
   NotFoundException,
+  Optional,
 } from "@nestjs/common";
 import { transitionReservation, type ReservationEventType, type Role } from "@ricaurte/domain";
 import { DbService } from "../db/db.service";
+import { paidCentsOf, paymentSelect, paymentSummary } from "../payments/ledger";
+import { SandboxTestGateway } from "../payments/sandbox-gateway";
 
 export type TravelerInput = { fullName: string; category: "ADULT" | "CHILD" | "INFANT"; ageYears?: number };
 export type ReservationRequest = { startsOn: string; travelers: TravelerInput[]; notes?: string };
@@ -31,7 +34,10 @@ const day = 24 * 60 * 60 * 1000;
 
 @Injectable()
 export class ReservationsService {
-  constructor(@Inject(DbService) private readonly db: DbService) {}
+  constructor(
+    @Inject(DbService) private readonly db: DbService,
+    @Optional() @Inject(SandboxTestGateway) private readonly gateway?: SandboxTestGateway,
+  ) {}
 
   // ---------- Customer portal (ownership: customer.userId === principal) ----------
 
@@ -296,6 +302,8 @@ export class ReservationsService {
         ...this.customerSelect(),
         version: true,
         priceSnapshot: true,
+        requiredDepositCents: true,
+        payments: { orderBy: { createdAt: "desc" }, take: 20, select: paymentSelect },
         travelers: { orderBy: { createdAt: "asc" }, select: { fullName: true, category: true, ageYears: true } },
         statusHistory: { orderBy: { at: "asc" }, select: { toStatus: true, at: true } },
       },
@@ -307,6 +315,15 @@ export class ReservationsService {
       travelers: row.travelers,
       history: row.statusHistory,
       conditions: conditionsOf(row.priceSnapshot),
+      ...paymentSummary({
+        status: row.status,
+        totalCents: row.totalCents,
+        requiredDepositCents: row.requiredDepositCents,
+        paidCents: await paidCentsOf(client, row.id),
+        payments: row.payments,
+        adapterEnabled: this.gateway?.enabled() ?? false,
+        checkoutUrl: this.gateway ? (reference) => this.gateway!.checkoutUrl(reference) : undefined,
+      }),
     };
   }
 
@@ -374,9 +391,10 @@ export class ReservationsService {
     event: ReservationEventType,
     expectedVersion: number,
     reason?: string,
+    requiredDepositCents?: bigint,
   ) {
     const client = await this.db.client();
-    await this.applyEvent(client, id, actor, event, expectedVersion, reason);
+    await this.applyEvent(client, id, actor, event, expectedVersion, reason, requiredDepositCents);
     return this.adminDetail(id, false);
   }
 
@@ -387,6 +405,7 @@ export class ReservationsService {
     event: ReservationEventType,
     expectedVersion: number,
     reason?: string,
+    requiredDepositCents?: bigint,
   ) {
     const row = await client.reservation.findUnique({
       where: { id },
@@ -400,15 +419,24 @@ export class ReservationsService {
     });
     if (!row) throw new NotFoundException();
     if (row.version !== expectedVersion) throw new ConflictException("La reserva cambió; recarga la información");
+    // The deposit is a staff decision taken when availability is validated; it is never invented.
+    if (requiredDepositCents !== undefined) {
+      if (event !== "APPROVE_FOR_PAYMENT")
+        throw new BadRequestException("El abono mínimo solo se fija al confirmar disponibilidad");
+      if (requiredDepositCents < 0n || requiredDepositCents > row.totalCents)
+        throw new BadRequestException("El abono mínimo debe estar entre 0 y el total");
+    }
+    const deposit = requiredDepositCents ?? row.requiredDepositCents;
+    const paidCents = await paidCentsOf(client, id);
     const now = new Date();
     const outcome = transitionReservation(
       row.status,
       { type: event, actor, reason },
       {
         totalCents: Number(row.totalCents),
-        // Verified money only; the payments milestone will supply it. Until then nothing can reach CONFIRMED.
-        paidCents: 0,
-        requiredDepositCents: Number(row.requiredDepositCents),
+        // Verified money only: the append-only ledger.
+        paidCents: Number(paidCents),
+        requiredDepositCents: Number(deposit),
         availabilityValidated: event === "APPROVE_FOR_PAYMENT" || row.availabilityValidatedAt !== null,
       },
       now,
@@ -424,10 +452,18 @@ export class ReservationsService {
         data: {
           status: outcome.next,
           version: { increment: 1 },
-          ...(event === "APPROVE_FOR_PAYMENT" ? { availabilityValidatedAt: now, validatedById: actor.id } : {}),
+          ...(event === "APPROVE_FOR_PAYMENT"
+            ? { availabilityValidatedAt: now, validatedById: actor.id, requiredDepositCents: deposit }
+            : {}),
         },
       });
       if (changed.count !== 1) throw new ConflictException("La reserva cambió; recarga la información");
+      // A closed reservation cannot take money: void its pending (uncaptured) payment intents.
+      if (outcome.next === "CANCELLED" || outcome.next === "REJECTED" || outcome.next === "REFUND_PENDING")
+        await tx.payment.updateMany({
+          where: { reservationId: id, status: "PENDING" },
+          data: { status: "VOIDED", statusReason: "Reserva cerrada antes del pago" },
+        });
       if (outcome.changed)
         await tx.reservationStatusHistory.create({
           data: {
@@ -525,6 +561,8 @@ export class ReservationsService {
         currency: true,
         priceSnapshot: true,
         availabilityValidatedAt: true,
+        requiredDepositCents: true,
+        payments: { orderBy: { createdAt: "desc" }, take: 50, select: paymentSelect },
         package: { select: { title: true } },
         destination: { select: { name: true } },
         customer: { select: { name: true, email: true, phone: true } },
@@ -561,6 +599,14 @@ export class ReservationsService {
       assignedAdvisor: r.assignedAdvisor,
       history: r.statusHistory,
       notes: r.crmNotes,
+      ...paymentSummary({
+        status: r.status,
+        totalCents: r.totalCents,
+        requiredDepositCents: r.requiredDepositCents,
+        paidCents: await paidCentsOf(client, r.id),
+        payments: r.payments,
+        adapterEnabled: this.gateway?.enabled() ?? false,
+      }),
     };
   }
 
