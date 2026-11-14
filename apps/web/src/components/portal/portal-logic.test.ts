@@ -5,6 +5,10 @@ import {
   buildReservationBody,
   buildTravelerRows,
   canCancelReservation,
+  defaultPaymentPesos,
+  paymentStatusLabel,
+  pesosToCents,
+  validatePaymentAmount,
   hasFormErrors,
   minStartDate,
   quoteStatusLabel,
@@ -113,5 +117,32 @@ describe("cancel rules", () => {
     expect(validateCancelReason("  ab ")).not.toBeNull();
     expect(validateCancelReason("abc")).toBeNull();
     expect(validateCancelReason("x".repeat(501))).not.toBeNull();
+  });
+});
+
+describe("payments", () => {
+  it("labels payment statuses", () => {
+    expect(paymentStatusLabel("PENDING")).toBe("En verificación");
+    expect(paymentStatusLabel("APPROVED")).toBe("Aprobado");
+    expect(paymentStatusLabel("X")).toBe("Estado en revisión");
+  });
+  it("converts pesos to cents", () => {
+    expect(pesosToCents("300.000")).toBe("30000000");
+    expect(pesosToCents("12a")).toBeNull();
+    expect(pesosToCents("")).toBeNull();
+  });
+  it("validates amount against balance", () => {
+    expect(validatePaymentAmount("0", "100000").error).toMatch(/al menos/);
+    expect(validatePaymentAmount("1001", "100000").error).toMatch(/superar/);
+    expect(validatePaymentAmount("1000", "100000")).toEqual({ cents: "100000", error: null });
+  });
+  it("defaults to remaining deposit or balance", () => {
+    expect(defaultPaymentPesos({ paidCents: "0", balanceCents: "100000000", requiredDepositCents: "30000000" })).toBe(
+      "300000",
+    );
+    expect(
+      defaultPaymentPesos({ paidCents: "30000000", balanceCents: "70000000", requiredDepositCents: "30000000" }),
+    ).toBe("700000");
+    expect(defaultPaymentPesos({ paidCents: "0", balanceCents: "50000", requiredDepositCents: null })).toBe("500");
   });
 });

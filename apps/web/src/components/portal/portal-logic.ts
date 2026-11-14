@@ -179,3 +179,68 @@ export function formatDateTime(value: string | null | undefined): string | null 
   const date = new Date(value);
   return Number.isNaN(date.getTime()) ? null : dateTimeFormat.format(date);
 }
+
+export const PAYMENT_STATUS_LABELS: Record<string, string> = {
+  PENDING: "En verificación",
+  APPROVED: "Aprobado",
+  DECLINED: "Rechazado",
+  VOIDED: "Anulado",
+  ERROR: "Error",
+  REFUNDED: "Reembolsado",
+};
+
+export function paymentStatusLabel(status: string): string {
+  return PAYMENT_STATUS_LABELS[status] ?? "Estado en revisión";
+}
+
+export type PaymentPending = { reference: string; amountCents: string; checkoutUrl: string };
+export type PaymentSummary = {
+  paidCents: string;
+  balanceCents: string;
+  requiredDepositCents: string | null;
+  canPay: boolean;
+  pending: PaymentPending | null;
+};
+export type PaymentRecord = {
+  reference: string;
+  amountCents: string;
+  status: string;
+  provider: string;
+  createdAt: string;
+  approvedAt: string | null;
+};
+
+const DIGITS = /^\d+$/;
+
+/** Whole pesos typed by the person (digits, spaces, dots or commas as thousand separators) to a cents string. */
+export function pesosToCents(input: string): string | null {
+  const clean = input.trim().replace(/[\s.,]/g, "");
+  if (!DIGITS.test(clean)) return null;
+  return (BigInt(clean) * BigInt(100)).toString();
+}
+
+export function validatePaymentAmount(
+  input: string,
+  balanceCents: string,
+): { cents: string; error: null } | { cents: null; error: string } {
+  const cents = pesosToCents(input);
+  if (cents === null) return { cents: null, error: "Escribe un valor en pesos, solo números." };
+  if (BigInt(cents) < BigInt(100)) return { cents: null, error: "El valor debe ser de al menos $1." };
+  if (DIGITS.test(balanceCents) && BigInt(cents) > BigInt(balanceCents))
+    return { cents: null, error: "El valor no puede superar el saldo pendiente." };
+  return { cents, error: null };
+}
+
+/** Suggested amount in whole pesos: remaining deposit if any, otherwise the balance. */
+export function defaultPaymentPesos(
+  payment: Pick<PaymentSummary, "paidCents" | "balanceCents" | "requiredDepositCents">,
+): string {
+  if (!DIGITS.test(payment.balanceCents)) return "";
+  const balance = BigInt(payment.balanceCents);
+  let target = balance;
+  if (payment.requiredDepositCents && DIGITS.test(payment.requiredDepositCents) && DIGITS.test(payment.paidCents)) {
+    const remaining = BigInt(payment.requiredDepositCents) - BigInt(payment.paidCents);
+    if (remaining > BigInt(0) && remaining < balance) target = remaining;
+  }
+  return (target / BigInt(100)).toString();
+}

@@ -5,6 +5,7 @@ import {
   RESERVATION_STATUS_LABELS,
   actionRequiresReason,
   allowedReservationActions,
+  parseDepositPesos,
   reservationStatusLabel,
 } from "./reservation-status";
 
@@ -17,7 +18,7 @@ describe("reservation status labels", () => {
     expect(reservationStatusLabel("OTHER")).toBe("OTHER");
   });
   it("labels every action", () => {
-    expect(Object.keys(RESERVATION_ACTION_LABELS)).toHaveLength(4);
+    expect(Object.keys(RESERVATION_ACTION_LABELS)).toHaveLength(5);
   });
 });
 
@@ -28,8 +29,8 @@ describe("allowedReservationActions", () => {
       REQUEST_RECEIVED: ["START_VALIDATION", "REJECT", "CANCEL"],
       PENDING_VALIDATION: ["APPROVE_FOR_PAYMENT", "REJECT", "CANCEL"],
       PENDING_PAYMENT: ["REJECT", "CANCEL"],
-      PARTIALLY_PAID: ["REJECT", "CANCEL"],
-      PAID: ["REJECT", "CANCEL"],
+      PARTIALLY_PAID: ["CONFIRM", "REJECT", "CANCEL"],
+      PAID: ["CONFIRM", "REJECT", "CANCEL"],
       CONFIRMED: ["CANCEL"],
       REJECTED: [],
       CANCELLED: [],
@@ -47,5 +48,13 @@ describe("allowedReservationActions", () => {
     expect(actionRequiresReason("CANCEL")).toBe(true);
     expect(actionRequiresReason("START_VALIDATION")).toBe(false);
     expect(actionRequiresReason("APPROVE_FOR_PAYMENT")).toBe(false);
+  });
+});
+
+describe("parseDepositPesos", () => {
+  it("converts pesos to cents", () => {
+    expect(parseDepositPesos("300.000")).toBe("30000000");
+    expect(parseDepositPesos("abc")).toBeNull();
+    expect(parseDepositPesos("")).toBeNull();
   });
 });

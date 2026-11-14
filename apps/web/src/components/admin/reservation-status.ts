@@ -28,11 +28,12 @@ export const RESERVATION_STATUS_LABELS: Readonly<Record<string, string>> = {
   COMPLETED: "Completada",
 };
 
-export type ReservationAction = "START_VALIDATION" | "APPROVE_FOR_PAYMENT" | "REJECT" | "CANCEL";
+export type ReservationAction = "START_VALIDATION" | "APPROVE_FOR_PAYMENT" | "CONFIRM" | "REJECT" | "CANCEL";
 
 export const RESERVATION_ACTION_LABELS: Readonly<Record<ReservationAction, string>> = {
   START_VALIDATION: "Iniciar validación",
   APPROVE_FOR_PAYMENT: "Confirmar disponibilidad",
+  CONFIRM: "Confirmar reserva",
   REJECT: "Rechazar",
   CANCEL: "Cancelar",
 };
@@ -48,9 +49,15 @@ export function allowedReservationActions(status: string): ReservationAction[] {
   const actions: ReservationAction[] = [];
   if (status === "REQUEST_RECEIVED") actions.push("START_VALIDATION");
   if (status === "PENDING_VALIDATION") actions.push("APPROVE_FOR_PAYMENT");
+  if (status === "PARTIALLY_PAID" || status === "PAID") actions.push("CONFIRM");
   if (REJECTABLE.includes(status)) actions.push("REJECT");
   if (CANCELLABLE.includes(status)) actions.push("CANCEL");
   return actions;
 }
 
 export const actionRequiresReason = (action: ReservationAction) => action === "REJECT" || action === "CANCEL";
+
+export function parseDepositPesos(input: string): string | null {
+  const clean = input.trim().replace(/[\s.,]/g, "");
+  return /^\d+$/.test(clean) ? (BigInt(clean) * BigInt(100)).toString() : null;
+}

@@ -7,11 +7,16 @@ import { normalizeReservationDetail, portalPost } from "./portal-api";
 import {
   CANCEL_REASON_MAX,
   canCancelReservation,
+  defaultPaymentPesos,
   formatDateTime,
   formatDay,
+  paymentStatusLabel,
   portalErrorMessage,
   reservationStatusLabel,
   validateCancelReason,
+  validatePaymentAmount,
+  type PaymentRecord,
+  type PaymentSummary,
 } from "./portal-logic";
 import { useResource } from "./use-resource";
 
@@ -28,6 +33,10 @@ export function PortalReservationDetail({ id, csrfToken }: Readonly<{ id: string
   const [reasonError, setReasonError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const [notice, setNotice] = useState<Notice>(null);
+  const [amount, setAmount] = useState<string | null>(null);
+  const [amountError, setAmountError] = useState<string | null>(null);
+  const [paying, setPaying] = useState(false);
+  const payKey = useRef<string | null>(null);
   const ready = state.status === "ready";
 
   useEffect(() => {
@@ -90,6 +99,45 @@ export function PortalReservationDetail({ id, csrfToken }: Readonly<{ id: string
     setCancelling(false);
     setReason("");
     reload();
+  }
+
+  const extra = reservation as unknown as { payment?: PaymentSummary | null; payments?: PaymentRecord[] };
+  const payment = extra.payment ?? null;
+  const payments = Array.isArray(extra.payments) ? extra.payments : [];
+  const amountValue = amount ?? (payment ? defaultPaymentPesos(payment) : "");
+
+  async function pay(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (paying || !payment) return;
+    const check = validatePaymentAmount(amountValue, payment.balanceCents);
+    setAmountError(check.error);
+    if (check.error !== null) return;
+    payKey.current ??= crypto.randomUUID();
+    setPaying(true);
+    setNotice(null);
+    const result = await portalPost(
+      `/me/reservations/${reservation.id}/payments`,
+      { amountCents: check.cents, idempotencyKey: payKey.current },
+      csrfToken,
+    );
+    setPaying(false);
+    const data = result.data as { checkoutUrl?: unknown } | null;
+    if (result.ok && typeof data?.checkoutUrl === "string") {
+      payKey.current = null;
+      window.location.assign(data.checkoutUrl);
+      return;
+    }
+    if (result.status !== 0 && result.status < 500) payKey.current = null;
+    setNotice({
+      kind: "error",
+      text:
+        result.status === 409
+          ? "No se puede registrar el abono ahora: revisa el valor o si ya tienes un pago en verificación."
+          : result.status === 503
+            ? "Los pagos en línea no están disponibles por ahora."
+            : portalErrorMessage(result.status),
+    });
+    if (result.status === 409) reload();
   }
 
   return (
@@ -156,6 +204,76 @@ export function PortalReservationDetail({ id, csrfToken }: Readonly<{ id: string
           </div>
         </dl>
       </section>
+
+      {payment ? (
+        <section className="portal-panel" aria-labelledby="portal-res-payments">
+          <h3 id="portal-res-payments">Pagos</h3>
+          <dl>
+            <div>
+              <dt>Pagado</dt>
+              <dd>{formatCop(payment.paidCents) ?? "—"}</dd>
+            </div>
+            <div>
+              <dt>Saldo pendiente</dt>
+              <dd>{formatCop(payment.balanceCents) ?? "—"}</dd>
+            </div>
+            {payment.requiredDepositCents && payment.requiredDepositCents !== "0" ? (
+              <div>
+                <dt>Abono mínimo requerido</dt>
+                <dd>{formatCop(payment.requiredDepositCents) ?? "—"}</dd>
+              </div>
+            ) : null}
+          </dl>
+          {payment.pending ? (
+            <p className="form-status">
+              Tienes un pago en verificación.{" "}
+              <a href={payment.pending.checkoutUrl} className="wz-link">
+                Continuar con el pago de prueba
+              </a>
+            </p>
+          ) : payment.canPay ? (
+            <form className="portal-pay-form" onSubmit={pay} aria-busy={paying} noValidate>
+              <label className="field">
+                Valor a abonar (COP)
+                <input
+                  name="amount"
+                  inputMode="numeric"
+                  autoComplete="off"
+                  value={amountValue}
+                  onChange={(event) => {
+                    setAmount(event.target.value);
+                    payKey.current = null;
+                  }}
+                  aria-invalid={amountError ? true : undefined}
+                  aria-describedby={amountError ? "pay-amount-error" : undefined}
+                />
+                {amountError ? (
+                  <span id="pay-amount-error" className="field-error">
+                    {amountError}
+                  </span>
+                ) : null}
+              </label>
+              <p className="wz-note">Entorno de prueba: no se realiza ningún cobro real.</p>
+              <div className="wz-nav">
+                <button type="submit" className="btn btn-primary" disabled={paying}>
+                  {paying ? "Creando pago…" : "Pagar en entorno de prueba"}
+                </button>
+              </div>
+            </form>
+          ) : null}
+          {payments.length ? (
+            <ul className="portal-pay-list">
+              {payments.map((item) => (
+                <li key={item.reference}>
+                  <strong>{formatCop(item.amountCents) ?? "—"}</strong>
+                  <span className="portal-badge">{paymentStatusLabel(item.status)}</span>
+                  <span className="portal-meta">{formatDateTime(item.createdAt) ?? ""}</span>
+                </li>
+              ))}
+            </ul>
+          ) : null}
+        </section>
+      ) : null}
 
       <section className="portal-panel" aria-labelledby="portal-res-history">
         <h3 id="portal-res-history">Historial</h3>

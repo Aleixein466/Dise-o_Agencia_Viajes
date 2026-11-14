@@ -9,6 +9,7 @@ import {
   RESERVATION_STATUSES,
   actionRequiresReason,
   allowedReservationActions,
+  parseDepositPesos,
   reservationStatusLabel,
   type ReservationAction,
 } from "./reservation-status";
@@ -57,6 +58,21 @@ type Detail = {
     at: string;
   }>;
   notes: Array<{ id: string; body: string; author: Person; createdAt: string }>;
+  payment?: {
+    paidCents: string;
+    balanceCents: string;
+    requiredDepositCents: string | null;
+    canPay: boolean;
+  } | null;
+  payments?: Array<{ reference: string; amountCents: string; status: string; createdAt: string }>;
+};
+const PAYMENT_STATUS_LABELS: Record<string, string> = {
+  PENDING: "En verificación",
+  APPROVED: "Aprobado",
+  DECLINED: "Rechazado",
+  VOIDED: "Anulado",
+  ERROR: "Error",
+  REFUNDED: "Reembolsado",
 };
 
 const PAGE_SIZE = 20;
@@ -91,6 +107,7 @@ export function ReservationsManager({
   const [advisorId, setAdvisorId] = useState("");
   const [reason, setReason] = useState("");
   const [noteBody, setNoteBody] = useState("");
+  const [deposit, setDeposit] = useState("");
 
   const loadList = useCallback(async () => {
     const params = new URLSearchParams({ page: String(pageNumber), pageSize: String(PAGE_SIZE) });
@@ -144,6 +161,7 @@ export function ReservationsManager({
     setAdvisorId("");
     setReason("");
     setNoteBody("");
+    setDeposit("");
   }
 
   async function mutate(path: string, body: unknown, success: string): Promise<boolean> {
@@ -158,7 +176,8 @@ export function ReservationsManager({
       setMessage(success);
       await refreshAll(detail.id);
     } else if (result.status === 409) {
-      setError(CONFLICT_MESSAGE);
+      const apiMessage = (result.data as { message?: unknown } | null)?.message;
+      setError(typeof apiMessage === "string" ? apiMessage : CONFLICT_MESSAGE);
       await refreshAll(detail.id);
     } else {
       const apiMessage = (result.data as { message?: unknown } | null)?.message;
@@ -177,12 +196,28 @@ export function ReservationsManager({
       return;
     }
     if (action === "APPROVE_FOR_PAYMENT" && !window.confirm(APPROVE_CONFIRM)) return;
+    let depositCents: string | null = null;
+    if (action === "APPROVE_FOR_PAYMENT" && deposit.trim()) {
+      depositCents = parseDepositPesos(deposit);
+      if (depositCents === null) {
+        setError("El abono mínimo debe ser un valor en pesos, solo números.");
+        return;
+      }
+    }
     const ok = await mutate(
       "events",
-      { event: action, expectedVersion: detail.version, ...(needsReason ? { reason: trimmed } : {}) },
+      {
+        event: action,
+        expectedVersion: detail.version,
+        ...(needsReason ? { reason: trimmed } : {}),
+        ...(depositCents !== null ? { requiredDepositCents: depositCents } : {}),
+      },
       "Reserva actualizada.",
     );
-    if (ok) setReason("");
+    if (ok) {
+      setReason("");
+      setDeposit("");
+    }
   }
   async function assign(event: FormEvent) {
     event.preventDefault();
@@ -403,6 +438,17 @@ export function ReservationsManager({
                       />
                     </label>
                   ) : null}
+                  {actions.includes("APPROVE_FOR_PAYMENT") ? (
+                    <label className="admin-field">
+                      Abono mínimo requerido (COP)
+                      <input
+                        inputMode="numeric"
+                        value={deposit}
+                        onChange={(event) => setDeposit(event.target.value)}
+                        disabled={pending}
+                      />
+                    </label>
+                  ) : null}
                   <span className="admin-row-actions" style={{ gridAutoFlow: "column" }}>
                     {actions.map((action) => (
                       <button
@@ -416,6 +462,30 @@ export function ReservationsManager({
                       </button>
                     ))}
                   </span>
+                </div>
+              ) : null}
+
+              {detail.payment ? (
+                <div>
+                  <h3>Pagos</h3>
+                  <p>
+                    Pagado: {money(detail.payment.paidCents)} · Saldo: {money(detail.payment.balanceCents)} · Abono
+                    mínimo: {detail.payment.requiredDepositCents ? money(detail.payment.requiredDepositCents) : "—"}
+                  </p>
+                  {detail.payments?.length ? (
+                    <ul className="admin-activity">
+                      {detail.payments.map((item) => (
+                        <li key={item.reference}>
+                          {item.reference} · {money(item.amountCents)} ·{" "}
+                          {PAYMENT_STATUS_LABELS[item.status] ?? item.status}
+                          <br />
+                          <time dateTime={item.createdAt}>{dateTime(item.createdAt)}</time>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="admin-empty">Sin pagos registrados.</p>
+                  )}
                 </div>
               ) : null}
 
