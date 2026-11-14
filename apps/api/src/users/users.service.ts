@@ -42,6 +42,18 @@ export class UsersService {
       );
   }
 
+  async activity(id: string) {
+    const client = await this.db.client();
+    const user = await client.user.findUnique({ where: { id }, select: { id: true } });
+    if (!user) throw new NotFoundException();
+    return client.auditLog.findMany({
+      where: { entity: "user", entityId: id },
+      orderBy: { createdAt: "desc" },
+      take: 50,
+      select: { id: true, action: true, createdAt: true, actorId: true },
+    });
+  }
+
   async create(input: { email: string; name: string; password: string; roles: RoleCode[] }, actorId: string) {
     if (!input.roles.length || !input.roles.every(isStaffRole)) throw new ForbiddenException();
     const policy = checkPasswordPolicy(input.password, { email: input.email, name: input.name });

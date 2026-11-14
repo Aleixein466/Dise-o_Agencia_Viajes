@@ -1,6 +1,8 @@
 import {
   Body,
+  BadRequestException,
   Controller,
+  ForbiddenException,
   Get,
   Headers,
   Inject,
@@ -52,6 +54,11 @@ export class UsersController {
     await this.auth.requireReadPermission(token(request), "staff:read");
     return this.users.list(q?.trim());
   }
+  @Get(":id/activity")
+  async activity(@Param("id") id: string, @Req() request: FastifyRequest) {
+    await this.auth.requireReadPermission(token(request), "audit:read");
+    return this.users.activity(id);
+  }
   @Post()
   async create(
     @Body() body: unknown,
@@ -60,8 +67,10 @@ export class UsersController {
     @Headers("origin") origin: string | undefined,
   ) {
     const actor = await this.actor(request, csrf, origin, "staff:write");
-    if (!actor.permissions.includes("roles:assign")) throw new UnauthorizedException();
-    const input = createSchema.parse(body);
+    if (!actor.permissions.includes("roles:assign")) throw new ForbiddenException();
+    const parsed = createSchema.safeParse(body);
+    if (!parsed.success) throw new BadRequestException("Invalid user payload");
+    const input = parsed.data;
     return this.users.create(input, actor.user.id);
   }
   @Patch(":id")
@@ -73,7 +82,9 @@ export class UsersController {
     @Headers("origin") origin: string | undefined,
   ) {
     const actor = await this.actor(request, csrf, origin, "staff:write");
-    return this.users.update(id, updateSchema.parse(body), actor.user.id);
+    const parsed = updateSchema.safeParse(body);
+    if (!parsed.success || Object.keys(parsed.data).length === 0) throw new BadRequestException("Invalid user payload");
+    return this.users.update(id, parsed.data, actor.user.id);
   }
   @Put(":id/roles")
   async roles(
@@ -84,7 +95,9 @@ export class UsersController {
     @Headers("origin") origin: string | undefined,
   ) {
     const actor = await this.actor(request, csrf, origin, "roles:assign");
-    await this.users.assignRoles(id, rolesSchema.parse(body).roles, actor.user.id);
+    const parsed = rolesSchema.safeParse(body);
+    if (!parsed.success) throw new BadRequestException("Invalid roles payload");
+    await this.users.assignRoles(id, parsed.data.roles, actor.user.id);
     return { ok: true };
   }
 }

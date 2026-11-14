@@ -32,6 +32,13 @@ Actualizado: 2026-11-13. Estados: **Pendiente** · **En desarrollo** · **En rev
 | 10  | PQR, comunicaciones y contenido                                              | 2, 3       | Pendiente (textos legales PC-6)                            |
 | 11  | Reportes, pruebas integrales, prep. producción                               | todos      | Pendiente                                                  |
 
+## Actualización: módulo de usuarios
+
+| Tarea             | Estado            | Evidencia                                                                                     |
+| ----------------- | ----------------- | --------------------------------------------------------------------------------------------- |
+| `/admin/usuarios` | Parcial funcional | UI conectada, API autorizada, PostgreSQL real; Playwright pendiente de estabilizar localmente |
+| Catálogo editable | Pendiente         | El esquema existe; falta iniciar los endpoints/UI y obtener el portafolio comercial           |
+
 ## Inventario funcional
 
 Leyenda: **Implementado** (código + pruebas) · **Parcial** · **Ausente** · **Bloqueado por cliente**.

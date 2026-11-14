@@ -1,24 +1,33 @@
 export type ApiResult = { ok: boolean; status: number; data: unknown };
 
-/** Browser helper: same-origin JSON POST to /api/v1. Never logs request bodies (passwords, codes). */
-export async function postJson(path: string, body: unknown, csrfToken?: string): Promise<ApiResult> {
+export async function requestJson(
+  path: string,
+  method: "GET" | "POST" | "PATCH" | "PUT",
+  body?: unknown,
+  csrfToken?: string,
+): Promise<ApiResult> {
   try {
     const response = await fetch(path, {
-      method: "POST",
+      method,
       credentials: "same-origin",
       cache: "no-store",
       headers: {
-        "content-type": "application/json",
         accept: "application/json",
+        ...(body === undefined ? {} : { "content-type": "application/json" }),
         ...(csrfToken ? { "x-csrf-token": csrfToken } : {}),
       },
-      body: JSON.stringify(body),
+      ...(body === undefined ? {} : { body: JSON.stringify(body) }),
     });
     const data: unknown = await response.json().catch(() => null);
     return { ok: response.ok, status: response.status, data };
   } catch {
     return { ok: false, status: 0, data: null };
   }
+}
+
+/** Browser helper: same-origin JSON POST to /api/v1. Never logs request bodies (passwords, codes). */
+export async function postJson(path: string, body: unknown, csrfToken?: string): Promise<ApiResult> {
+  return requestJson(path, "POST", body, csrfToken);
 }
 
 export async function fetchCsrfToken(): Promise<{ status: number; csrfToken?: string; mfaCompleted?: boolean }> {

@@ -23,7 +23,7 @@ export const ADMIN_MODULES: readonly AdminModule[] = [
   moduleFor("cotizaciones", "Cotizaciones", "quotes"),
   moduleFor("reservas", "Reservas", "bookings"),
   moduleFor("clientes", "Clientes", "customers"),
-  moduleFor("personal", "Personal", "staff"),
+  moduleFor("usuarios", "Usuarios", "staff"),
   moduleFor("finanzas", "Finanzas", "payments"),
   moduleFor("contenido", "Contenido y SEO", "content"),
   moduleFor("pqr", "PQR", "pqrs"),

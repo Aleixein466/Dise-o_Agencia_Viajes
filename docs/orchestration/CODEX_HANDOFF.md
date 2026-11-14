@@ -53,3 +53,13 @@ Los comandos raíz de Turbo y el script de build del paquete web no pudieron inv
 ## Próximo paso desbloqueado
 
 Restaurar el CLI Docker de Windows, validar `docker compose config`, levantar únicamente `postgres` y ejecutar migraciones, bootstrap y E2E de autenticación. Solo después debe avanzarse al CRUD del catálogo y CRM.
+
+## Actualización: usuarios conectados (2026-11-13)
+
+- El Docker local y PostgreSQL están disponibles. Se creó la base exclusiva `ricaurte_users_e2e`; no se modificó la base ni la cuenta administrativa local.
+- `/admin/usuarios` consume `GET/POST/PATCH/PUT /api/v1/users`, con búsqueda, filtro, alta, edición, cambios de roles, activación/desactivación confirmada, MFA y auditoría según `audit:read`.
+- Se añadió `GET /api/v1/users/:id/activity`. El API valida el permiso, no expone tokens ni información privada adicional y devuelve 404 para cuentas inexistentes.
+- Contra PostgreSQL/Nest reales se verificaron: 401 sin sesión, 403 sin CSRF, MFA inicial obligatorio, alta, búsqueda, desactivación/revocación y fila de auditoría. Migraciones y bootstrap no productivo completaron correctamente.
+- `apps/web/e2e/auth-admin.spec.ts` y `playwright.auth.config.ts` dejan preparado el flujo aislado de login fallido, MFA, alta y desactivación. La ejecución bajo `next dev` quedó bloqueada por una incidencia local de hidratación/HMR, por lo que Playwright no se declara aprobado todavía.
+- Lint/typecheck API/Web, 16 pruebas API, 55 pruebas Web y build de producción Web pasaron. El script build usa `corepack pnpm` para funcionar en Windows.
+- `Portafolio_Ricaurte_Tours.docx` sigue ausente; no se importaron ni publicaron datos o tarifas comerciales.
