@@ -68,3 +68,25 @@ describe("GalleryService binary validation", () => {
     expect(fake.mediaAssets).toHaveLength(0);
   });
 });
+
+describe("GalleryService never exposes abono receipts", () => {
+  it("scopes list, read, associate, update and remove away from receipts/ objects", async () => {
+    const wheres: unknown[] = [];
+    const capture = async (args: { where: unknown }) => {
+      wheres.push(args.where);
+      return null;
+    };
+    const client = {
+      tourPackage: { findFirst: async () => ({ id: "package" }) },
+      mediaAsset: { findMany: async (args: { where: unknown }) => (wheres.push(args.where), []), findFirst: capture },
+    };
+    const gallery = new GalleryService({ client: async () => client } as never);
+    await gallery.list();
+    await expect(gallery.read("a")).rejects.toThrow();
+    await expect(gallery.associate("a", { type: "package", id: "package" }, "u")).rejects.toThrow();
+    await expect(gallery.update("a", { altText: "x" }, "u")).rejects.toThrow();
+    await expect(gallery.remove("a", "u")).rejects.toThrow();
+    expect(wheres).toHaveLength(5);
+    for (const where of wheres) expect(where).toMatchObject({ NOT: { objectKey: { startsWith: "receipts/" } } });
+  });
+});

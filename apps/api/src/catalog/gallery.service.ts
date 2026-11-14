@@ -7,6 +7,10 @@ import sharp, { type Metadata, type Sharp } from "sharp";
 import { DbService } from "../db/db.service";
 
 export type GalleryOwner = { type: "destination" | "hotel" | "package"; id: string };
+// Abono receipts share media_assets (stored under "receipts/") but are financial evidence, not gallery content:
+// every gallery query excludes them so catalog roles can never list, read, publish or delete a receipt.
+const galleryOnly = { deletedAt: null, NOT: { objectKey: { startsWith: "receipts/" } } } as const;
+
 const base = () =>
   process.env.MEDIA_STORAGE_DIR ||
   join(process.env.LOCALAPPDATA || process.env.TEMP || "C:\\Temp", "RicaurteTours", "private-media");
@@ -100,7 +104,7 @@ export class GalleryService {
     if (owner) await this.requireOwner(client, owner);
     const assets = await client.mediaAsset.findMany({
       where: {
-        deletedAt: null,
+        ...galleryOnly,
         visibility: "PRIVATE",
         ...(owner?.type === "package" ? { packageImages: { some: { packageId: owner.id } } } : {}),
         ...(owner?.type === "destination" ? { attachments: { some: { destinationId: owner.id } } } : {}),
@@ -154,7 +158,7 @@ export class GalleryService {
     const client = await this.db.client();
     await this.requireOwner(client, owner);
     const asset = await client.mediaAsset.findFirst({
-      where: { id: assetId, deletedAt: null, visibility: "PRIVATE" },
+      where: { id: assetId, ...galleryOnly, visibility: "PRIVATE" },
       select: { id: true },
     });
     if (!asset) throw new NotFoundException();
@@ -191,7 +195,7 @@ export class GalleryService {
   ) {
     const client = await this.db.client();
     const asset = await client.mediaAsset.findFirst({
-      where: { id: assetId, deletedAt: null, visibility: "PRIVATE" },
+      where: { id: assetId, ...galleryOnly, visibility: "PRIVATE" },
       select: { id: true },
     });
     if (!asset) throw new NotFoundException();
@@ -251,7 +255,7 @@ export class GalleryService {
 
   async read(id: string) {
     const client = await this.db.client();
-    const asset = await client.mediaAsset.findFirst({ where: { id, deletedAt: null, visibility: "PRIVATE" } });
+    const asset = await client.mediaAsset.findFirst({ where: { id, ...galleryOnly, visibility: "PRIVATE" } });
     if (!asset) throw new NotFoundException();
     return { asset, body: await readFile(join(base(), asset.objectKey)) };
   }
@@ -259,7 +263,7 @@ export class GalleryService {
   async remove(id: string, actorId: string) {
     const client = await this.db.client();
     const asset = await client.mediaAsset.findFirst({
-      where: { id, deletedAt: null },
+      where: { id, ...galleryOnly },
       select: { id: true, objectKey: true, _count: { select: { attachments: true, packageImages: true } } },
     });
     if (!asset) throw new NotFoundException();

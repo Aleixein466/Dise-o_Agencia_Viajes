@@ -1,6 +1,7 @@
 import { createHash, randomUUID } from "node:crypto";
 import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
 import { join } from "node:path";
+import { inflateSync } from "node:zlib";
 import { BadRequestException } from "@nestjs/common";
 import { fileTypeFromBuffer } from "file-type";
 import sharp from "sharp";
@@ -24,6 +25,35 @@ const PDF_FORBIDDEN = [
   /\/RichMedia/,
   /\/XFA/,
 ];
+
+/** Hex escapes in names ("/Java#53cript" = "/JavaScript") are decoded so they cannot hide forbidden keys. */
+const decodeNames = (text: string) =>
+  text.replace(/#([0-9A-Fa-f]{2})/g, (_, hex: string) => String.fromCharCode(parseInt(hex, 16)));
+
+/** The file itself plus every Flate stream inflated (object streams can hide /OpenAction etc.). Bounded. */
+function pdfTexts(raw: Buffer): string[] {
+  const text = raw.toString("latin1");
+  const texts = [decodeNames(text)];
+  const streams = /stream\r?\n/g;
+  let match: RegExpExecArray | null;
+  let budget = 50 * 1024 * 1024;
+  while ((match = streams.exec(text)) && texts.length < 500) {
+    const start = match.index + match[0].length;
+    const end = text.indexOf("endstream", start);
+    if (end < 0) break;
+    try {
+      const inflated = inflateSync(raw.subarray(start, end), { maxOutputLength: 10 * 1024 * 1024 });
+      budget -= inflated.length;
+      if (budget < 0) throw new BadRequestException("PDF demasiado complejo");
+      texts.push(decodeNames(inflated.toString("latin1")));
+    } catch (error) {
+      if (error instanceof BadRequestException) throw error;
+      // Not a Flate stream (images, other filters): nothing to scan.
+    }
+    streams.lastIndex = end;
+  }
+  return texts;
+}
 
 export type StoredReceipt = {
   objectKey: string;
@@ -49,9 +79,8 @@ export async function validateReceipt(
   if (kind?.mime === "application/pdf") {
     const head = raw.subarray(0, 5).toString("latin1");
     const tail = raw.subarray(Math.max(0, raw.length - 1024)).toString("latin1");
-    const text = raw.toString("latin1");
     if (head !== "%PDF-" || !tail.includes("%%EOF")) throw new BadRequestException("PDF inválido");
-    if (PDF_FORBIDDEN.some((pattern) => pattern.test(text)))
+    if (PDF_FORBIDDEN.some((pattern) => pdfTexts(raw).some((text) => pattern.test(text))))
       throw new BadRequestException("El PDF contiene contenido activo no permitido");
     return { data: raw, mimeType: "application/pdf", sha256 };
   }

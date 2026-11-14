@@ -45,7 +45,7 @@ async function main(): Promise<void> {
       update: {},
       create: { userId: user.id, roleCode: "ADMIN" },
     });
-    console.log(`Bootstrap completed for ${email}`);
+    console.log("Bootstrap completed for the configured administrator");
   } finally {
     await db.$disconnect();
   }

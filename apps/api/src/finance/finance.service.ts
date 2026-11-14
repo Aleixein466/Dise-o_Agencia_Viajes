@@ -382,6 +382,8 @@ export class FinanceService {
     return client.$transaction(async (tx) => {
       await lockTarget(tx, target);
       const state = await targetState(tx, target);
+      if (state.kind === "savings" && !state.payable)
+        throw new ConflictException("Solo se pueden ajustar planes de ahorro activos");
       if (state.paid + amountCents < 0n) throw new ConflictException("El ajuste dejaría el pagado por debajo de cero");
       const entry = await tx.ledgerEntry.create({
         data: {

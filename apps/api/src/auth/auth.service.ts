@@ -240,13 +240,19 @@ export class AuthService {
         },
       }),
     ]);
-    await this.mail?.send({
-      to: email,
-      subject: "Tu código de acceso",
-      text: `Tu código es ${code}`,
-      kind: "customer_login_code",
-      createdAt: now,
-    });
+    // A delivery failure must look exactly like an unknown email (no error status → no account enumeration).
+    // Only the kind is logged; never the address or the code.
+    try {
+      await this.mail?.send({
+        to: email,
+        subject: "Tu código de acceso",
+        text: `Tu código es ${code}`,
+        kind: "customer_login_code",
+        createdAt: now,
+      });
+    } catch {
+      console.warn("[auth] customer_login_code delivery failed");
+    }
   }
   async verifyCustomerCode(emailInput: string, code: string, ip = "unknown"): Promise<{ token: string }> {
     const client = await this.db.client();

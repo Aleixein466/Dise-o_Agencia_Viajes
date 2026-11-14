@@ -108,3 +108,23 @@ describe("Codex audit fixes (OTP)", () => {
     });
   });
 });
+
+describe("Codex re-audit fixes (OTP delivery)", () => {
+  it("a mail delivery failure for a known customer resolves exactly like an unknown email", async () => {
+    const tx = { oneTimeToken: { updateMany: vi.fn(), create: vi.fn() } };
+    const client = {
+      customer: { findFirst: vi.fn().mockResolvedValue({ id: "c1", userId: "u1" }) },
+      oneTimeToken: tx.oneTimeToken,
+      $transaction: vi.fn(async (ops: unknown) => (Array.isArray(ops) ? Promise.all(ops) : undefined)),
+    };
+    const mail = { send: vi.fn().mockRejectedValue(new Error("smtp down")) };
+    const service = new AuthService(
+      { client: async () => client } as never,
+      env,
+      mail as never,
+      new PublicRateLimiter(),
+    );
+    await expect(service.requestCustomerCode("known@example.test", "3.3.3.3")).resolves.toBeUndefined();
+    expect(mail.send).toHaveBeenCalledOnce();
+  });
+});

@@ -1,3 +1,4 @@
+import { deflateSync } from "node:zlib";
 import { mkdtemp, readdir, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -361,5 +362,49 @@ describe("Codex audit fixes (finance)", () => {
     expect(tx.savingsPlan.update).toHaveBeenCalledWith(
       expect.objectContaining({ data: expect.objectContaining({ status: "COMPLETED" }) }),
     );
+  });
+});
+
+describe("Codex re-audit fixes", () => {
+  it("rejects active PDF content hidden behind name hex escapes or inside Flate streams", async () => {
+    await expect(validateReceipt(pdf("<< /Open#41ction << /S /Java#53cript >> >>"))).rejects.toThrow(
+      "contenido activo",
+    );
+    const hidden = deflateSync(Buffer.from("<< /OpenAction 2 0 R >>", "latin1"));
+    const body = Buffer.concat([
+      Buffer.from("%PDF-1.7\n3 0 obj << /Type /ObjStm /Filter /FlateDecode >>\nstream\n", "latin1"),
+      hidden,
+      Buffer.from("\nendstream endobj\n%%EOF\n", "latin1"),
+    ]);
+    await expect(validateReceipt(body)).rejects.toThrow("contenido activo");
+  });
+
+  it("refuses adjustments on a savings plan that is no longer active", async () => {
+    const tx = {
+      $queryRaw: vi.fn(),
+      savingsPlan: {
+        findUnique: vi
+          .fn()
+          .mockResolvedValue({
+            id: "p",
+            name: "P",
+            status: "COMPLETED",
+            goalCents: 100n,
+            customerId: "c1",
+            currency: "COP",
+          }),
+      },
+      ledgerEntry: { aggregate: vi.fn().mockResolvedValue({ _sum: { amountCents: 100n } }), create: vi.fn() },
+    };
+    const client = { $transaction: vi.fn((work: (t: typeof tx) => Promise<unknown>) => work(tx)) };
+    await expect(
+      service(client).adjust(
+        approver,
+        { savingsPlanId: "00000000-0000-4000-8000-0000000000cc" },
+        -40n,
+        "Corrección de abono duplicado",
+      ),
+    ).rejects.toThrow("Solo se pueden ajustar planes de ahorro activos");
+    expect(tx.ledgerEntry.create).not.toHaveBeenCalled();
   });
 });
