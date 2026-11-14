@@ -9,7 +9,8 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "auth:bootstrap": "tsx src/auth/bootstrap.ts"
+    "auth:bootstrap": "tsx src/auth/bootstrap.ts",
+    "catalog:import": "tsx src/catalog/import-portfolio.ts"
   },
   "dependencies": {
     "@fastify/helmet": "13.2.0",

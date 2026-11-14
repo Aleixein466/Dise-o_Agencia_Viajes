@@ -71,3 +71,10 @@ Restaurar el CLI Docker de Windows, validar `docker compose config`, levantar ú
 - Playwright contra `next build` + `next start`: 2/2 aprobadas (anónimo/login incorrecto, MFA, navegación, alta y desactivación). No se añadieron skips para ocultar fallos ni esperas artificiales.
 - Inicio de catálogo: `/api/v1/catalog/destinations` y `/admin/destinos` permiten listar, crear borradores y publicar/archivar según RBAC, con auditoría. Paquetes, hoteles, tours, tarifas y galería quedan pendientes como siguientes verticales, sin pantallas simuladas.
 - El portafolio llegó a `docs/input/Portafolio_Ricaurte_Tours.docx` y fue leído: Nariño Encantador, Eje Cafetero, Medellín, Cartagena, Santa Marta y San Andrés. La importación aún no se ejecuta: debe preservar variantes, hoteles, itinerarios y tarifas como borradores pendientes de aprobación comercial.
+
+## Actualización: importación de portafolio (2026-11-13)
+
+- `pnpm --filter @ricaurte/api catalog:import` ofrece vista previa sin escritura; `--apply` exige un actor ADMIN activo y ejecuta una única transacción PostgreSQL.
+- Dos ejecuciones contra `ricaurte_users_e2e` dejaron exactamente 6 destinos, 10 paquetes, 21 hoteles y 35 reglas de precio. Los datos creados son `DRAFT`, reglas inactivas/ficticias y sin salidas ni reservas.
+- Claves estables (slugs y nombres `portfolio-2026:*`) hacen el proceso repetible y no actualizan filas existentes: una edición administrativa posterior prevalece.
+- Advertencias pendientes: diferencias de acomodación doble del Eje Cafetero (tabla vs. adicional por noche) y sus valores siguen pendientes de aprobación comercial.

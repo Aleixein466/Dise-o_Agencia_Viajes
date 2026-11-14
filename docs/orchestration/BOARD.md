@@ -43,6 +43,8 @@ Actualizado: 2026-11-13. Estados: **Pendiente** · **En desarrollo** · **En rev
 
 Actualización 2026-11-13: **Destinos** está parcialmente funcional con CRUD de borradores, publicación/archivo RBAC y auditoría. Paquetes, hoteles, tours, tarifas y galería continúan pendientes; el portafolio comercial no está disponible localmente.
 
+Actualización 2026-11-13: importación de portafolio validada en PostgreSQL aislado (6 destinos, 10 variantes, 21 hoteles, 35 tarifas borrador). La interfaz completa para paquetes, hoteles, tours, tarifas y galería sigue pendiente.
+
 Leyenda: **Implementado** (código + pruebas) · **Parcial** · **Ausente** · **Bloqueado por cliente**.
 
 | Área                                                                  | Estado                 | Evidencia / nota                                                       |

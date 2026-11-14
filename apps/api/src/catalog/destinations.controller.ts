@@ -16,6 +16,7 @@ import type { FastifyRequest } from "fastify";
 import { z } from "zod";
 import { AuthService } from "../auth/auth.service";
 import { DestinationsService } from "./destinations.service";
+import { PortfolioImportService } from "./portfolio-import.service";
 
 const input = z.object({
   slug: z
@@ -46,6 +47,7 @@ export class DestinationsController {
   constructor(
     @Inject(AuthService) private readonly auth: AuthService,
     @Inject(DestinationsService) private readonly destinations: DestinationsService,
+    @Inject(PortfolioImportService) private readonly portfolio: PortfolioImportService,
   ) {}
   private mutation(request: FastifyRequest, csrf: string | undefined, origin: string | undefined, permission: string) {
     return this.auth.requirePermission(token(request, this.auth.cookieName()), csrf, origin, permission);
@@ -54,6 +56,20 @@ export class DestinationsController {
   async list(@Req() request: FastifyRequest, @Query("q") q?: string) {
     await this.auth.requireReadPermission(token(request, this.auth.cookieName()), "catalog:write");
     return this.destinations.list(q?.trim());
+  }
+  @Get("portfolio/preview")
+  async portfolioPreview(@Req() request: FastifyRequest) {
+    await this.auth.requireReadPermission(token(request, this.auth.cookieName()), "catalog:write");
+    return this.portfolio.preview();
+  }
+  @Post("portfolio/import")
+  async portfolioImport(
+    @Req() request: FastifyRequest,
+    @Headers("x-csrf-token") csrf?: string,
+    @Headers("origin") origin?: string,
+  ) {
+    const actor = await this.mutation(request, csrf, origin, "catalog:write");
+    return this.portfolio.import(actor.user.id);
   }
   @Post()
   async create(

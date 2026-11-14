@@ -8,6 +8,7 @@ import { UsersController } from "./users/users.controller";
 import { UsersService } from "./users/users.service";
 import { DestinationsController } from "./catalog/destinations.controller";
 import { DestinationsService } from "./catalog/destinations.service";
+import { PortfolioImportService } from "./catalog/portfolio-import.service";
 
 @Module({})
 export class AppModule {
@@ -15,7 +16,14 @@ export class AppModule {
     return {
       module: AppModule,
       controllers: [HealthController, AuthController, UsersController, DestinationsController],
-      providers: [{ provide: ENV, useValue: env }, DbService, AuthService, UsersService, DestinationsService],
+      providers: [
+        { provide: ENV, useValue: env },
+        DbService,
+        AuthService,
+        UsersService,
+        DestinationsService,
+        PortfolioImportService,
+      ],
     };
   }
 }
