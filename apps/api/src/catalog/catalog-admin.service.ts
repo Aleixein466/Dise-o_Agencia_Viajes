@@ -73,6 +73,54 @@ export class CatalogAdminService {
       hotels: row.components.flatMap((c) => (c.hotel ? [c.hotel] : [])),
     };
   }
+  async createPackage(
+    input: { destinationId: string; slug: string; title: string; durationDays: number; hotelIds: string[] },
+    actorId: string,
+  ) {
+    const client = await this.db.client();
+    try {
+      const created = await client.$transaction(async (tx) => {
+        const destination = await tx.destination.findFirst({
+          where: { id: input.destinationId, deletedAt: null },
+          select: { id: true },
+        });
+        if (!destination) throw new NotFoundException();
+        const hotels = await tx.hotel.findMany({
+          where: { id: { in: input.hotelIds }, destinationId: input.destinationId, deletedAt: null },
+          select: { id: true },
+        });
+        if (hotels.length !== input.hotelIds.length) throw new NotFoundException();
+        const pkg = await tx.tourPackage.create({
+          data: {
+            destinationId: input.destinationId,
+            slug: input.slug,
+            title: input.title,
+            durationDays: input.durationDays,
+            status: "DRAFT",
+            isFictitious: true,
+          },
+        });
+        if (hotels.length)
+          await tx.packageComponent.createMany({
+            data: hotels.map((hotel, sortOrder) => ({
+              packageId: pkg.id,
+              type: "HOTEL",
+              hotelId: hotel.id,
+              included: true,
+              sortOrder,
+            })),
+          });
+        await tx.auditLog.create({
+          data: { actorId, action: "packages.created", entity: "package", entityId: pkg.id },
+        });
+        return pkg;
+      });
+      return this.packageDetail(created.id);
+    } catch (error: unknown) {
+      if ((error as { code?: string }).code === "P2002") throw new ConflictException();
+      throw error;
+    }
+  }
   async updatePackage(
     id: string,
     input: {
@@ -129,6 +177,22 @@ export class CatalogAdminService {
     ]);
     return { items, ...page(total, current, pageSize) };
   }
+  async createHotel(input: { destinationId: string; slug: string; name: string; stars?: number }, actorId: string) {
+    const client = await this.db.client();
+    try {
+      const hotel = await client.hotel.create({
+        data: { ...input, status: "DRAFT" },
+        select: { id: true, name: true },
+      });
+      await client.auditLog.create({
+        data: { actorId, action: "hotels.created", entity: "hotel", entityId: hotel.id },
+      });
+      return hotel;
+    } catch (error: unknown) {
+      if ((error as { code?: string }).code === "P2002") throw new ConflictException();
+      throw error;
+    }
+  }
   async updateHotel(
     id: string,
     input: { name?: string; description?: string; stars?: number | null },
@@ -147,7 +211,7 @@ export class CatalogAdminService {
     const client = await this.db.client();
     const old = await client.priceRule.findFirst({
       where: { id, active: false, isFictitious: true },
-      select: { id: true },
+      select: { id: true, amountCents: true },
     });
     if (!old) throw new NotFoundException();
     const rate = await client.priceRule.update({
@@ -156,8 +220,74 @@ export class CatalogAdminService {
       select: { id: true, amountCents: true, updatedAt: true },
     });
     await client.auditLog.create({
-      data: { actorId, action: "pricing.draft_updated", entity: "price_rule", entityId: id },
+      data: {
+        actorId,
+        action: "pricing.draft_updated",
+        entity: "price_rule",
+        entityId: id,
+        before: { amountCents: old.amountCents.toString() },
+        after: { amountCents: amountCents.toString() },
+      },
     });
     return { ...rate, amountCents: rate.amountCents.toString() };
+  }
+  async tours(destinationId: string | undefined, current: number, pageSize: number) {
+    const client = await this.db.client();
+    const where = { deletedAt: null, ...(destinationId ? { destinationId } : {}) };
+    const [total, items] = await client.$transaction([
+      client.tour.count({ where }),
+      client.tour.findMany({
+        where,
+        orderBy: { updatedAt: "desc" },
+        skip: (current - 1) * pageSize,
+        take: pageSize,
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          summary: true,
+          status: true,
+          destination: { select: { name: true } },
+          packageComponents: { select: { package: { select: { title: true } }, included: true } },
+        },
+      }),
+    ]);
+    return { items, ...page(total, current, pageSize) };
+  }
+  async createTour(
+    input: {
+      destinationId: string;
+      slug: string;
+      name: string;
+      summary?: string;
+      packageId?: string;
+      included: boolean;
+    },
+    actorId: string,
+  ) {
+    const client = await this.db.client();
+    try {
+      const tour = await client.$transaction(async (tx) => {
+        const created = await tx.tour.create({
+          data: {
+            destinationId: input.destinationId,
+            slug: input.slug,
+            name: input.name,
+            summary: input.summary,
+            status: "DRAFT",
+          },
+        });
+        if (input.packageId)
+          await tx.packageComponent.create({
+            data: { packageId: input.packageId, type: "TOUR", tourId: created.id, included: input.included },
+          });
+        await tx.auditLog.create({ data: { actorId, action: "tours.created", entity: "tour", entityId: created.id } });
+        return created;
+      });
+      return tour;
+    } catch (error: unknown) {
+      if ((error as { code?: string }).code === "P2002") throw new ConflictException();
+      throw error;
+    }
   }
 }

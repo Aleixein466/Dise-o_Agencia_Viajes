@@ -47,6 +47,8 @@ Actualización 2026-11-13: importación de portafolio validada en PostgreSQL ais
 
 Actualización 2026-11-13: paquetes y hoteles ya tienen consulta/edición protegida en API y navegador. Tours, galería y administración independiente de tarifas siguen pendientes.
 
+Actualización 2026-11-13: API para altas de paquetes, hoteles y tours está disponible como borrador; faltan sus interfaces dedicadas, galería y E2E de Cartagena.
+
 Leyenda: **Implementado** (código + pruebas) · **Parcial** · **Ausente** · **Bloqueado por cliente**.
 
 | Área                                                                  | Estado                 | Evidencia / nota                                                       |

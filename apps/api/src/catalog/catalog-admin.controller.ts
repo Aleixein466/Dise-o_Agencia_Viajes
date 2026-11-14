@@ -7,6 +7,7 @@ import {
   Inject,
   Param,
   Patch,
+  Post,
   Query,
   Req,
   UnauthorizedException,
@@ -52,6 +53,36 @@ const rateInput = z.object({
     .transform((v) => BigInt(v))
     .refine((v) => v > 0n && v <= 999_999_999_999n),
 });
+const packageCreate = z.object({
+  destinationId: z.uuid(),
+  slug: z
+    .string()
+    .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/)
+    .max(160),
+  title: z.string().trim().min(2).max(160),
+  durationDays: z.number().int().min(1).max(30),
+  hotelIds: z.array(z.uuid()).max(30).default([]),
+});
+const hotelCreate = z.object({
+  destinationId: z.uuid(),
+  slug: z
+    .string()
+    .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/)
+    .max(160),
+  name: z.string().trim().min(2).max(160),
+  stars: z.number().int().min(1).max(5).optional(),
+});
+const tourCreate = z.object({
+  destinationId: z.uuid(),
+  slug: z
+    .string()
+    .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/)
+    .max(160),
+  name: z.string().trim().min(2).max(160),
+  summary: z.string().trim().max(10_000).optional(),
+  packageId: z.uuid().optional(),
+  included: z.boolean().default(false),
+});
 function token(request: FastifyRequest, name: string) {
   const value = request.headers.cookie
     ?.split(";")
@@ -81,6 +112,17 @@ export class CatalogAdminController {
     await this.auth.requireReadPermission(token(request, this.auth.cookieName()), "catalog:write");
     return this.catalog.packageDetail(id);
   }
+  @Post("packages") async packageCreate(
+    @Body() body: unknown,
+    @Req() request: FastifyRequest,
+    @Headers("x-csrf-token") csrf?: string,
+    @Headers("origin") origin?: string,
+  ) {
+    const parsed = packageCreate.safeParse(body);
+    if (!parsed.success) throw new BadRequestException();
+    const actor = await this.write(request, csrf, origin);
+    return this.catalog.createPackage(parsed.data, actor.user.id);
+  }
   @Patch("packages/:id") async packageUpdate(
     @Param("id") id: string,
     @Body() body: unknown,
@@ -99,6 +141,17 @@ export class CatalogAdminController {
     if (!p.success) throw new BadRequestException();
     const q = query as { q?: string; destinationId?: string };
     return this.catalog.hotels(q.q?.trim(), q.destinationId, p.data.page, p.data.pageSize);
+  }
+  @Post("hotels") async hotelCreate(
+    @Body() body: unknown,
+    @Req() request: FastifyRequest,
+    @Headers("x-csrf-token") csrf?: string,
+    @Headers("origin") origin?: string,
+  ) {
+    const parsed = hotelCreate.safeParse(body);
+    if (!parsed.success) throw new BadRequestException();
+    const actor = await this.write(request, csrf, origin);
+    return this.catalog.createHotel(parsed.data, actor.user.id);
   }
   @Patch("hotels/:id") async hotelUpdate(
     @Param("id") id: string,
@@ -123,5 +176,22 @@ export class CatalogAdminController {
     if (!parsed.success) throw new BadRequestException();
     const actor = await this.write(request, csrf, origin);
     return this.catalog.updateRate(id, parsed.data.amountCents, actor.user.id);
+  }
+  @Get("tours") async tours(@Req() request: FastifyRequest, @Query() query: unknown) {
+    await this.auth.requireReadPermission(token(request, this.auth.cookieName()), "catalog:write");
+    const p = pagination.safeParse(query);
+    if (!p.success) throw new BadRequestException();
+    return this.catalog.tours((query as { destinationId?: string }).destinationId, p.data.page, p.data.pageSize);
+  }
+  @Post("tours") async tourCreate(
+    @Body() body: unknown,
+    @Req() request: FastifyRequest,
+    @Headers("x-csrf-token") csrf?: string,
+    @Headers("origin") origin?: string,
+  ) {
+    const parsed = tourCreate.safeParse(body);
+    if (!parsed.success) throw new BadRequestException();
+    const actor = await this.write(request, csrf, origin);
+    return this.catalog.createTour(parsed.data, actor.user.id);
   }
 }

@@ -84,3 +84,9 @@ Restaurar el CLI Docker de Windows, validar `docker compose config`, levantar ú
 - `/api/v1/catalog/packages` y `/api/v1/catalog/hotels` ofrecen búsqueda, filtros por destino, paginación de hasta 50 filas y consultas de detalles. Las mutaciones requieren sesión MFA, CSRF y `catalog:write`.
 - `/admin/paquetes` muestra hoteles, itinerarios y reglas de borrador; permite editar metadatos y tarifas en centavos. `/admin/hoteles` permite consultar y editar hoteles importados. Todas las mutaciones quedan en `audit_logs`.
 - La vista previa protegida `/api/v1/catalog/packages/:id/preview` entrega el conjunto persistido sin activar publicación ni reservas.
+
+## Actualización: altas y tours (2026-11-13)
+
+- El API de catálogo acepta ahora crear paquetes y hoteles borrador, asociar hoteles existentes a paquetes y crear tours opcionales o incluidos con relación a paquete. Todas las rutas exigen MFA, CSRF y `catalog:write`.
+- Cada cambio de precio de borrador conserva `before`/`after` en `audit_logs`; las reglas importadas no se activan ni modifican reservas.
+- Las pantallas dedicadas de tours, tarifas y galería y la E2E integral Cartagena siguen pendientes antes de declarar el catálogo completo.
