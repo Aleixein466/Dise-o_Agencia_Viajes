@@ -24,10 +24,10 @@ Actualizado: 2026-11-13. Estados: **Pendiente** · **En desarrollo** · **En rev
 | 2   | Auth, usuarios, roles y permisos                                             | Prisma v2  | Parcial: PostgreSQL real validado; E2E/usuarios pendientes |
 | 3   | Estructura del panel administrativo                                          | 2          | En desarrollo (API usuarios; UI pendiente)                 |
 | 4   | CRUD de catálogo                                                             | 2, 3       | Pendiente                                                  |
-| 5   | CRM y asesores                                                               | 2, 3       | Pendiente                                                  |
+| 5   | CRM y asesores                                                               | 2, 3       | Implementado (E2E 4)                                       |
 | 6   | Constructor y motor de precios                                               | 4          | Pendiente (datos ficticios; PC-4)                          |
-| 7   | Cotizaciones y reservas                                                      | 6          | Pendiente                                                  |
-| 8   | Portal del cliente                                                           | 2, 7       | Pendiente                                                  |
+| 7   | Cotizaciones y reservas                                                      | 6          | Implementado; confirmación final ligada a pago (lote 9)    |
+| 8   | Portal del cliente                                                           | 2, 7       | Implementado (E2E 5, IDOR, axe 360 px)                     |
 | 9   | Finanzas y Wompi sandbox                                                     | 7          | Bloqueado (llaves sandbox, PC-5)                           |
 | 10  | PQR, comunicaciones y contenido                                              | 2, 3       | Pendiente (textos legales PC-6)                            |
 | 11  | Reportes, pruebas integrales, prep. producción                               | todos      | Pendiente                                                  |
@@ -70,10 +70,10 @@ Leyenda: **Implementado** (código + pruebas) · **Parcial** · **Ausente** · *
 | Modelo de datos v2                                                    | Implementado           | `packages/db/prisma/schema.prisma`, `docs/data/DATA_MODEL.md`          |
 | Auth, sesiones, MFA, RBAC                                             | Parcial                | API, dominio y UI; pendiente evidencia PostgreSQL/E2E y correo         |
 | Panel administrativo (dashboard, catálogo, precios, cupos, auditoría) | Parcial                | Shell, rutas protegidas y vacíos reales; CRUD y métricas pendientes    |
-| Panel de asesores / CRM                                               | Ausente                | Lote 5                                                                 |
+| Panel de asesores / CRM                                               | Implementado           | `/admin/solicitudes`, `apps/api/src/crm`                               |
 | Constructor de paquetes y motor de precios                            | Ausente                | Lote 6; tarifas reales bloqueadas por PC-4 (Excel)                     |
-| Cotizaciones y reservas persistidas                                   | Ausente                | Lote 7                                                                 |
-| Portal del cliente y enlaces mágicos                                  | Ausente                | Lote 8                                                                 |
+| Cotizaciones y reservas persistidas                                   | Implementado           | `/admin/reservas`, `apps/api/src/reservations`                         |
+| Portal del cliente (código por correo)                                | Implementado           | `/mi-cuenta`, `apps/api/src/portal`; correo real sin proveedor         |
 | Finanzas, abonos, conciliación Wompi                                  | Bloqueado por cliente  | Lote 9; PC-5 llaves                                                    |
 | PQR                                                                   | Parcial                | Página informativa `apps/web/src/app/pqrs`; sin flujo                  |
 | Textos legales, RNT, NIT, contactos                                   | Bloqueado por cliente  | PC-6; no se inventan                                                   |
@@ -85,9 +85,9 @@ Leyenda: **Implementado** (código + pruebas) · **Parcial** · **Ausente** · *
 
 ## Storage audit (2026-11-14)
 
-| Category | Status | Evidence / action |
-| --- | --- | --- |
-| `.claude/worktrees/admin`, `auth` | Protected | Uncommitted changes; retained. |
-| Clean integrated worktrees | Recoverable | No exclusive commits; branches retained. `e2e` was removed. |
-| `.claude/worktrees/api` residue | Locally blocked | No `.git`; Windows has open handles in `node_modules`. Do not force deletion. |
-| Skills/MCP/sessions | Not under repository `.claude` | No user configuration or Orchestra resource was touched. |
+| Category                          | Status                         | Evidence / action                                                             |
+| --------------------------------- | ------------------------------ | ----------------------------------------------------------------------------- |
+| `.claude/worktrees/admin`, `auth` | Protected                      | Uncommitted changes; retained.                                                |
+| Clean integrated worktrees        | Recoverable                    | No exclusive commits; branches retained. `e2e` was removed.                   |
+| `.claude/worktrees/api` residue   | Locally blocked                | No `.git`; Windows has open handles in `node_modules`. Do not force deletion. |
+| Skills/MCP/sessions               | Not under repository `.claude` | No user configuration or Orchestra resource was touched.                      |

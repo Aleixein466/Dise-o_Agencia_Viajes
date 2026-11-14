@@ -82,6 +82,11 @@ $env:APP_ORIGIN = "http://127.0.0.1:3201"
 $env:WEB_ORIGIN = "http://127.0.0.1:3201"
 # Public intake is opened only for this isolated E2E run; it stays "false" by default until legal approval.
 $env:PUBLIC_QUOTE_REQUESTS_ENABLED = "true"
+# Test-only mail sink (customer login codes); refused by the API in production.
+$env:MAIL_ADAPTER = "file"
+$env:MAIL_SINK_DIR = Join-Path $logDir "mail"
+$env:E2E_MAIL_SINK_DIR = $env:MAIL_SINK_DIR
+if (Test-Path -LiteralPath $env:MAIL_SINK_DIR) { Get-ChildItem -LiteralPath $env:MAIL_SINK_DIR -Filter *.json | Remove-Item -Force }
 $env:MFA_ENCRYPTION_KEY = $credentials.mfaKey
 $env:MEDIA_STORAGE_DIR = Join-Path $env:TEMP "RicaurteTours\e2e-private-media"
 $env:LOG_LEVEL = "warn"
