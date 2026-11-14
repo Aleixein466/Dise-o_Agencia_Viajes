@@ -49,6 +49,8 @@ Actualización 2026-11-13: paquetes y hoteles ya tienen consulta/edición proteg
 
 Actualización 2026-11-13: API para altas de paquetes, hoteles y tours está disponible como borrador; faltan sus interfaces dedicadas, galería y E2E de Cartagena.
 
+Actualización 2026-11-13: tours y tarifas tienen rutas web protegidas; galería y el flujo E2E Cartagena permanecen pendientes.
+
 Leyenda: **Implementado** (código + pruebas) · **Parcial** · **Ausente** · **Bloqueado por cliente**.
 
 | Área                                                                  | Estado                 | Evidencia / nota                                                       |

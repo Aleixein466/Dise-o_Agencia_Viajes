@@ -90,3 +90,8 @@ Restaurar el CLI Docker de Windows, validar `docker compose config`, levantar ú
 - El API de catálogo acepta ahora crear paquetes y hoteles borrador, asociar hoteles existentes a paquetes y crear tours opcionales o incluidos con relación a paquete. Todas las rutas exigen MFA, CSRF y `catalog:write`.
 - Cada cambio de precio de borrador conserva `before`/`after` en `audit_logs`; las reglas importadas no se activan ni modifican reservas.
 - Las pantallas dedicadas de tours, tarifas y galería y la E2E integral Cartagena siguen pendientes antes de declarar el catálogo completo.
+
+## Actualización: panel tours y tarifas (2026-11-13)
+
+- `/admin/tours` crea y lista tours borrador, mostrando si están incluidos, opcionales o sin asociación comercial. `/admin/tarifas` reutiliza la vista protegida de reglas de borrador y no expone una acción de activación.
+- Galería, aprobación comercial, historial visible de tarifas y la E2E Cartagena todavía no están terminados; no se declaran verificados.
