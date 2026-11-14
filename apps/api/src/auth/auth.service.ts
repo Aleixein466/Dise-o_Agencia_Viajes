@@ -33,6 +33,9 @@ const ARGON_OPTIONS = { algorithm: 2 as Algorithm, memoryCost: 19 * 1024, timeCo
 const sha256 = (value: string) => createHash("sha256").update(value).digest("hex");
 const opaque = () => randomBytes(32).toString("base64url");
 const genericCredentials = () => new UnauthorizedException();
+let dummy: Promise<string> | undefined;
+const dummyHash = () => (dummy ??= hash(randomBytes(16).toString("hex"), ARGON_OPTIONS));
+export const PASSWORD_RESET_RESPONSE_FLOOR_MS = 750;
 
 type Principal = {
   user: { id: string; email: string; name: string };
@@ -108,19 +111,25 @@ export class AuthService {
   async login(emailInput: string, password: string, ip?: string): Promise<{ token: string; mfaRequired: boolean }> {
     const client = await this.db.client();
     const email = emailInput.trim().toLowerCase();
+    this.limiter?.check(ip ?? "unknown", "staff-login-ip", 20, 10 * 60_000);
     const user = await client.user.findUnique({ where: { email }, include: { roles: true } });
     const now = new Date();
     if (!user || user.status !== "ACTIVE" || !user.passwordHash || isLocked(user.lockedUntil, now)) {
+      // Same Argon2 cost as a real check, so timing does not reveal which accounts exist or are locked.
+      await verify(await dummyHash(), password, ARGON_OPTIONS).catch(() => false);
       await this.audit(user?.id ?? null, "auth.login_failed", ip);
       throw genericCredentials();
     }
     const correct = await verify(user.passwordHash, password, ARGON_OPTIONS);
     if (!correct) {
-      const failed = user.failedLoginCount + 1;
-      await client.user.update({
+      // Atomic increment: concurrent wrong passwords cannot overwrite each other and dodge the lockout.
+      const { failedLoginCount } = await client.user.update({
         where: { id: user.id },
-        data: { failedLoginCount: failed, lockedUntil: lockoutUntil(failed, now) },
+        data: { failedLoginCount: { increment: 1 } },
+        select: { failedLoginCount: true },
       });
+      const lockedUntil = lockoutUntil(failedLoginCount, now);
+      if (lockedUntil) await client.user.update({ where: { id: user.id }, data: { lockedUntil } });
       await this.audit(user.id, "auth.login_failed", ip);
       throw genericCredentials();
     }
@@ -310,21 +319,52 @@ export class AuthService {
   }
 
   async forgotPassword(emailInput: string, ip?: string): Promise<void> {
+    const email = emailInput.trim().toLowerCase();
+    this.limiter?.check(ip ?? "unknown", "password-reset-ip", 10, 15 * 60_000);
+    this.limiter?.check(email, "password-reset-email", 3, 15 * 60_000);
+    // Known and unknown emails take the same minimum time (anti-enumeration), as with customer codes.
+    const started = Date.now();
+    try {
+      await this.issuePasswordReset(email, ip);
+    } finally {
+      const wait = PASSWORD_RESET_RESPONSE_FLOOR_MS - (Date.now() - started);
+      if (wait > 0) await new Promise((resolve) => setTimeout(resolve, wait));
+    }
+  }
+  private async issuePasswordReset(email: string, ip?: string): Promise<void> {
     const client = await this.db.client();
-    const user = await client.user.findUnique({ where: { email: emailInput.trim().toLowerCase() } });
-    if (user?.status === "ACTIVE") {
-      const token = opaque();
-      await client.oneTimeToken.create({
+    const user = await client.user.findUnique({ where: { email } });
+    if (user?.status !== "ACTIVE" || user.deletedAt) return;
+    const token = opaque();
+    const now = new Date();
+    await client.$transaction([
+      // Only the newest link works: earlier unused reset tokens are invalidated.
+      client.oneTimeToken.updateMany({
+        where: { userId: user.id, purpose: "PASSWORD_RESET", usedAt: null },
+        data: { usedAt: now },
+      }),
+      client.oneTimeToken.create({
         data: {
           tokenHash: this.hashToken(token),
           purpose: "PASSWORD_RESET",
           userId: user.id,
-          expiresAt: oneTimeTokenExpiry("PASSWORD_RESET", new Date()),
+          expiresAt: oneTimeTokenExpiry("PASSWORD_RESET", now),
           ipHash: ip ? sha256(ip) : undefined,
         },
+      }),
+    ]);
+    await this.audit(user.id, "auth.password_reset_requested", ip);
+    // Direct send (never the outbox, which would store the token). Only the kind is logged, never address or token.
+    try {
+      await this.mail?.send({
+        to: email,
+        subject: "Restablece tu contraseña",
+        text: `Para elegir una contraseña nueva abre este enlace (vence pronto y solo funciona una vez): ${this.env.APP_ORIGIN}/restablecer?token=${encodeURIComponent(token)}\nSi no lo solicitaste, ignora este mensaje.`,
+        kind: "password_reset",
+        createdAt: now,
       });
-      // Delivery is deliberately delegated to the future transactional-mail adapter. Never return the token to the caller.
-      await this.audit(user.id, "auth.password_reset_requested", ip);
+    } catch {
+      console.warn("[auth] password_reset delivery failed");
     }
   }
 

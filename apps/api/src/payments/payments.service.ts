@@ -331,6 +331,19 @@ export class PaymentsService {
         await tx.$queryRaw`SELECT id FROM reservations WHERE id = ${payment.reservationId}::uuid FOR UPDATE`;
       const now = new Date();
       const next = result.payment.status;
+      // Re-check under the lock: a manual abono approved while this event waited may have covered the balance. The
+      // provider already captured the money, so the payment is still recorded truthfully, but an overpayment is
+      // flagged for manual refund/reconciliation instead of passing silently. (Non-payable reservations are already
+      // held by settleReservation → payment.settlement_review.)
+      let review: { reason: string; balanceCents: string } | null = null;
+      if (result.effect === "APPROVED" && payment.reservationId) {
+        const r = await tx.reservation.findUniqueOrThrow({
+          where: { id: payment.reservationId },
+          select: { totalCents: true },
+        });
+        const balance = r.totalCents - (await paidCentsOf(tx, payment.reservationId));
+        if (payment.amountCents > balance) review = { reason: "OVERPAYMENT", balanceCents: balance.toString() };
+      }
       const updated = await tx.payment.updateMany({
         where: { id: payment.id, status: payment.status },
         data: {
@@ -368,6 +381,16 @@ export class PaymentsService {
           after: { status: next, amountCents: payment.amountCents.toString(), provider: "SANDBOX_TEST" },
         },
       });
+      if (review)
+        await tx.auditLog.create({
+          data: {
+            actorId: null,
+            action: "payment.requires_manual_review",
+            entity: "payment",
+            entityId: payment.id,
+            details: { ...review, amountCents: payment.amountCents.toString(), reservationId: payment.reservationId },
+          },
+        });
       if (result.effect === "APPROVED")
         await notifyCustomer(
           this.notifications,

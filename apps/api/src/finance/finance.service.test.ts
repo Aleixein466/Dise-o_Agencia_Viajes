@@ -433,3 +433,38 @@ describe("finance target resolution (codes instead of UUIDs)", () => {
     await expect(rows([]).customerIdByEmail("nadie@x.test")).rejects.toBeInstanceOf(NotFoundException);
   });
 });
+
+describe("adjustment credits are capped (Codex audit)", () => {
+  const txFor = (status: string, paid: bigint) => ({
+    $queryRaw: vi.fn(),
+    reservation: {
+      findUnique: vi
+        .fn()
+        .mockResolvedValue({ id: resId, code: "R", status, totalCents: 100n, customerId: "c1", currency: "COP" }),
+    },
+    ledgerEntry: {
+      aggregate: vi.fn().mockResolvedValue({ _sum: { amountCents: paid } }),
+      create: vi.fn().mockResolvedValue({ id: "l1" }),
+    },
+    auditLog: { create: vi.fn() },
+  });
+  const run = (tx: ReturnType<typeof txFor>, amount: bigint) =>
+    service({ $transaction: vi.fn((work: (t: typeof tx) => Promise<unknown>) => work(tx)) }).adjust(
+      approver,
+      { reservationId: resId },
+      amount,
+      "Ajuste de prueba",
+    );
+  it("refuses a credit above the outstanding balance", async () => {
+    await expect(run(txFor("PARTIALLY_PAID", 50n), 51n)).rejects.toBeInstanceOf(ConflictException);
+  });
+  it("refuses a credit on a reservation that no longer takes payments", async () => {
+    await expect(run(txFor("CANCELLED", 0n), 10n)).rejects.toBeInstanceOf(ConflictException);
+  });
+  it("still allows a correction (debit) on any reservation down to zero", async () => {
+    await expect(run(txFor("CANCELLED", 50n), -50n)).resolves.toMatchObject({ paidCents: "0" });
+  });
+  it("allows a credit up to the balance", async () => {
+    await expect(run(txFor("PARTIALLY_PAID", 50n), 50n)).resolves.toMatchObject({ paidCents: "100" });
+  });
+});

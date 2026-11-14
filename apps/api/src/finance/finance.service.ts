@@ -385,6 +385,12 @@ export class FinanceService {
       if (state.kind === "savings" && !state.payable)
         throw new ConflictException("Solo se pueden ajustar planes de ahorro activos");
       if (state.paid + amountCents < 0n) throw new ConflictException("El ajuste dejaría el pagado por debajo de cero");
+      // Credits only on payable targets and never beyond the outstanding balance; refunds/overpayments are
+      // reconciled outside this flow. Debits (corrections) stay allowed down to zero.
+      if (amountCents > 0n && state.kind === "reservation" && !state.payable)
+        throw new ConflictException("La reserva no admite abonos; registra la conciliación por fuera");
+      if (amountCents > 0n && amountCents > state.balance)
+        throw new ConflictException("El ajuste supera el saldo pendiente");
       const entry = await tx.ledgerEntry.create({
         data: {
           kind: "ADJUSTMENT",

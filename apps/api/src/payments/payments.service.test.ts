@@ -159,6 +159,21 @@ describe("PaymentsService.handleEvent", () => {
     );
   });
 
+  it("flags an overpayment found under the lock (manual abono approved meanwhile), still recording the money", async () => {
+    const { client, tx } = webhookClient("APPROVED");
+    tx.ledgerEntry.aggregate.mockResolvedValue({ _sum: { amountCents: 9000n } }); // balance 1000 < 3000
+    await expect(service(client).handleEvent(event("APPROVED"))).resolves.toBe("processed");
+    expect(tx.ledgerEntry.create).toHaveBeenCalledTimes(1);
+    expect(tx.auditLog.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          action: "payment.requires_manual_review",
+          details: expect.objectContaining({ reason: "OVERPAYMENT", balanceCents: "1000" }),
+        }),
+      }),
+    );
+  });
+
   it("is unavailable when the adapter is disabled", async () => {
     const off = new SandboxTestGateway(parseEnv({}));
     await expect(service({}, off).handleEvent(event("APPROVED"))).rejects.toBeInstanceOf(NotFoundException);
