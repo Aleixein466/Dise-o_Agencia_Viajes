@@ -8,6 +8,7 @@ export default defineConfig({
     "public-crm.spec.ts",
     "public-portal.spec.ts",
     "public-savings-finance.spec.ts",
+    "zz-responsive-sweep.spec.ts",
   ],
   fullyParallel: false,
   timeout: 90_000,

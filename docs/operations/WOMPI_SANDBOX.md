@@ -30,7 +30,7 @@ Se obtienen en el Dashboard de Wompi (comercio en modo pruebas): "Mi cuenta" > "
 
 ## Webhook a registrar
 
-En el Dashboard (modo pruebas), URL de eventos: `https://<dominio-api>/api/payments/webhook` (confirmar la ruta real en `payments.controller.ts` al cablear).
+En el Dashboard (modo pruebas), URL de eventos: `https://<dominio-api>/api/v1/payments/webhooks/wompi` (ruta prevista; hoy solo existe `/api/v1/payments/webhooks/sandbox` para el simulador. Crear la ruta `wompi` al cablear el adaptador con llaves reales de prueba).
 
 ## Pendiente / bloqueado
 

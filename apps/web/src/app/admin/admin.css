@@ -88,11 +88,19 @@ body:has(.auth-root) > .site-footer {
 }
 .admin-form {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 18px;
 }
 .admin-field {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 6px;
+}
+.admin-field input,
+.admin-field select,
+.admin-field textarea {
+  min-width: 0;
+  max-width: 100%;
 }
 .admin-field label {
   color: var(--navy);
@@ -211,7 +219,8 @@ body:has(.auth-root) > .site-footer {
 }
 .admin-body {
   display: grid;
-  grid-template-columns: 1fr;
+  /* minmax(0, …): wide tables and long <select> options must not widen the page. */
+  grid-template-columns: minmax(0, 1fr);
 }
 .admin-sidebar {
   padding: 12px 16px;
@@ -299,6 +308,8 @@ body:has(.auth-root) > .site-footer {
 }
 .admin-users {
   display: grid;
+  /* minmax(0, …) lets wide tables scroll inside .admin-table-wrap instead of widening the page. */
+  grid-template-columns: minmax(0, 1fr);
   gap: 18px;
 }
 .admin-users-form {
@@ -350,6 +361,8 @@ body:has(.auth-root) > .site-footer {
   color: var(--ink);
 }
 .admin-table-wrap {
+  /* Containing block for absolutely positioned cell content (.sr-only), so it scrolls instead of widening the page. */
+  position: relative;
   overflow-x: auto;
 }
 .admin-table {
@@ -477,7 +490,7 @@ body:has(.auth-root) > .site-footer {
     max-width: 28ch;
   }
   .admin-body {
-    grid-template-columns: 260px 1fr;
+    grid-template-columns: 260px minmax(0, 1fr);
     align-items: start;
   }
   .admin-sidebar {

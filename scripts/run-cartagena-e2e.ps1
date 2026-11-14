@@ -3,9 +3,11 @@ param(
   [string]$CredentialsPath = (Join-Path $env:TEMP "ricaurte-cartagena-e2e-credentials.json"),
   [switch]$SkipBuild,
   # Start API + web and keep them up for inspection/demo (no tests). Bounded: stops after -ServeMinutes or when
-  # the file %TEMP%icaurte-e2e\stop appears.
+  # the file %TEMP%\ricaurte-e2e\stop appears.
   [switch]$ServeOnly,
   [int]$ServeMinutes = 120,
+  # With -ServeOnly: send mail to a local Mailpit (smtp://127.0.0.1:1025, UI :8025) instead of the file sink.
+  [switch]$Mailpit,
   [int]$BuildTimeoutSec = 600,
   [int]$ReadyTimeoutSec = 60,
   [int]$PlaywrightTimeoutSec = 600
@@ -94,6 +96,12 @@ $env:MAIL_SINK_DIR = Join-Path $logDir "mail"
 $env:E2E_MAIL_SINK_DIR = $env:MAIL_SINK_DIR
 # Outbox dispatcher in-process so notification E2E checks are deterministic (file sink only).
 $env:NOTIFICATIONS_DISPATCH_INTERVAL_MS = "1000"
+if ($ServeOnly -and $Mailpit) {
+  # Loopback Mailpit only captures mail; the API refuses non-loopback SMTP without MAIL_REAL_DELIVERY_APPROVED.
+  $env:MAIL_ADAPTER = "smtp"
+  $env:SMTP_URL = "smtp://127.0.0.1:1025"
+  $env:MAIL_FROM = "Ricaurte Tours (demo) <demo@ricaurte.test>"
+}
 if (Test-Path -LiteralPath $env:MAIL_SINK_DIR) { Get-ChildItem -LiteralPath $env:MAIL_SINK_DIR -Filter *.json | Remove-Item -Force }
 $env:MFA_ENCRYPTION_KEY = $credentials.mfaKey
 $env:MEDIA_STORAGE_DIR = Join-Path $env:TEMP "RicaurteTours\e2e-private-media"
@@ -131,17 +139,16 @@ try {
     $stopFile = Join-Path $logDir "stop"
     Remove-Item -LiteralPath $stopFile -ErrorAction SilentlyContinue
     $until = (Get-Date).AddMinutes($ServeMinutes)
-    Log "serve" "web http://127.0.0.1:3201 · api http://127.0.0.1:4100 · until $($until.ToString('HH:mm')) or until '$stopFile' exists"
+    Log "serve" "web http://127.0.0.1:3201 - api http://127.0.0.1:4100 - until $($until.ToString('HH:mm')) or until '$stopFile' exists"
     while ((Get-Date) -lt $until -and -not (Test-Path -LiteralPath $stopFile)) {
       if ($api.Process.HasExited -or $web.Process.HasExited) { throw "a server exited while serving" }
       Start-Sleep -Seconds 2
     }
-    $exitCode = 0
-    return
+  } else {
+    # list reporter only (the HTML reporter is not needed here) plus a Playwright-side global timeout below ours.
+    $pwGlobalMs = ($PlaywrightTimeoutSec - 30) * 1000
+    Invoke-Stage "playwright" "corepack pnpm --filter @ricaurte/web exec playwright test -c playwright.catalog.config.ts --reporter=list --global-timeout=$pwGlobalMs" $PlaywrightTimeoutSec
   }
-  # list reporter only (the HTML reporter is not needed here) plus a Playwright-side global timeout below ours.
-  $pwGlobalMs = ($PlaywrightTimeoutSec - 30) * 1000
-  Invoke-Stage "playwright" "corepack pnpm --filter @ricaurte/web exec playwright test -c playwright.catalog.config.ts --reporter=list --global-timeout=$pwGlobalMs" $PlaywrightTimeoutSec
   $exitCode = 0
 } catch {
   Log "error" $_.Exception.Message

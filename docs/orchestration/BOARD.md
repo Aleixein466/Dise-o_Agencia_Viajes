@@ -28,7 +28,7 @@ Actualizado: 2026-11-13. Estados: **Pendiente** · **En desarrollo** · **En rev
 | 6   | Constructor y motor de precios                                               | 4          | Pendiente (datos ficticios; PC-4)                          |
 | 7   | Cotizaciones y reservas                                                      | 6          | Implementado; confirmación final ligada a pago (lote 9)    |
 | 8   | Portal del cliente                                                           | 2, 7       | Implementado (E2E 5, IDOR, axe 360 px)                     |
-| 9   | Finanzas y Wompi sandbox                                                     | 7          | Bloqueado (llaves sandbox, PC-5)                           |
+| 9   | Finanzas y Wompi sandbox                                                     | 7          | Implementado (E2E finanzas); Wompi bloqueado (PC-5)        |
 | 10  | PQR, comunicaciones y contenido                                              | 2, 3       | Pendiente (textos legales PC-6)                            |
 | 11  | Reportes, pruebas integrales, prep. producción                               | todos      | Pendiente                                                  |
 
