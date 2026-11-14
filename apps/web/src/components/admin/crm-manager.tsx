@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { formatCop } from "@/components/public/money";
 import { fetchCsrfToken, requestJson } from "@/lib/auth/client";
 import type { AdminSession } from "@/lib/auth/types";
+import { reservationStatusLabel } from "./reservation-status";
 import { QUOTE_STATUSES, actionLabel, selectableNextStatuses, statusLabel } from "./crm-status";
 
 type Person = { id: string; name: string };
@@ -38,6 +39,7 @@ type Detail = {
   lines: Array<{ description: string; quantity: number; unitPriceCents: string; totalCents: string }>;
   contact: { name: string; email: string; phone: string | null } | null;
   contactHidden: boolean;
+  reservation?: { id: string; code: string; status: string } | null;
   notes: string | null;
   assignee: Person | null;
   assignments: Array<{ advisor: Person; assignedAt: string; unassignedAt: string | null }>;
@@ -53,7 +55,10 @@ const dateOnly = (value: string | null) =>
   value ? new Date(value).toLocaleDateString("es-CO", { dateStyle: "medium", timeZone: "UTC" }) : "—";
 const money = (value: string | null) => formatCop(value) ?? "Revisión manual";
 
-export function CrmManager({ session }: Readonly<{ session: AdminSession }>) {
+export function CrmManager({
+  session,
+  initialId = null,
+}: Readonly<{ session: AdminSession; initialId?: string | null }>) {
   const [csrf, setCsrf] = useState(session.csrfToken);
   const [stats, setStats] = useState<Stats | null>(null);
   const [advisors, setAdvisors] = useState<Person[]>([]);
@@ -65,7 +70,7 @@ export function CrmManager({ session }: Readonly<{ session: AdminSession }>) {
   const [queryDraft, setQueryDraft] = useState("");
   const [query, setQuery] = useState("");
   const [loadError, setLoadError] = useState(false);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(initialId);
   const [detail, setDetail] = useState<Detail | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -379,6 +384,14 @@ export function CrmManager({ session }: Readonly<{ session: AdminSession }>) {
                 {detail.packageName ?? detail.destinationName ?? "Sin paquete"} · {detail.adults} adultos,{" "}
                 {detail.children} niños · Viaje: {dateOnly(detail.travelDate)} · Total: {money(detail.totalCents)}
               </p>
+
+              {detail.reservation ? (
+                <p>
+                  <a href={`/admin/reservas?id=${encodeURIComponent(detail.reservation.id)}`}>
+                    Reserva {detail.reservation.code} · {reservationStatusLabel(detail.reservation.status)}
+                  </a>
+                </p>
+              ) : null}
 
               <div>
                 <h3>Líneas</h3>
