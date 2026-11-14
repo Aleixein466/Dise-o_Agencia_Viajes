@@ -1,4 +1,5 @@
 import { PackagesManager } from "@/components/admin/packages-manager";
+import { PackageCreateForm } from "@/components/admin/catalog-create-forms";
 import { getSessionResult } from "@/lib/auth/server";
 export const metadata = { title: "Paquetes" };
 export default async function Page() {
@@ -9,6 +10,7 @@ export default async function Page() {
     <>
       <h1 className="admin-title">Paquetes</h1>
       <p className="admin-lead">Edición y vista previa protegida de borradores.</p>
+      <PackageCreateForm session={r.session} />
       <PackagesManager session={r.session} />
     </>
   );
