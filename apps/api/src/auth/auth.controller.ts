@@ -33,11 +33,11 @@ function cookieValue(request: FastifyRequest, name: string): string | undefined 
     .find((part) => part.startsWith(prefix))
     ?.slice(prefix.length);
 }
-function cookie(token: string, secure: boolean): string {
-  return `__Host-rt_session=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=43200${secure ? "; Secure" : ""}`;
+function cookie(name: string, token: string, secure: boolean): string {
+  return `${name}=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=43200${secure ? "; Secure" : ""}`;
 }
-function clearCookie(secure: boolean): string {
-  return `__Host-rt_session=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0${secure ? "; Secure" : ""}`;
+function clearCookie(name: string, secure: boolean): string {
+  return `${name}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0${secure ? "; Secure" : ""}`;
 }
 function ip(request: FastifyRequest): string | undefined {
   return request.ip || undefined;
@@ -51,16 +51,12 @@ export class AuthController {
     if (!value) throw new UnauthorizedException();
     return value;
   }
-  private secure(): boolean {
-    return process.env.NODE_ENV === "production";
-  }
-
   @Post("login")
   @HttpCode(200)
   async login(@Body() body: unknown, @Req() request: FastifyRequest, @Res({ passthrough: true }) reply: FastifyReply) {
     const input = parse(loginSchema, body);
     const result = await this.auth.login(input.email, input.password, ip(request));
-    reply.header("set-cookie", cookie(result.token, this.secure()));
+    reply.header("set-cookie", cookie(this.auth.cookieName(), result.token, this.auth.secureCookie()));
     return { mfaRequired: result.mfaRequired };
   }
 
@@ -78,7 +74,7 @@ export class AuthController {
     @Res({ passthrough: true }) reply: FastifyReply,
   ) {
     await this.auth.logout(this.token(request), csrf, origin);
-    reply.header("set-cookie", clearCookie(this.secure()));
+    reply.header("set-cookie", clearCookie(this.auth.cookieName(), this.auth.secureCookie()));
   }
 
   @Post("logout-all")
@@ -90,7 +86,7 @@ export class AuthController {
     @Res({ passthrough: true }) reply: FastifyReply,
   ) {
     await this.auth.logout(this.token(request), csrf, origin, true);
-    reply.header("set-cookie", clearCookie(this.secure()));
+    reply.header("set-cookie", clearCookie(this.auth.cookieName(), this.auth.secureCookie()));
   }
 
   @Post("password/forgot")

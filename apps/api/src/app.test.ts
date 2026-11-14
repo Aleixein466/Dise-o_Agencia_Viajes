@@ -153,6 +153,7 @@ describe("authentication HTTP contract", () => {
       {
         auth: {
           cookieName: () => "__Host-rt_session",
+          secureCookie: () => true,
           login: async () => ({ token: "opaque-token", mfaRequired: true }),
         },
       },
@@ -164,7 +165,9 @@ describe("authentication HTTP contract", () => {
     });
     expect(response.statusCode).toBe(200);
     expect(response.json()).toEqual({ mfaRequired: true });
-    expect(response.headers["set-cookie"]).toContain("__Host-rt_session=opaque-token; Path=/; HttpOnly; SameSite=Lax");
+    expect(response.headers["set-cookie"]).toContain(
+      "__Host-rt_session=opaque-token; Path=/; HttpOnly; SameSite=Lax; Max-Age=43200; Secure",
+    );
   });
 
   it("does not accept a malformed login request", async () => {

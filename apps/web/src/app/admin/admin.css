@@ -107,6 +107,15 @@ body:has(.auth-root) > .site-footer {
   background: var(--white);
   color: var(--ink);
 }
+.admin-field textarea {
+  min-height: 96px;
+  padding: 10px 14px;
+  border: 1px solid #7b8d99;
+  border-radius: var(--radius-sm);
+  background: var(--white);
+  color: var(--ink);
+  resize: vertical;
+}
 .admin-hint {
   margin: 0;
   color: var(--muted);

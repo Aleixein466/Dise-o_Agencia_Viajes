@@ -30,12 +30,12 @@ const updateSchema = z.object({
   status: z.enum(["ACTIVE", "DISABLED"]).optional(),
 });
 const rolesSchema = z.object({ roles: z.array(z.enum(["ADVISOR", "FINANCE", "ADMIN"])).min(1) });
-function token(request: FastifyRequest): string {
+function token(request: FastifyRequest, cookieName: string): string {
   const value = request.headers.cookie
     ?.split(";")
     .map((part) => part.trim())
-    .find((part) => part.startsWith("__Host-rt_session="))
-    ?.slice("__Host-rt_session=".length);
+    .find((part) => part.startsWith(`${cookieName}=`))
+    ?.slice(`${cookieName}=`.length);
   if (!value) throw new UnauthorizedException();
   return value;
 }
@@ -47,16 +47,16 @@ export class UsersController {
     @Inject(UsersService) private readonly users: UsersService,
   ) {}
   private actor(request: FastifyRequest, csrf: string | undefined, origin: string | undefined, permission: string) {
-    return this.auth.requirePermission(token(request), csrf, origin, permission);
+    return this.auth.requirePermission(token(request, this.auth.cookieName()), csrf, origin, permission);
   }
   @Get()
   async list(@Req() request: FastifyRequest, @Query("q") q: string | undefined) {
-    await this.auth.requireReadPermission(token(request), "staff:read");
+    await this.auth.requireReadPermission(token(request, this.auth.cookieName()), "staff:read");
     return this.users.list(q?.trim());
   }
   @Get(":id/activity")
   async activity(@Param("id") id: string, @Req() request: FastifyRequest) {
-    await this.auth.requireReadPermission(token(request), "audit:read");
+    await this.auth.requireReadPermission(token(request, this.auth.cookieName()), "audit:read");
     return this.users.activity(id);
   }
   @Post()

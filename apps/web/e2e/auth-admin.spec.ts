@@ -16,7 +16,7 @@ test.describe("authentication and staff administration", () => {
     await page.getByLabel("Correo electrónico").fill(email!);
     await page.getByLabel("Contraseña").fill("incorrect-password");
     await page.getByRole("button", { name: "Ingresar" }).click();
-    await expect(page.locator(".admin-form-error")).toContainText("Correo o contraseña incorrectos");
+    await expect(page.getByText("Correo o contraseña incorrectos.")).toBeVisible();
   });
 
   test("requires MFA enrollment and manages an employee end to end", async ({ page }) => {

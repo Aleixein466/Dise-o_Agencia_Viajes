@@ -63,3 +63,10 @@ Restaurar el CLI Docker de Windows, validar `docker compose config`, levantar ú
 - `apps/web/e2e/auth-admin.spec.ts` y `playwright.auth.config.ts` dejan preparado el flujo aislado de login fallido, MFA, alta y desactivación. La ejecución bajo `next dev` quedó bloqueada por una incidencia local de hidratación/HMR, por lo que Playwright no se declara aprobado todavía.
 - Lint/typecheck API/Web, 16 pruebas API, 55 pruebas Web y build de producción Web pasaron. El script build usa `corepack pnpm` para funcionar en Windows.
 - `Portafolio_Ricaurte_Tours.docx` sigue ausente; no se importaron ni publicaron datos o tarifas comerciales.
+
+## Actualización: E2E y catálogo (2026-11-13)
+
+- Causa raíz E2E: en HTTP local el navegador rechazaba `__Host-rt_session` porque el prefijo exige el atributo `Secure`. El login respondía 200 pero la siguiente lectura de sesión devolvía 401. El WebSocket HMR fallido de la sesión de desarrollo no fue la causa de autenticación.
+- Corrección: producción conserva `__Host-rt_session; Secure; HttpOnly; SameSite=Lax`; desarrollo y E2E HTTP usan el nombre aislado `rt_session`, también HttpOnly y SameSite=Lax. El controlador de usuarios usa el nombre emitido por AuthService.
+- Playwright contra `next build` + `next start`: 2/2 aprobadas (anónimo/login incorrecto, MFA, navegación, alta y desactivación). No se añadieron skips para ocultar fallos ni esperas artificiales.
+- Inicio de catálogo: `/api/v1/catalog/destinations` y `/admin/destinos` permiten listar, crear borradores y publicar/archivar según RBAC, con auditoría. Paquetes, hoteles, tours, tarifas y galería quedan pendientes como siguientes verticales, sin pantallas simuladas.

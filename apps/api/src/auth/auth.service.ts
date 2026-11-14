@@ -18,7 +18,8 @@ import { DbService } from "../db/db.service";
 import { ENV, type ApiEnv } from "../config/env";
 import { Inject } from "@nestjs/common";
 
-const COOKIE_NAME = "__Host-rt_session";
+const PRODUCTION_COOKIE_NAME = "__Host-rt_session";
+const LOCAL_COOKIE_NAME = "rt_session";
 const ARGON_OPTIONS = { algorithm: 2 as Algorithm, memoryCost: 19 * 1024, timeCost: 2, parallelism: 1 };
 const sha256 = (value: string) => createHash("sha256").update(value).digest("hex");
 const opaque = () => randomBytes(32).toString("base64url");
@@ -39,7 +40,13 @@ export class AuthService {
   ) {}
 
   cookieName(): string {
-    return COOKIE_NAME;
+    // Browsers reject an insecure cookie whose name starts with __Host-. Keep the
+    // hardened prefix in production and use a distinct non-production name for
+    // local HTTP and isolated browser tests. The token policy is unchanged.
+    return this.env.NODE_ENV === "production" ? PRODUCTION_COOKIE_NAME : LOCAL_COOKIE_NAME;
+  }
+  secureCookie(): boolean {
+    return this.env.NODE_ENV === "production";
   }
   hashToken(token: string): string {
     return sha256(token);
