@@ -82,9 +82,24 @@ export class PqrsService {
     @Optional() @Inject(NotificationsService) private readonly notifications?: NotificationsService,
   ) {}
 
-  private intakeOpen(origin?: string) {
+  private intakeFlag() {
     if (this.env.PQRS_INTAKE_ENABLED !== "true") throw new ServiceUnavailableException("Servicio no disponible");
-    if (origin && origin !== this.env.WEB_ORIGIN) throw new ForbiddenException();
+  }
+
+  /** Intake gate for public and customer creation: flag on and an APPROVED data-treatment document in force. */
+  private async intakeLegal(client: Db | Tx) {
+    this.intakeFlag();
+    const legal = await client.legalDocument.findFirst({
+      where: {
+        type: "DATA_TREATMENT_AUTHORIZATION",
+        status: "APPROVED",
+        OR: [{ effectiveFrom: null }, { effectiveFrom: { lte: new Date() } }],
+      },
+      orderBy: { approvedAt: "desc" },
+      select: { id: true, version: true },
+    });
+    if (!legal) throw new ServiceUnavailableException("Servicio no disponible");
+    return legal;
   }
 
   private dueAt(now: Date) {
@@ -112,12 +127,15 @@ export class PqrsService {
   // ---------- Public ----------
 
   async createPublic(input: PublicPqrsInput, ip: string, origin?: string) {
-    this.intakeOpen(origin);
+    this.intakeFlag();
+    if (origin && origin !== this.env.WEB_ORIGIN) throw new ForbiddenException();
     // Honeypot: look successful to bots, store nothing.
     if (input.website) return { reference: "", trackingCode: null, status: "RECEIVED", responseDueAt: null };
     const client = await this.db.client();
-    const replay = await client.pqrsTicket.findUnique({
-      where: { idempotencyKey: input.idempotencyKey },
+    await this.intakeLegal(client);
+    // Replay only public tickets: a key held by a portal ticket must not disclose it.
+    const replay = await client.pqrsTicket.findFirst({
+      where: { idempotencyKey: input.idempotencyKey, customerId: null },
       select: { reference: true, status: true, resolutionDueAt: true },
     });
     if (replay)
@@ -133,16 +151,7 @@ export class PqrsService {
     const email = input.email.trim().toLowerCase();
     try {
       const ticket = await client.$transaction(async (tx) => {
-        const legal = await tx.legalDocument.findFirst({
-          where: {
-            type: "DATA_TREATMENT_AUTHORIZATION",
-            status: "APPROVED",
-            OR: [{ effectiveFrom: null }, { effectiveFrom: { lte: now } }],
-          },
-          orderBy: { approvedAt: "desc" },
-          select: { id: true, version: true },
-        });
-        if (!legal) throw new ServiceUnavailableException("Servicio no disponible");
+        const legal = await this.intakeLegal(tx);
         const created = await tx.pqrsTicket.create({
           data: {
             reference: newReference(),
@@ -186,8 +195,8 @@ export class PqrsService {
       };
     } catch (error) {
       if ((error as { code?: string }).code === "P2002") {
-        const existing = await client.pqrsTicket.findUnique({
-          where: { idempotencyKey: input.idempotencyKey },
+        const existing = await client.pqrsTicket.findFirst({
+          where: { idempotencyKey: input.idempotencyKey, customerId: null },
           select: { reference: true, status: true, resolutionDueAt: true },
         });
         if (existing)
@@ -197,6 +206,7 @@ export class PqrsService {
             status: existing.status,
             responseDueAt: existing.resolutionDueAt?.toISOString() ?? null,
           };
+        throw new ConflictException("Solicitud duplicada; recarga");
       }
       throw error;
     }
@@ -310,9 +320,10 @@ export class PqrsService {
     return { id: ticket.id, ...this.publicView(ticket) };
   }
 
-  async customerCreate(userId: string, input: CustomerPqrsInput, origin?: string) {
-    this.intakeOpen(origin);
+  // Origin/CSRF are validated by requireCustomerMutation (APP_ORIGIN); no WEB_ORIGIN check here.
+  async customerCreate(userId: string, input: CustomerPqrsInput) {
     const client = await this.db.client();
+    await this.intakeLegal(client);
     const customer = await this.customerOf(client, userId);
     const replay = await client.pqrsTicket.findFirst({
       where: { idempotencyKey: input.idempotencyKey, customerId: customer.id },

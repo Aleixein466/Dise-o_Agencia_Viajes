@@ -131,7 +131,7 @@ export class CustomerPqrsController {
     @Headers("origin") origin?: string,
   ) {
     const principal = await this.writer(request, csrf, origin);
-    return this.pqrs.customerCreate(principal.user.id, parse(customerInput, body), origin);
+    return this.pqrs.customerCreate(principal.user.id, parse(customerInput, body));
   }
 
   @Post(":id/messages")

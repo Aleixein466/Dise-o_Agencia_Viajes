@@ -129,7 +129,8 @@ describe("PqrsService public intake", () => {
 
   it("replays an idempotency key without a new tracking code", async () => {
     const replay = { reference: "PQR-OLD", status: "IN_REVIEW", resolutionDueAt: null };
-    const { service, tx } = harness({ pqrsTicket: { findUnique: vi.fn(async () => replay), create: vi.fn() } });
+    const findFirst = vi.fn(async () => replay);
+    const { service, tx } = harness({ pqrsTicket: { findFirst, create: vi.fn() } });
     await expect(service.createPublic(input, "1.1.1.1")).resolves.toEqual({
       reference: "PQR-OLD",
       trackingCode: null,
@@ -137,6 +138,44 @@ describe("PqrsService public intake", () => {
       responseDueAt: null,
     });
     expect(tx.pqrsTicket.create).not.toHaveBeenCalled();
+    // Only public tickets are replayed.
+    expect((findFirst.mock.calls[0] as unknown[])[0]).toMatchObject({
+      where: { idempotencyKey: KEY, customerId: null },
+    });
+  });
+
+  it("answers a non-disclosing 409 when the key belongs to a portal ticket", async () => {
+    const { service } = harness({
+      pqrsTicket: {
+        findFirst: vi.fn(async () => null),
+        create: vi.fn(async () => {
+          throw Object.assign(new Error("unique"), { code: "P2002" });
+        }),
+      },
+    });
+    const error = await service.createPublic(input, "1.1.1.1").catch((e: unknown) => e);
+    expect(error).toMatchObject({ status: 409 });
+    expect(JSON.stringify(error)).not.toContain("PQR-");
+  });
+
+  it("checks the legal document before replaying", async () => {
+    const findFirst = vi.fn(async () => ({ reference: "PQR-OLD", status: "RECEIVED", resolutionDueAt: null }));
+    const { service } = harness({ legalDocument: { findFirst: vi.fn(async () => null) }, pqrsTicket: { findFirst } });
+    await expect(service.createPublic(input, "1.1.1.1")).rejects.toMatchObject({ status: 503 });
+    expect(findFirst).not.toHaveBeenCalled();
+  });
+});
+
+describe("PqrsService customer intake gate", () => {
+  const body = { type: "PETITION" as const, subject: "Asunto largo", description: "x".repeat(20), idempotencyKey: KEY };
+  it("returns 503 without an approved data-treatment document", async () => {
+    const { service, tx } = harness({ legalDocument: { findFirst: vi.fn(async () => null) } });
+    await expect(service.customerCreate("user-1", body)).rejects.toMatchObject({ status: 503 });
+    expect(tx.pqrsTicket.create).not.toHaveBeenCalled();
+  });
+  it("returns 503 while intake is disabled", async () => {
+    const { service } = harness({}, { PQRS_INTAKE_ENABLED: "false" });
+    await expect(service.customerCreate("user-1", body)).rejects.toMatchObject({ status: 503 });
   });
 });
 

@@ -16,7 +16,7 @@ Base: `codex/continue-auth-admin`. Coordinación: Claude. Agentes: Codex (`codex
 | 5b   | Abonos manuales con comprobante, cuatro ojos, ajustes, ahorro programado | 5a         | Claude + builder (web) + Codex (auditoría)   | IMPLEMENTADO Y PROBADO (Wompi: PENDIENTE DE CONFIGURACIÓN, PC-5)         | E2E finanzas: cuatro ojos 403, duplicados 409, doble aprobación concurrente, IDOR, CSRF      |
 | 5c   | Notificaciones (outbox, Mailpit, OTP seguro)                             | 5b         | Claude + builder                             | IMPLEMENTADO Y PROBADO (envío real PENDIENTE DE APROBACIÓN)              | Correo `payment.approved`; ningún código en otros correos ni logs                            |
 | 6    | Revisión visual, a11y, seguridad, staging                                | todos      | Claude + Codex                               | EN CURSO (barrido responsive 8/8; staging BLOQUEADO)                     | `zz-responsive-sweep` 360/768/1366 px; staging requiere hosting autorizado                   |
-| 7b   | PQRS (radicación, seguimiento, portal, bandeja staff)                    | 4          | Claude (API) + builder (web)                 | IMPLEMENTADO Y PROBADO (radicación pública apagada hasta textos legales) | API 160 pruebas; E2E `public-pqrs.spec.ts`                                                   |
+| 7b   | PQRS (radicación, seguimiento, portal, bandeja staff)                    | 4          | Claude (API) + builder (web)                 | IMPLEMENTADO Y PROBADO (radicación pública apagada hasta textos legales) | API 164 pruebas; E2E `public-pqrs.spec.ts`                                                   |
 
 Aprobaciones del propietario pendientes:
 
