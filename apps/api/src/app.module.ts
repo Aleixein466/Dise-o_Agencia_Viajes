@@ -18,6 +18,12 @@ import { AdminQuotesService } from "./quotes/admin-quotes.service";
 import { PublicModule } from "./public/public.module";
 import { CrmController } from "./crm/crm.controller";
 import { CrmService } from "./crm/crm.service";
+import { MailAdapter } from "./notifications/mail";
+import { PublicRateLimiter } from "./public/public-rate-limiter";
+import { PortalController } from "./portal/portal.controller";
+import { ReservationsController } from "./reservations/reservations.controller";
+import { ReservationsService } from "./reservations/reservations.service";
+import { CustomerAuthController } from "./customer-auth/customer-auth.controller";
 
 @Module({})
 export class AppModule {
@@ -34,6 +40,9 @@ export class AppModule {
         GalleryController,
         AdminQuotesController,
         CrmController,
+        PortalController,
+        ReservationsController,
+        CustomerAuthController,
       ],
       providers: [
         { provide: ENV, useValue: env },
@@ -46,6 +55,9 @@ export class AppModule {
         GalleryService,
         AdminQuotesService,
         CrmService,
+        MailAdapter,
+        PublicRateLimiter,
+        ReservationsService,
       ],
     };
   }

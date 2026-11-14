@@ -1,5 +1,12 @@
-import { createCipheriv, createDecipheriv, createHash, randomBytes } from "node:crypto";
-import { ForbiddenException, Injectable, UnauthorizedException } from "@nestjs/common";
+import { createCipheriv, createDecipheriv, createHash, createHmac, randomBytes, randomInt } from "node:crypto";
+import {
+  BadRequestException,
+  ForbiddenException,
+  HttpException,
+  Injectable,
+  Optional,
+  UnauthorizedException,
+} from "@nestjs/common";
 import { hash, verify, type Algorithm } from "@node-rs/argon2";
 import { Secret, TOTP } from "otpauth";
 import {
@@ -17,6 +24,8 @@ import {
 import { DbService } from "../db/db.service";
 import { ENV, type ApiEnv } from "../config/env";
 import { Inject } from "@nestjs/common";
+import { MailAdapter } from "../notifications/mail";
+import { PublicRateLimiter } from "../public/public-rate-limiter";
 
 const PRODUCTION_COOKIE_NAME = "__Host-rt_session";
 const LOCAL_COOKIE_NAME = "rt_session";
@@ -37,6 +46,8 @@ export class AuthService {
   constructor(
     @Inject(DbService) private readonly db: DbService,
     @Inject(ENV) private readonly env: ApiEnv,
+    @Optional() @Inject(MailAdapter) private readonly mail?: MailAdapter,
+    @Optional() @Inject(PublicRateLimiter) private readonly limiter?: PublicRateLimiter,
   ) {}
 
   cookieName(): string {
@@ -171,6 +182,96 @@ export class AuthService {
     const principal = await this.principal(token);
     if (!principal.session.mfaVerifiedAt || !principal.permissions.includes(permission)) throw new ForbiddenException();
     return principal;
+  }
+  async requireCustomer(token: string, permission: string): Promise<Principal> {
+    const principal = await this.principal(token);
+    if (!principal.roles.includes("CUSTOMER") || !principal.permissions.includes(permission))
+      throw new ForbiddenException();
+    return principal;
+  }
+  async requireCustomerMutation(
+    token: string,
+    csrf: string | undefined,
+    origin: string | undefined,
+    permission: string,
+  ): Promise<Principal> {
+    const principal = await this.assertMutation(token, csrf, origin);
+    if (!principal.roles.includes("CUSTOMER") || !principal.permissions.includes(permission))
+      throw new ForbiddenException();
+    return principal;
+  }
+
+  private customerCodeHash(email: string, code: string): string {
+    return createHmac("sha256", this.env.CUSTOMER_CODE_SECRET).update(`${email}:${code}`).digest("hex");
+  }
+  async requestCustomerCode(emailInput: string, ip = "unknown"): Promise<void> {
+    const client = await this.db.client();
+    const email = emailInput.trim().toLowerCase();
+    this.limiter?.check(ip, "customer-code-ip", 10, 15 * 60_000);
+    this.limiter?.check(email, "customer-code-email", 5, 15 * 60_000);
+    const exists = await client.customer.findFirst({ where: { email, deletedAt: null }, select: { id: true } });
+    if (!exists) return;
+    const code = String(randomInt(10_000_000, 100_000_000));
+    const now = new Date();
+    await client.$transaction([
+      client.oneTimeToken.updateMany({
+        where: { email, purpose: "MAGIC_LINK_LOGIN", usedAt: null },
+        data: { usedAt: now },
+      }),
+      client.oneTimeToken.create({
+        data: {
+          email,
+          purpose: "MAGIC_LINK_LOGIN",
+          tokenHash: this.customerCodeHash(email, code),
+          expiresAt: oneTimeTokenExpiry("MAGIC_LINK_LOGIN", now),
+        },
+      }),
+    ]);
+    await this.mail?.send({
+      to: email,
+      subject: "Tu código de acceso",
+      text: `Tu código es ${code}`,
+      kind: "customer_login_code",
+      createdAt: now,
+    });
+  }
+  async verifyCustomerCode(emailInput: string, code: string, ip = "unknown"): Promise<{ token: string }> {
+    const client = await this.db.client();
+    const email = emailInput.trim().toLowerCase();
+    try {
+      this.limiter?.check(email, "customer-verify", 5, 15 * 60_000);
+    } catch {
+      throw new HttpException("Too many requests", 429);
+    }
+    const now = new Date();
+    const row = await client.oneTimeToken.findFirst({
+      where: {
+        email,
+        purpose: "MAGIC_LINK_LOGIN",
+        tokenHash: this.customerCodeHash(email, code),
+        usedAt: null,
+        expiresAt: { gt: now },
+      },
+    });
+    if (
+      !row ||
+      (await client.oneTimeToken.updateMany({ where: { id: row.id, usedAt: null }, data: { usedAt: now } })).count !== 1
+    )
+      throw new BadRequestException();
+    let user = await client.user.findUnique({ where: { email }, include: { roles: true } });
+    if (user && user.roles.some((r) => r.roleCode !== "CUSTOMER")) throw new BadRequestException();
+    if (!user)
+      user = await client.user.create({
+        data: { email, name: email, role: "CUSTOMER", roles: { create: { roleCode: "CUSTOMER" } } },
+        include: { roles: true },
+      });
+    await client.customer.updateMany({ where: { email, deletedAt: null, userId: null }, data: { userId: user.id } });
+    const token = opaque();
+    await client.session.create({
+      data: { userId: user.id, tokenHash: this.hashToken(token), expiresAt: sessionAbsoluteExpiry(now, "customer") },
+    });
+    await this.audit(user.id, "auth.customer_login", ip);
+    return { token };
   }
 
   async logout(token: string, csrf: string | undefined, origin: string | undefined, all = false): Promise<void> {

@@ -113,6 +113,7 @@ export class CrmService {
           orderBy: { createdAt: "desc" },
           select: { id: true, body: true, createdAt: true, author: { select: { id: true, name: true } } },
         },
+        reservation: { select: { id: true, code: true, status: true } },
       },
     });
     if (!quote) throw new NotFoundException();
@@ -148,6 +149,7 @@ export class CrmService {
       assignee: quote.assignedTo,
       assignments: quote.leadAssignments,
       crmNotes: quote.crmNotes,
+      reservation: quote.reservation,
       history,
     };
   }
