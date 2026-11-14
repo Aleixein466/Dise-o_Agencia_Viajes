@@ -59,6 +59,33 @@ async function main() {
       db.mfaRecoveryCode.deleteMany({ where: { userId: restricted.id } }),
       db.session.deleteMany({ where: { userId: restricted.id } }),
     ]);
+    // Second FINANCE user: manual abonos need an approver different from the registrar (four eyes).
+    const approverEmail = "finance2.cartagena-e2e@ricaurte.test";
+    const approver = await db.user.upsert({
+      where: { email: approverEmail },
+      update: {
+        name: "Finanzas Aprobador E2E",
+        status: "ACTIVE",
+        passwordHash: await hash(password.normalize("NFKC"), options),
+      },
+      create: {
+        email: approverEmail,
+        name: "Finanzas Aprobador E2E",
+        status: "ACTIVE",
+        passwordHash: await hash(password.normalize("NFKC"), options),
+      },
+      select: { id: true },
+    });
+    await db.userRoleAssignment.upsert({
+      where: { userId_roleCode: { userId: approver.id, roleCode: "FINANCE" } },
+      update: {},
+      create: { userId: approver.id, roleCode: "FINANCE" },
+    });
+    await db.$transaction([
+      db.mfaFactor.deleteMany({ where: { userId: approver.id } }),
+      db.mfaRecoveryCode.deleteMany({ where: { userId: approver.id } }),
+      db.session.deleteMany({ where: { userId: approver.id } }),
+    ]);
     const destination = await db.destination.upsert({
       where: { slug: "e2e-cartagena" },
       update: { name: "Cartagena E2E", status: "DRAFT", deletedAt: null },

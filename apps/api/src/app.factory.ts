@@ -50,7 +50,7 @@ export async function configureApp(app: NestFastifyApplication): Promise<void> {
   await app.register(helmet, {
     contentSecurityPolicy: { directives: { defaultSrc: ["'none'"], frameAncestors: ["'none'"] } },
   });
-  await app.register(multipart, { limits: { files: 1, fileSize: 5 * 1024 * 1024, fields: 4, parts: 5 } });
+  await app.register(multipart, { limits: { files: 1, fileSize: 5 * 1024 * 1024, fields: 8, parts: 9 } });
 
   const fastify = app.getHttpAdapter().getInstance();
   fastify.addHook("onRequest", async (request, reply) => {

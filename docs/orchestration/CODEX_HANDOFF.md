@@ -163,3 +163,10 @@ icaurte-e2e\`, timeouts por etapa, parada del árbol de procesos y verificación
 - Revisión (Opus): sin hallazgos altos; 3 medios y 3 bajos corregidos con pruebas (ver "Hardening" en el contrato).
 - Pruebas: API 77. E2E 5 ampliado: rechazo sin dinero, aprobación → "Pago parcial recibido", réplica de decisión, webhook falsificado 401, otro cliente 404 en el checkout, `CONFIRM` → "Reserva confirmada", axe en el checkout.
 - Siguiente (5b): adaptador Wompi real cuando haya llaves sandbox (PC-5); abonos manuales con comprobante privado y aprobación FINANCE distinta de quien registra; ahorro programado (`SavingsPlan` + cuotas, saldo desde el ledger).
+
+## Actualización: finanzas 5B y notificaciones 5C (2026-11-15) — EN CURSO
+
+- Contratos `contracts/finance.md`, `contracts/notifications.md`. Migración aditiva `20261115_finance_notifications` (outbox, CHECK cuatro ojos, índice único parcial de referencia bancaria, un solo destino por abono).
+- API: abonos manuales con comprobante privado validado por contenido, aprobación FINANCE ≠ registrador, ajustes, ledger, planes de ahorro con cronograma (sin débitos automáticos); outbox transaccional + adaptadores disabled/file/smtp (Mailpit, perfil `mail`); adaptador Wompi sandbox preparado sin conectar (`docs/operations/WOMPI_SANDBOX.md`).
+- Pruebas: API 127. E2E: 5/6; la spec `public-savings-finance` pasa todo el flujo funcional (cuatro ojos, duplicados, concurrencia, ahorro, notificación) y falla solo en el chequeo responsive: desbordamiento horizontal de 502 px a 360 px en `/admin/finanzas` (pendiente de corregir).
+- Pendiente: corregir ese desbordamiento; integrar el informe de la auditoría Codex; hitos 6 (revisión visual), 8, 9 (`run-cartagena-e2e.ps1 -ServeOnly` añadido, sin probar).

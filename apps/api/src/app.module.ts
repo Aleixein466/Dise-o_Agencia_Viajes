@@ -27,6 +27,9 @@ import { CustomerAuthController } from "./customer-auth/customer-auth.controller
 import { PaymentsController } from "./payments/payments.controller";
 import { PaymentsService } from "./payments/payments.service";
 import { SandboxTestGateway } from "./payments/sandbox-gateway";
+import { FinanceController } from "./finance/finance.controller";
+import { FinanceService } from "./finance/finance.service";
+import { NotificationsService } from "./notifications/notifications.service";
 
 @Module({})
 export class AppModule {
@@ -46,6 +49,7 @@ export class AppModule {
         PortalController,
         ReservationsController,
         PaymentsController,
+        FinanceController,
         CustomerAuthController,
       ],
       providers: [
@@ -64,6 +68,8 @@ export class AppModule {
         ReservationsService,
         PaymentsService,
         SandboxTestGateway,
+        FinanceService,
+        NotificationsService,
       ],
     };
   }

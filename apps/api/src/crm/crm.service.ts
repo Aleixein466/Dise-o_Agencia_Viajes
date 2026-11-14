@@ -1,6 +1,15 @@
-import { BadRequestException, ConflictException, Inject, Injectable, NotFoundException } from "@nestjs/common";
+import {
+  BadRequestException,
+  ConflictException,
+  Inject,
+  Injectable,
+  NotFoundException,
+  Optional,
+} from "@nestjs/common";
 import { canTransitionCrmStatus, crmTransitionError, type CrmQuoteStatus } from "@ricaurte/domain";
 import { DbService } from "../db/db.service";
+import { NotificationsService } from "../notifications/notifications.service";
+import { notifyCustomer } from "../notifications/notify";
 
 type ListInput = {
   status?: CrmQuoteStatus;
@@ -16,7 +25,10 @@ const stringifyCents = (value: bigint | null) => value?.toString() ?? null;
 
 @Injectable()
 export class CrmService {
-  constructor(@Inject(DbService) private readonly db: DbService) {}
+  constructor(
+    @Inject(DbService) private readonly db: DbService,
+    @Optional() @Inject(NotificationsService) private readonly notifications?: NotificationsService,
+  ) {}
 
   async list(input: ListInput) {
     const client = await this.db.client();
@@ -205,7 +217,10 @@ export class CrmService {
 
   async changeStatus(id: string, status: CrmQuoteStatus, expectedRevision: number, actorId: string) {
     const client = await this.db.client();
-    const quote = await client.quote.findUnique({ where: { id }, select: { id: true, status: true } });
+    const quote = await client.quote.findUnique({
+      where: { id },
+      select: { id: true, status: true, reference: true, customerId: true },
+    });
     if (!quote) throw new NotFoundException();
     if (!canTransitionCrmStatus(quote.status, status))
       throw new BadRequestException(crmTransitionError(quote.status, status));
@@ -225,6 +240,16 @@ export class CrmService {
           after: { status, revision: expectedRevision + 1 },
         },
       });
+      // Only customer-facing outcomes are notified; internal triage states (assigned, in review) are not.
+      if (quote.customerId && (status === "PROPOSAL_SENT" || status === "DECLINED" || status === "CLOSED"))
+        await notifyCustomer(
+          this.notifications,
+          tx,
+          quote.customerId,
+          status === "PROPOSAL_SENT" ? "quote.proposal_ready" : "quote.status_changed",
+          { reference: quote.reference, status, resourceId: id },
+          `quote.status:${id}:${expectedRevision + 1}`,
+        );
     });
     return this.get(id, false);
   }

@@ -5,17 +5,19 @@ import {
   Inject,
   Injectable,
   NotFoundException,
+  Optional,
   ServiceUnavailableException,
   UnauthorizedException,
 } from "@nestjs/common";
 import { z } from "zod";
-import { applyPaymentEvent, PAYMENT_STATUSES, transitionReservation, type PaymentStatus } from "@ricaurte/domain";
+import { applyPaymentEvent, PAYMENT_STATUSES, type PaymentStatus } from "@ricaurte/domain";
 import { DbService } from "../db/db.service";
-import { isLivePending, paidCentsOf, PAYABLE_STATES, paymentSelect, PENDING_TTL_MS } from "./ledger";
+import { NotificationsService } from "../notifications/notifications.service";
+import { notifyCustomer } from "../notifications/notify";
+import { isLivePending, paidCentsOf, PAYABLE_STATES, paymentSelect, PENDING_TTL_MS, settleReservation } from "./ledger";
 import { SandboxTestGateway, type ProviderEvent } from "./sandbox-gateway";
 
 type Db = Awaited<ReturnType<DbService["client"]>>;
-type Tx = Parameters<Parameters<Db["$transaction"]>[0]>[0];
 
 const eventSchema = z.object({
   event: z.literal("transaction.updated"),
@@ -46,6 +48,7 @@ export class PaymentsService {
   constructor(
     @Inject(DbService) private readonly db: DbService,
     @Inject(SandboxTestGateway) private readonly gateway: SandboxTestGateway,
+    @Optional() @Inject(NotificationsService) private readonly notifications?: NotificationsService,
   ) {}
 
   adapterEnabled(): boolean {
@@ -361,83 +364,27 @@ export class PaymentsService {
           after: { status: next, amountCents: payment.amountCents.toString(), provider: "SANDBOX_TEST" },
         },
       });
+      if (result.effect === "APPROVED")
+        await notifyCustomer(
+          this.notifications,
+          tx,
+          payment.customerId,
+          "payment.approved",
+          {
+            reference: payment.reference,
+            amountCents: payment.amountCents.toString(),
+            currency: payment.currency,
+            resourceId: payment.reservationId,
+          },
+          `payment.approved:${payment.id}`,
+        );
       if (result.effect === "APPROVED" && payment.reservationId)
-        await this.settleReservation(tx, payment.reservationId, payment.id, now);
+        await settleReservation(tx, payment.reservationId, { paymentId: payment.id }, now, {
+          role: "SYSTEM",
+          id: null,
+        });
       await tx.paymentWebhookEvent.update({ where: { id: stored.id }, data: { processedAt: now } });
     });
     return "processed";
-  }
-
-  /** Applies verified money to the reservation. Never confirms it: CONFIRM stays a staff decision. */
-  private async settleReservation(tx: Tx, reservationId: string, paymentId: string, now: Date) {
-    await tx.$queryRaw`SELECT id FROM reservations WHERE id = ${reservationId}::uuid FOR UPDATE`;
-    const r = await tx.reservation.findUniqueOrThrow({
-      where: { id: reservationId },
-      select: {
-        status: true,
-        version: true,
-        totalCents: true,
-        requiredDepositCents: true,
-        availabilityValidatedAt: true,
-      },
-    });
-    const paid = await paidCentsOf(tx, reservationId);
-    if (paid > r.totalCents)
-      await tx.auditLog.create({
-        data: {
-          action: "payment.settlement_review",
-          entity: "reservation",
-          entityId: reservationId,
-          after: { paymentId, reason: "OVERPAID", paidCents: paid.toString() },
-        },
-      });
-    const outcome = transitionReservation(
-      r.status,
-      { type: "PAYMENT_SETTLED", actor: { role: "SYSTEM", id: "system" } },
-      {
-        totalCents: Number(r.totalCents),
-        paidCents: Number(paid),
-        requiredDepositCents: Number(r.requiredDepositCents),
-        availabilityValidated: r.availabilityValidatedAt !== null,
-      },
-      now,
-    );
-    if (!outcome.ok) {
-      // Money is held but the reservation cannot take it (e.g. cancelled meanwhile): surface for reconciliation.
-      await tx.auditLog.create({
-        data: {
-          action: "payment.settlement_review",
-          entity: "reservation",
-          entityId: reservationId,
-          after: { paymentId, status: r.status, error: outcome.error },
-        },
-      });
-      return;
-    }
-    if (!outcome.changed) return;
-    await tx.reservation.update({
-      where: { id: reservationId },
-      data: { status: outcome.next, version: { increment: 1 } },
-    });
-    await tx.reservationStatusHistory.create({
-      data: {
-        reservationId,
-        fromStatus: r.status,
-        toStatus: outcome.next,
-        event: "PAYMENT_SETTLED",
-        actorId: null,
-        role: "SYSTEM",
-        at: now,
-      },
-    });
-    await tx.auditLog.create({
-      data: {
-        action: "reservation.payment_settled",
-        entity: "reservation",
-        entityId: reservationId,
-        before: { status: r.status },
-        after: { status: outcome.next, paidCents: paid.toString() },
-      },
-    });
   }
 }

@@ -2,7 +2,13 @@ import { defineConfig, devices } from "@playwright/test";
 
 export default defineConfig({
   testDir: "e2e",
-  testMatch: ["catalog-cartagena.spec.ts", "public-builder.spec.ts", "public-crm.spec.ts", "public-portal.spec.ts"],
+  testMatch: [
+    "catalog-cartagena.spec.ts",
+    "public-builder.spec.ts",
+    "public-crm.spec.ts",
+    "public-portal.spec.ts",
+    "public-savings-finance.spec.ts",
+  ],
   fullyParallel: false,
   timeout: 90_000,
   expect: { timeout: 10_000 },

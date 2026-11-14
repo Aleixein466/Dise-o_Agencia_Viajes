@@ -1,3 +1,4 @@
+import { transitionReservation } from "@ricaurte/domain";
 import type { DbService } from "../db/db.service";
 
 type Db = Awaited<ReturnType<DbService["client"]>>;
@@ -71,4 +72,84 @@ export function paymentSummary(input: {
       approvedAt: row.approvedAt,
     })),
   };
+}
+
+/** Applies verified money to the reservation. Never confirms it: CONFIRM stays a staff decision. */
+export async function settleReservation(
+  tx: Tx,
+  reservationId: string,
+  source: { paymentId?: string; manualAbonoId?: string },
+  now: Date,
+  actor: { role: "SYSTEM" | "FINANCE"; id: string | null },
+) {
+  await tx.$queryRaw`SELECT id FROM reservations WHERE id = ${reservationId}::uuid FOR UPDATE`;
+  const r = await tx.reservation.findUniqueOrThrow({
+    where: { id: reservationId },
+    select: {
+      status: true,
+      version: true,
+      totalCents: true,
+      requiredDepositCents: true,
+      availabilityValidatedAt: true,
+    },
+  });
+  const paid = await paidCentsOf(tx, reservationId);
+  if (paid > r.totalCents)
+    await tx.auditLog.create({
+      data: {
+        action: "payment.settlement_review",
+        entity: "reservation",
+        entityId: reservationId,
+        after: { ...source, reason: "OVERPAID", paidCents: paid.toString() },
+      },
+    });
+  const outcome = transitionReservation(
+    r.status,
+    { type: "PAYMENT_SETTLED", actor: { role: actor.role, id: actor.id ?? "system" } },
+    {
+      totalCents: Number(r.totalCents),
+      paidCents: Number(paid),
+      requiredDepositCents: Number(r.requiredDepositCents),
+      availabilityValidated: r.availabilityValidatedAt !== null,
+    },
+    now,
+  );
+  if (!outcome.ok) {
+    // Money is held but the reservation cannot take it (e.g. cancelled meanwhile): surface for reconciliation.
+    await tx.auditLog.create({
+      data: {
+        action: "payment.settlement_review",
+        entity: "reservation",
+        entityId: reservationId,
+        after: { ...source, status: r.status, error: outcome.error },
+      },
+    });
+    return;
+  }
+  if (!outcome.changed) return;
+  await tx.reservation.update({
+    where: { id: reservationId },
+    data: { status: outcome.next, version: { increment: 1 } },
+  });
+  await tx.reservationStatusHistory.create({
+    data: {
+      reservationId,
+      fromStatus: r.status,
+      toStatus: outcome.next,
+      event: "PAYMENT_SETTLED",
+      actorId: actor.id,
+      role: actor.role,
+      at: now,
+    },
+  });
+  await tx.auditLog.create({
+    data: {
+      actorId: actor.id,
+      action: "reservation.payment_settled",
+      entity: "reservation",
+      entityId: reservationId,
+      before: { status: r.status },
+      after: { status: outcome.next, paidCents: paid.toString() },
+    },
+  });
 }

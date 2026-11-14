@@ -10,6 +10,8 @@ import {
 } from "@nestjs/common";
 import { transitionReservation, type ReservationEventType, type Role } from "@ricaurte/domain";
 import { DbService } from "../db/db.service";
+import { NotificationsService } from "../notifications/notifications.service";
+import { notifyCustomer } from "../notifications/notify";
 import { paidCentsOf, paymentSelect, paymentSummary } from "../payments/ledger";
 import { SandboxTestGateway } from "../payments/sandbox-gateway";
 
@@ -37,6 +39,7 @@ export class ReservationsService {
   constructor(
     @Inject(DbService) private readonly db: DbService,
     @Optional() @Inject(SandboxTestGateway) private readonly gateway?: SandboxTestGateway,
+    @Optional() @Inject(NotificationsService) private readonly notifications?: NotificationsService,
   ) {}
 
   // ---------- Customer portal (ownership: customer.userId === principal) ----------
@@ -260,6 +263,14 @@ export class ReservationsService {
           },
           select: { id: true, code: true, status: true },
         });
+        await notifyCustomer(
+          this.notifications,
+          tx,
+          q.customerId!,
+          "reservation.requested",
+          { reference: row.code, resourceId: row.id },
+          `reservation.requested:${row.id}`,
+        );
         await tx.auditLog.create({
           data: {
             actorId: userId,
@@ -415,6 +426,8 @@ export class ReservationsService {
         totalCents: true,
         requiredDepositCents: true,
         availabilityValidatedAt: true,
+        code: true,
+        customerId: true,
       },
     });
     if (!row) throw new NotFoundException();
@@ -487,6 +500,15 @@ export class ReservationsService {
           after: { status: outcome.next, version: row.version + 1 },
         },
       });
+      if (outcome.changed)
+        await notifyCustomer(
+          this.notifications,
+          tx,
+          row.customerId,
+          outcome.next === "CONFIRMED" ? "reservation.confirmed" : "reservation.status_changed",
+          { reference: row.code, status: outcome.next, resourceId: id },
+          `reservation.status:${id}:${row.version + 1}`,
+        );
     });
   }
 
@@ -565,7 +587,7 @@ export class ReservationsService {
         payments: { orderBy: { createdAt: "desc" }, take: 50, select: paymentSelect },
         package: { select: { title: true } },
         destination: { select: { name: true } },
-        customer: { select: { name: true, email: true, phone: true } },
+        customer: { select: { id: true, name: true, email: true, phone: true } },
         quote: { select: { id: true, reference: true, status: true } },
         validatedBy: person,
         assignedAdvisor: person,

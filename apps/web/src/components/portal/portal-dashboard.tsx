@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useRef } from "react";
 import { formatCop } from "@/components/public/money";
+import { normalizePlan, planStatusLabel, type PlanView } from "@/components/admin/finance/finance-logic";
 import { asList, type QuoteSummary, type ReservationSummary } from "./portal-api";
 import { formatDay, portalErrorMessage, quoteStatusLabel, reservationStatusLabel } from "./portal-logic";
 import { useResource, type ResourceState } from "./use-resource";
@@ -10,6 +11,9 @@ import { useResource, type ResourceState } from "./use-resource";
 const parseQuotes = (data: unknown): QuoteSummary[] | null => (Array.isArray(data) ? asList<QuoteSummary>(data) : null);
 const parseReservations = (data: unknown): ReservationSummary[] | null =>
   Array.isArray(data) ? asList<ReservationSummary>(data) : null;
+
+const parsePlans = (data: unknown): PlanView[] | null =>
+  Array.isArray(data) ? data.map(normalizePlan).filter((plan): plan is PlanView => plan !== null) : null;
 
 function travelersText(adults: number, children: number): string {
   const parts = [`${adults} ${adults === 1 ? "adulto" : "adultos"}`];
@@ -47,6 +51,7 @@ export function PortalDashboard() {
   const headingRef = useRef<HTMLHeadingElement>(null);
   const quotes = useResource("/me/quotes", parseQuotes);
   const reservations = useResource("/me/reservations", parseReservations);
+  const savings = useResource("/me/savings-plans", parsePlans);
 
   useEffect(() => {
     headingRef.current?.focus();
@@ -141,6 +146,33 @@ export function PortalDashboard() {
                   </li>
                 );
               })}
+            </ul>
+          )}
+        </SectionState>
+      </section>
+      <section aria-labelledby="portal-savings-title" className="portal-section">
+        <h3 id="portal-savings-title">Mis planes de ahorro</h3>
+        <SectionState state={savings.state} onRetry={savings.reload} empty="Aún no tienes planes de ahorro.">
+          {(items) => (
+            <ul className="portal-cards">
+              {items.map((plan) => (
+                <li key={plan.id} className="portal-card">
+                  <div className="portal-card-head">
+                    <strong>{plan.name}</strong>
+                    <span className="portal-badge" data-status={plan.status}>
+                      {planStatusLabel(plan.status)}
+                    </span>
+                  </div>
+                  <p className="portal-meta">
+                    Meta: {formatCop(plan.goalCents) ?? "—"} · Pagado: {formatCop(plan.paidCents) ?? "—"}
+                  </p>
+                  <div className="portal-actions">
+                    <Link className="btn btn-primary" href={`/mi-cuenta/ahorro/${plan.id}`}>
+                      Ver plan
+                    </Link>
+                  </div>
+                </li>
+              ))}
             </ul>
           )}
         </SectionState>

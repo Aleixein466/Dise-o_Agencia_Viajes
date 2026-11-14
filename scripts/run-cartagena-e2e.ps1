@@ -2,6 +2,10 @@
 param(
   [string]$CredentialsPath = (Join-Path $env:TEMP "ricaurte-cartagena-e2e-credentials.json"),
   [switch]$SkipBuild,
+  # Start API + web and keep them up for inspection/demo (no tests). Bounded: stops after -ServeMinutes or when
+  # the file %TEMP%icaurte-e2e\stop appears.
+  [switch]$ServeOnly,
+  [int]$ServeMinutes = 120,
   [int]$BuildTimeoutSec = 600,
   [int]$ReadyTimeoutSec = 60,
   [int]$PlaywrightTimeoutSec = 600
@@ -88,6 +92,8 @@ $env:PAYMENT_ADAPTER = "sandbox_test"
 $env:MAIL_ADAPTER = "file"
 $env:MAIL_SINK_DIR = Join-Path $logDir "mail"
 $env:E2E_MAIL_SINK_DIR = $env:MAIL_SINK_DIR
+# Outbox dispatcher in-process so notification E2E checks are deterministic (file sink only).
+$env:NOTIFICATIONS_DISPATCH_INTERVAL_MS = "1000"
 if (Test-Path -LiteralPath $env:MAIL_SINK_DIR) { Get-ChildItem -LiteralPath $env:MAIL_SINK_DIR -Filter *.json | Remove-Item -Force }
 $env:MFA_ENCRYPTION_KEY = $credentials.mfaKey
 $env:MEDIA_STORAGE_DIR = Join-Path $env:TEMP "RicaurteTours\e2e-private-media"
@@ -98,6 +104,8 @@ $env:CARTAGENA_E2E_ADMIN_EMAIL = $credentials.adminEmail
 $env:CARTAGENA_E2E_ADMIN_PASSWORD = $credentials.adminPassword
 $env:CARTAGENA_E2E_RESTRICTED_EMAIL = $credentials.restrictedEmail
 $env:CARTAGENA_E2E_RESTRICTED_PASSWORD = $credentials.restrictedPassword
+# Second FINANCE user created by the seeder (same test-only password) for four-eyes approval.
+$env:CARTAGENA_E2E_FINANCE2_EMAIL = "finance2.cartagena-e2e@ricaurte.test"
 $env:E2E_ADMIN_EMAIL = $credentials.adminEmail
 $env:E2E_ADMIN_PASSWORD = $credentials.adminPassword
 $env:E2E_RESTRICTED_EMAIL = $credentials.restrictedEmail
@@ -119,6 +127,18 @@ try {
   Log "web" "starting on :3201"
   $web = Start-Logged "web" "set NODE_ENV=production&& corepack pnpm --filter @ricaurte/web exec next start -p 3201"
   Wait-Ready "web" $web "http://127.0.0.1:3201/ingresar" 200 $ReadyTimeoutSec
+  if ($ServeOnly) {
+    $stopFile = Join-Path $logDir "stop"
+    Remove-Item -LiteralPath $stopFile -ErrorAction SilentlyContinue
+    $until = (Get-Date).AddMinutes($ServeMinutes)
+    Log "serve" "web http://127.0.0.1:3201 · api http://127.0.0.1:4100 · until $($until.ToString('HH:mm')) or until '$stopFile' exists"
+    while ((Get-Date) -lt $until -and -not (Test-Path -LiteralPath $stopFile)) {
+      if ($api.Process.HasExited -or $web.Process.HasExited) { throw "a server exited while serving" }
+      Start-Sleep -Seconds 2
+    }
+    $exitCode = 0
+    return
+  }
   # list reporter only (the HTML reporter is not needed here) plus a Playwright-side global timeout below ours.
   $pwGlobalMs = ($PlaywrightTimeoutSec - 30) * 1000
   Invoke-Stage "playwright" "corepack pnpm --filter @ricaurte/web exec playwright test -c playwright.catalog.config.ts --reporter=list --global-timeout=$pwGlobalMs" $PlaywrightTimeoutSec

@@ -24,10 +24,20 @@ const envSchema = z
     MFA_ENCRYPTION_KEY: z.string().min(1).optional(),
     // Keys the customer login code hashes. The development default is refused in production.
     CUSTOMER_CODE_SECRET: z.string().min(32).default(DEV_CUSTOMER_CODE_SECRET),
-    MAIL_ADAPTER: z.enum(["disabled", "file"]).default("disabled"),
+    MAIL_ADAPTER: z.enum(["disabled", "file", "smtp"]).default("disabled"),
     MAIL_SINK_DIR: z.string().min(1).default(".mail-sink"),
+    // smtp://127.0.0.1:1025 for Mailpit in development. May carry credentials: never log it.
+    SMTP_URL: z
+      .url()
+      .refine((value) => value.startsWith("smtp://") || value.startsWith("smtps://"))
+      .optional(),
+    MAIL_FROM: z.string().min(3).max(200).default("Ricaurte Tours <no-reply@localhost>"),
+    // Explicit commercial approval to deliver to a non-loopback SMTP host. Keep "false" otherwise.
+    MAIL_REAL_DELIVERY_APPROVED: z.enum(["true", "false"]).default("false"),
     // Online payments. "sandbox_test" is a simulated provider (no money moves) and is refused in production.
     PAYMENT_ADAPTER: z.enum(["disabled", "sandbox_test"]).default("disabled"),
+    // In-process outbox dispatcher for development/demo (0 = off; use `notifications:dispatch` from a scheduler).
+    NOTIFICATIONS_DISPATCH_INTERVAL_MS: z.coerce.number().int().min(0).max(3_600_000).default(0),
     SANDBOX_PAYMENT_EVENTS_SECRET: z.string().min(32).default("development-sandbox-events-secret-not-for-production"),
   })
   .refine((env) => env.NODE_ENV !== "production" || env.CUSTOMER_CODE_SECRET !== DEV_CUSTOMER_CODE_SECRET, {
@@ -35,7 +45,8 @@ const envSchema = z
   })
   .refine((env) => env.NODE_ENV !== "production" || env.PAYMENT_ADAPTER !== "sandbox_test", {
     path: ["PAYMENT_ADAPTER"],
-  });
+  })
+  .refine((env) => env.MAIL_ADAPTER !== "smtp" || env.SMTP_URL !== undefined, { path: ["SMTP_URL"] });
 
 export type ApiEnv = z.infer<typeof envSchema>;
 

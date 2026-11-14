@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { adminStatePath } from "./e2e-state";
+import { adminStatePath, financeStatePath } from "./e2e-state";
 
 const adminEmail = process.env.CARTAGENA_E2E_ADMIN_EMAIL;
 const adminPassword = process.env.CARTAGENA_E2E_ADMIN_PASSWORD;
@@ -117,6 +117,7 @@ test.describe("Cartagena E2E catalog", () => {
     const restricted = await browser.newContext();
     const restrictedPage = await restricted.newPage();
     await loginAndCompleteInitialMfa(restrictedPage, restrictedEmail!, restrictedPassword!, "/admin");
+    await restricted.storageState({ path: financeStatePath });
     const forbidden = await restrictedPage.evaluate(
       async ({ rateId, assetId }) => {
         const session = await (await fetch("/api/v1/auth/session")).json();

@@ -11,6 +11,7 @@
     "test": "vitest run",
     "auth:bootstrap": "tsx src/auth/bootstrap.ts",
     "catalog:import": "tsx src/catalog/import-portfolio.ts",
+    "notifications:dispatch": "tsx src/notifications/dispatch-cli.ts",
     "e2e:seed-cartagena": "tsx src/e2e/seed-cartagena.ts"
   },
   "dependencies": {
@@ -24,6 +25,7 @@
     "@prisma/client": "7.10.1",
     "fastify": "5.12.7",
     "file-type": "21.3.4",
+    "nodemailer": "10.5.0",
     "otpauth": "9.5.2",
     "pg": "8.23.1",
     "reflect-metadata": "0.2.2",
@@ -37,6 +39,7 @@
     "@ricaurte/domain": "workspace:*",
     "@ricaurte/validation": "workspace:*",
     "@types/node": "24.19.2",
+    "@types/nodemailer": "8.0.2",
     "esbuild": "0.28.2",
     "eslint": "9.39.5",
     "tsx": "4.23.15",
