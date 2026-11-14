@@ -120,6 +120,7 @@ test("portal: verified customer accepts a proposal, requests a reservation, staf
   page,
   browser,
 }) => {
+  test.setTimeout(180_000);
   const suffix = randomUUID().slice(0, 8);
   const emailA = `portal-a-${suffix}@publico-e2e.ricaurte.test`;
   const emailB = `portal-b-${suffix}@publico-e2e.ricaurte.test`;
@@ -173,6 +174,8 @@ test("portal: verified customer accepts a proposal, requests a reservation, staf
   // Staff: manual validation in /admin/reservas.
   await page.goto(`/admin/reservas?id=${reservationId}`);
   await page.getByRole("button", { name: "Iniciar validación" }).click();
+  // Staff decides the minimum deposit (COP 200.000 of 1.000.000); nothing is invented by the system.
+  await page.getByLabel("Abono mínimo requerido (COP)").fill("200000");
   page.once("dialog", (dialog) => void dialog.accept());
   await page.getByRole("button", { name: "Confirmar disponibilidad" }).click();
   await expect(page.getByRole("button", { name: "Confirmar disponibilidad" })).toHaveCount(0);
@@ -270,8 +273,81 @@ test("portal: verified customer accepts a proposal, requests a reservation, staf
   };
   expect(mine.status).toBe("PENDING_PAYMENT");
 
+  // Online abonos through the sandbox test adapter (no real charges). A declined attempt moves no money.
+  const pay = async (pesos: string, outcome: "aprobado" | "rechazado") => {
+    await customer.goto(`/mi-cuenta/reservas/${reservationId}`);
+    await customer.getByLabel("Valor a abonar (COP)").fill(pesos);
+    await customer.getByRole("button", { name: "Pagar en entorno de prueba" }).click();
+    await expect(customer).toHaveURL(/\/pagos\/prueba\/TEST-[0-9A-F]{16}$/);
+    await expect(customer.getByText("Entorno de prueba — no se realiza ningún cobro")).toBeVisible();
+    await customer.getByRole("button", { name: `Simular pago ${outcome}` }).click();
+    await expect(
+      customer.getByText(`Resultado del pago: ${outcome === "aprobado" ? "Aprobado" : "Rechazado"}.`),
+    ).toBeVisible();
+    const reference = customer.url().split("/").pop() as string;
+    await customer.getByRole("link", { name: "Volver a mi reserva" }).click();
+    await expect(customer).toHaveURL(new RegExp(`/mi-cuenta/reservas/${reservationId}$`));
+    return reference;
+  };
+  await pay("50000", "rechazado");
+  await expect(customer.getByText("Disponibilidad confirmada · pendiente de pago").first()).toBeVisible();
+  const approvedRef = await pay("200000", "aprobado");
+  await expect(customer.getByText("Pago parcial recibido").first()).toBeVisible();
+  type Money = {
+    status: string;
+    payment: { paidCents: string; balanceCents: string };
+    payments: Array<{ status: string }>;
+  };
+  const money = (await (await customer.request.get(`/api/v1/me/reservations/${reservationId}`)).json()) as Money;
+  expect(money.status).toBe("PARTIALLY_PAID");
+  expect(money.payment).toMatchObject({ paidCents: "20000000", balanceCents: "80000000" });
+  expect(money.payments.map((p) => p.status).sort()).toEqual(["APPROVED", "DECLINED"]);
+
+  // Replaying the provider decision, forging an event, or another customer probing the checkout changes nothing.
+  const replayDecision = await customer.request.post(`/api/v1/payments/sandbox/${approvedRef}/decision`, {
+    headers: { Origin: origin(), "x-csrf-token": await csrf(customer.request) },
+    data: { outcome: "APPROVED" },
+  });
+  expect(replayDecision.status()).toBe(200);
+  const forged = await page.request.post("/api/v1/payments/webhooks/sandbox", {
+    data: {
+      event: "transaction.updated",
+      data: {
+        transaction: {
+          id: randomUUID(),
+          reference: approvedRef,
+          amount_in_cents: 80000000,
+          currency: "COP",
+          status: "APPROVED",
+        },
+      },
+      signature: {
+        properties: ["transaction.id", "transaction.status", "transaction.amount_in_cents"],
+        checksum: "0".repeat(64),
+      },
+      timestamp: Math.floor(Date.now() / 1000),
+    },
+  });
+  expect(forged.status()).toBe(401);
+  expect((await other.request.get(`/api/v1/payments/sandbox/${approvedRef}`)).status()).toBe(404);
+  const after = (await (await customer.request.get(`/api/v1/me/reservations/${reservationId}`)).json()) as Money;
+  expect(after.payment.paidCents).toBe("20000000");
+
+  // Deposit covered: staff confirms the reservation manually.
+  await page.goto(`/admin/reservas?id=${reservationId}`);
+  await page.getByRole("button", { name: "Confirmar reserva" }).click();
+  await expect(page.getByRole("button", { name: "Confirmar reserva" })).toHaveCount(0);
+  const confirmed = (await (await page.request.get(`/api/v1/reservations/${reservationId}`)).json()) as {
+    status: string;
+    history: Array<{ event: string }>;
+  };
+  expect(confirmed.status).toBe("CONFIRMED");
+  expect(confirmed.history.map((h) => h.event)).toEqual(expect.arrayContaining(["PAYMENT_SETTLED", "CONFIRM"]));
+  await customer.goto(`/mi-cuenta/reservas/${reservationId}`);
+  await expect(customer.getByText("Reserva confirmada").first()).toBeVisible();
+
   // Responsive (360 px, no horizontal scroll) and WCAG checks on the portal.
-  for (const path of ["/mi-cuenta", `/mi-cuenta/reservas/${reservationId}`]) {
+  for (const path of ["/mi-cuenta", `/mi-cuenta/reservas/${reservationId}`, `/pagos/prueba/${approvedRef}`]) {
     await customer.setViewportSize({ width: 360, height: 800 });
     await customer.goto(path);
     await expect(customer.locator("h2").first()).toBeVisible();

@@ -82,6 +82,8 @@ $env:APP_ORIGIN = "http://127.0.0.1:3201"
 $env:WEB_ORIGIN = "http://127.0.0.1:3201"
 # Public intake is opened only for this isolated E2E run; it stays "false" by default until legal approval.
 $env:PUBLIC_QUOTE_REQUESTS_ENABLED = "true"
+# Simulated payment provider (no money moves); refused by the API in production.
+$env:PAYMENT_ADAPTER = "sandbox_test"
 # Test-only mail sink (customer login codes); refused by the API in production.
 $env:MAIL_ADAPTER = "file"
 $env:MAIL_SINK_DIR = Join-Path $logDir "mail"

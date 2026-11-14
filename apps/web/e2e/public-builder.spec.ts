@@ -67,7 +67,8 @@ test("public builder: approved price, request, tracking, idempotency", async ({ 
   await page.locator('input[name="reference"]').fill(body.reference);
   await page.locator('input[name="trackingCode"]').fill("WRONG-CODE-0000");
   await page.getByRole("button", { name: /Consultar/ }).click();
-  await expect(page.getByRole("alert")).toBeVisible();
+  // Next.js also renders an (empty) route announcer with role=alert; target the form's message.
+  await expect(page.getByRole("alert").filter({ hasText: "No encontramos" })).toBeVisible();
   await page.locator('input[name="trackingCode"]').fill(body.trackingCode);
   await page.getByRole("button", { name: /Consultar/ }).click();
   await expect(page.getByRole("definition").filter({ hasText: /^Recibida$/ })).toBeVisible();
