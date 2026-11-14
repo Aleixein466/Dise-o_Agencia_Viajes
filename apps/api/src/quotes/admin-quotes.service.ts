@@ -74,13 +74,14 @@ export class AdminQuotesService {
       throw new BadRequestException("Transporte inválido");
 
     const toRule = (rule: (typeof data.priceRules)[number]): DraftPriceRule | undefined =>
-      rule.unit === "PER_PERSON"
+      rule.unit === "PER_PERSON" || rule.unit === "PER_BOOKING"
         ? {
             id: rule.id,
             description: rule.name,
             amountCents: BigInt(rule.amountCents),
             ruleSetVersion: rule.ruleSetVersion,
             isFictitious: true,
+            unit: rule.unit,
           }
         : undefined;
     const baseSource = input.priceRuleId ? data.priceRules.find((rule) => rule.id === input.priceRuleId) : undefined;

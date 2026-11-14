@@ -4,6 +4,8 @@ export type DraftPriceRule = {
   amountCents: bigint;
   ruleSetVersion: string;
   isFictitious: boolean;
+  /** Only persisted, auditable units are accepted by the draft calculator. */
+  unit: "PER_PERSON" | "PER_BOOKING";
 };
 export type DraftSelection = {
   adults: number;
@@ -48,12 +50,13 @@ export function calculateDraftQuote(input: DraftSelection): DraftPricing {
       reasons.push(`PRICE_RULE_INVALID:${rule.id}`);
       return;
     }
+    const billedQuantity = rule.unit === "PER_BOOKING" ? 1 : quantity;
     lines.push({
       priceRuleId: rule.id,
       description: rule.description,
-      quantity,
+      quantity: billedQuantity,
       unitPriceCents: rule.amountCents,
-      totalCents: rule.amountCents * BigInt(quantity),
+      totalCents: rule.amountCents * BigInt(billedQuantity),
       ruleSetVersion: rule.ruleSetVersion,
       isFictitious: rule.isFictitious,
     });

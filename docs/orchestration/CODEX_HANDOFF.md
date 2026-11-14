@@ -119,3 +119,10 @@ Restaurar el CLI Docker de Windows, validar `docker compose config`, levantar ú
 
 - `/admin/tours` crea y lista tours borrador, mostrando si están incluidos, opcionales o sin asociación comercial. `/admin/tarifas` reutiliza la vista protegida de reglas de borrador y no expone una acción de activación.
 - Galería, aprobación comercial, historial visible de tarifas y la E2E Cartagena todavía no están terminados; no se declaran verificados.
+
+## Storage audit: `.claude` (2026-11-14)
+
+- The owner measured `.claude` at 4.45 GB. Its repository-local tree contains only `worktrees/`; no skills, MCP configuration, sessions, or Orchestra resources were found there.
+- `admin` and `auth` have uncommitted changes and remain protected. `api`, `asvs`, `e2e`, `f4-02-seo`, `monorepo`, and `prisma-v2` had no exclusive commits; their HEADs are already ancestors of `codex/continue-auth-admin` and their branches remain intact.
+- `e2e` was removed through `git worktree remove` without deleting its branch. `api` remains as an unregistered residue because Windows has open handles below `node_modules`; no force deletion or process termination was attempted.
+- Only clean-worktree `node_modules`, `.next`, `dist`, `.turbo`, and test reports are low-risk and regenerable. Worktrees with changes, user-level configuration, and Docker volumes are explicitly out of scope.

@@ -82,3 +82,12 @@ Leyenda: **Implementado** (código + pruebas) · **Parcial** · **Ausente** · *
 | CI, gitleaks, protección de `main`                                    | Implementado           | `.github/workflows/*`, protección verificada por API                   |
 | Despliegue: producción manual                                         | Implementado           | `vercel.json`, `docs/operations/DEPLOYMENT.md`                         |
 | Imagen Docker / Docker Hub                                            | Bloqueado por cliente  | Sin token; no se publica nada                                          |
+
+## Storage audit (2026-11-14)
+
+| Category | Status | Evidence / action |
+| --- | --- | --- |
+| `.claude/worktrees/admin`, `auth` | Protected | Uncommitted changes; retained. |
+| Clean integrated worktrees | Recoverable | No exclusive commits; branches retained. `e2e` was removed. |
+| `.claude/worktrees/api` residue | Locally blocked | No `.git`; Windows has open handles in `node_modules`. Do not force deletion. |
+| Skills/MCP/sessions | Not under repository `.claude` | No user configuration or Orchestra resource was touched. |
