@@ -89,6 +89,8 @@ body:has(.auth-root) > .site-footer {
 .admin-form {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
+  /* Side-by-side forms share a row height; keep rows (and buttons) at their natural size. */
+  align-content: start;
   gap: 18px;
 }
 .admin-field {
@@ -271,7 +273,9 @@ body:has(.auth-root) > .site-footer {
 .admin-content {
   padding: 24px 16px 56px;
 }
-.admin-content:focus {
+.admin-content:focus,
+.admin-reveal:focus,
+.admin-panel h2[tabindex="-1"]:focus {
   outline: none;
 }
 .admin-title {
@@ -520,4 +524,10 @@ body:has(.auth-root) > .site-footer {
     align-items: stretch;
     flex-direction: column;
   }
+}
+
+/* Record codes (RES-..., PUB-...) stay on one line inside the scrollable table. */
+.admin-table .admin-link-button {
+  text-align: left;
+  white-space: nowrap;
 }

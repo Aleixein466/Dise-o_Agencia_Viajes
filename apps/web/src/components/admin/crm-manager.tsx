@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { useReveal } from "./use-reveal";
 import { formatCop } from "@/components/public/money";
 import { fetchCsrfToken, requestJson } from "@/lib/auth/client";
 import type { AdminSession } from "@/lib/auth/types";
@@ -71,6 +72,7 @@ export function CrmManager({
   const [query, setQuery] = useState("");
   const [loadError, setLoadError] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(initialId);
+  const detailHeading = useReveal<HTMLHeadingElement>(selectedId);
   const [detail, setDetail] = useState<Detail | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -367,7 +369,9 @@ export function CrmManager({
       {selectedId ? (
         <section className="admin-panel" aria-labelledby="crm-detail-title">
           <div className="admin-section-heading">
-            <h2 id="crm-detail-title">{detail ? `Solicitud ${detail.reference}` : "Solicitud"}</h2>
+            <h2 id="crm-detail-title" ref={detailHeading} tabIndex={-1}>
+              {detail ? `Solicitud ${detail.reference}` : "Solicitud"}
+            </h2>
             <button type="button" className="admin-btn admin-btn-quiet" onClick={() => setSelectedId(null)}>
               Cerrar
             </button>

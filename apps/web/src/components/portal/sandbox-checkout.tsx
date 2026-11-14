@@ -1,5 +1,6 @@
 "use client";
 
+import "../public/wizard.css";
 import Link from "next/link";
 import { useState } from "react";
 import { formatCop } from "@/components/public/money";
@@ -58,20 +59,22 @@ function CheckoutBody({ reference, csrfToken }: Readonly<{ reference: string; cs
     <article className="portal-detail">
       <p className="portal-test-banner">Entorno de prueba — no se realiza ningún cobro</p>
       <h2 className="portal-title">Pago de prueba</h2>
-      <dl className="portal-panel">
-        <div>
-          <dt>Referencia</dt>
-          <dd>{checkout.reference}</dd>
-        </div>
-        <div>
-          <dt>Valor</dt>
-          <dd>{formatCop(checkout.amountCents) ?? "—"}</dd>
-        </div>
-        <div>
-          <dt>Estado</dt>
-          <dd>{paymentStatusLabel(status)}</dd>
-        </div>
-      </dl>
+      <div className="wz-summary portal-panel">
+        <dl>
+          <div>
+            <dt>Referencia</dt>
+            <dd>{checkout.reference}</dd>
+          </div>
+          <div>
+            <dt>Valor</dt>
+            <dd>{formatCop(checkout.amountCents) ?? "—"}</dd>
+          </div>
+          <div>
+            <dt>Estado</dt>
+            <dd>{paymentStatusLabel(status)}</dd>
+          </div>
+        </dl>
+      </div>
       <div aria-live="polite">
         {error ? (
           <p className="form-status error" role="alert">

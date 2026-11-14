@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { useReveal } from "./use-reveal";
 import { formatCop } from "@/components/public/money";
 import { fetchCsrfToken, requestJson } from "@/lib/auth/client";
 import type { AdminSession } from "@/lib/auth/types";
@@ -100,6 +101,7 @@ export function ReservationsManager({
   const [query, setQuery] = useState("");
   const [loadError, setLoadError] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(initialId);
+  const detailHeading = useReveal<HTMLHeadingElement>(selectedId);
   const [detail, setDetail] = useState<Detail | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -359,7 +361,9 @@ export function ReservationsManager({
       {selectedId ? (
         <section className="admin-panel" aria-labelledby="res-detail-title">
           <div className="admin-section-heading">
-            <h2 id="res-detail-title">{detail ? `Reserva ${detail.code}` : "Reserva"}</h2>
+            <h2 id="res-detail-title" ref={detailHeading} tabIndex={-1}>
+              {detail ? `Reserva ${detail.code}` : "Reserva"}
+            </h2>
             <button type="button" className="admin-btn admin-btn-quiet" onClick={() => setSelectedId(null)}>
               Cerrar
             </button>

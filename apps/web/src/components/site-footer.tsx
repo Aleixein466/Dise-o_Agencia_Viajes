@@ -46,7 +46,7 @@ export function SiteFooter() {
           <h3>Información</h3>
           <Link href="/privacidad">Privacidad</Link>
           <Link href="/terminos">Términos</Link>
-          <small>Reservas, pagos y cotizaciones aún no disponibles.</small>
+          <small>Pagos en línea en modo de prueba: no se realizan cobros reales.</small>
         </div>
       </div>
       <div className="shell copyright">

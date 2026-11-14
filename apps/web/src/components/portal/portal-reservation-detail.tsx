@@ -206,7 +206,7 @@ export function PortalReservationDetail({ id, csrfToken }: Readonly<{ id: string
       </section>
 
       {payment ? (
-        <section className="portal-panel" aria-labelledby="portal-res-payments">
+        <section className="wz-summary portal-panel" aria-labelledby="portal-res-payments">
           <h3 id="portal-res-payments">Pagos</h3>
           <dl>
             <div>
