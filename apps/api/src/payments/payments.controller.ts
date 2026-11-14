@@ -8,6 +8,7 @@ import {
   Inject,
   Param,
   Post,
+  Redirect,
   Req,
   Res,
   UnauthorizedException,
@@ -103,10 +104,33 @@ export class PaymentsController {
     return this.payments.sandboxDecide(principal.user.id, parse(reference, ref), input.outcome);
   }
 
+  /** Same-origin hop to Wompi's Web Checkout; the signed URL is rebuilt from the stored payment on every visit. */
+  @Get("payments/wompi/checkout/:reference")
+  @Redirect()
+  async wompiCheckout(
+    @Param("reference") ref: string,
+    @Req() request: FastifyRequest,
+    @Res({ passthrough: true }) reply: FastifyReply,
+  ) {
+    const principal = await this.auth.requireCustomer(cookie(request, this.auth.cookieName()), "payments:read_own");
+    const url = await this.payments.wompiCheckoutTarget(principal.user.id, parse(reference, ref));
+    reply.header("Cache-Control", "no-store");
+    return { url, statusCode: 303 };
+  }
+
+  /** Simulated provider (PAYMENT_ADAPTER=sandbox_test only). */
   @Post("payments/webhooks/sandbox")
   @HttpCode(200)
   async webhook(@Body() body: unknown, @Req() request: FastifyRequest) {
     this.limiter.check(request.ip || "unknown", "payments-webhook", 120);
-    return { result: await this.payments.handleEvent(body) };
+    return { result: await this.payments.handleEvent(body, "SANDBOX_TEST") };
+  }
+
+  /** Wompi SANDBOX events (PAYMENT_ADAPTER=wompi_sandbox only; 404 otherwise). No session: checksum-verified. */
+  @Post("payments/webhooks/wompi")
+  @HttpCode(200)
+  async wompiWebhook(@Body() body: unknown, @Req() request: FastifyRequest) {
+    this.limiter.check(request.ip || "unknown", "payments-webhook", 120);
+    return { result: await this.payments.handleEvent(body, "WOMPI") };
   }
 }

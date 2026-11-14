@@ -196,7 +196,7 @@ export function PlansTab({ session, csrf }: Readonly<{ session: AdminSession; cs
                     className="admin-btn admin-btn-quiet"
                     onClick={() => setRows((current) => current.filter((_, position) => position !== index))}
                   >
-                    Quitar cuota
+                    Quitar cuota<span className="sr-only"> {index + 1}</span>
                   </button>
                 ) : null}
               </fieldset>

@@ -1,6 +1,7 @@
 import { getServerEnv } from "@/lib/env";
 
-export const PRIVATE_PATHS = ["/api/", "/admin", "/cuenta"];
+// Pages that are noindex anyway; also kept out of crawlers (portal, payments, auth flows).
+export const PRIVATE_PATHS = ["/api/", "/admin", "/mi-cuenta", "/pagos", "/ingresar", "/recuperar", "/restablecer"];
 const FALLBACK_SITE_URL = "http://localhost:3000";
 
 /**

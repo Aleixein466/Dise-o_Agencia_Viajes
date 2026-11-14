@@ -27,6 +27,7 @@ import { CustomerAuthController } from "./customer-auth/customer-auth.controller
 import { PaymentsController } from "./payments/payments.controller";
 import { PaymentsService } from "./payments/payments.service";
 import { SandboxTestGateway } from "./payments/sandbox-gateway";
+import { createPaymentGateway, PAYMENT_GATEWAY } from "./payments/gateway";
 import { FinanceController } from "./finance/finance.controller";
 import { FinanceService } from "./finance/finance.service";
 import { NotificationsService } from "./notifications/notifications.service";
@@ -36,6 +37,7 @@ import { PqrsService } from "./pqrs/pqrs.service";
 @Module({})
 export class AppModule {
   static register(env: ApiEnv): DynamicModule {
+    const paymentGateway = createPaymentGateway(env);
     return {
       module: AppModule,
       imports: [PublicModule.register(env)],
@@ -72,7 +74,10 @@ export class AppModule {
         PublicRateLimiter,
         ReservationsService,
         PaymentsService,
-        SandboxTestGateway,
+        { provide: PAYMENT_GATEWAY, useValue: paymentGateway },
+        // Interim alias: ReservationsService still injects this token and only calls enabled()/checkoutUrl(), which
+        // every PaymentGateway provides. Remove once it injects PAYMENT_GATEWAY.
+        { provide: SandboxTestGateway, useValue: paymentGateway },
         FinanceService,
         NotificationsService,
         PqrsService,
