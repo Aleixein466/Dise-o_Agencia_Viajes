@@ -129,7 +129,9 @@ export class AuthService {
         select: { failedLoginCount: true },
       });
       const lockedUntil = lockoutUntil(failedLoginCount, now);
-      if (lockedUntil) await client.user.update({ where: { id: user.id }, data: { lockedUntil } });
+      // Conditional: if a successful login reset the counter meanwhile, this stale failure must not lock the account.
+      if (lockedUntil)
+        await client.user.updateMany({ where: { id: user.id, failedLoginCount }, data: { lockedUntil } });
       await this.audit(user.id, "auth.login_failed", ip);
       throw genericCredentials();
     }
@@ -337,35 +339,38 @@ export class AuthService {
     if (user?.status !== "ACTIVE" || user.deletedAt) return;
     const token = opaque();
     const now = new Date();
-    await client.$transaction([
-      // Only the newest link works: earlier unused reset tokens are invalidated.
-      client.oneTimeToken.updateMany({
-        where: { userId: user.id, purpose: "PASSWORD_RESET", usedAt: null },
-        data: { usedAt: now },
-      }),
-      client.oneTimeToken.create({
-        data: {
-          tokenHash: this.hashToken(token),
-          purpose: "PASSWORD_RESET",
-          userId: user.id,
-          expiresAt: oneTimeTokenExpiry("PASSWORD_RESET", now),
-          ipHash: ip ? sha256(ip) : undefined,
-        },
-      }),
-    ]);
+    const created = await client.oneTimeToken.create({
+      data: {
+        tokenHash: this.hashToken(token),
+        purpose: "PASSWORD_RESET",
+        userId: user.id,
+        expiresAt: oneTimeTokenExpiry("PASSWORD_RESET", now),
+        ipHash: ip ? sha256(ip) : undefined,
+      },
+      select: { id: true },
+    });
     await this.audit(user.id, "auth.password_reset_requested", ip);
     // Direct send (never the outbox, which would store the token). Only the kind is logged, never address or token.
+    if (!this.mail || this.env.MAIL_ADAPTER === "disabled") return;
     try {
-      await this.mail?.send({
+      await this.mail.send({
         to: email,
         subject: "Restablece tu contraseña",
-        text: `Para elegir una contraseña nueva abre este enlace (vence pronto y solo funciona una vez): ${this.env.APP_ORIGIN}/restablecer?token=${encodeURIComponent(token)}\nSi no lo solicitaste, ignora este mensaje.`,
+        text: `Para elegir una contraseña nueva abre este enlace (vence pronto y solo funciona una vez): ${this.env.APP_ORIGIN}/restablecer?token=${encodeURIComponent(token)}
+Si no lo solicitaste, ignora este mensaje.`,
         kind: "password_reset",
         createdAt: now,
       });
     } catch {
       console.warn("[auth] password_reset delivery failed");
+      return;
     }
+    // Only after the new link was handed to the mail adapter: earlier unused links stop working, so an attacker
+    // requesting resets cannot kill a victim's working link without a replacement arriving.
+    await client.oneTimeToken.updateMany({
+      where: { userId: user.id, purpose: "PASSWORD_RESET", usedAt: null, id: { not: created.id } },
+      data: { usedAt: now },
+    });
   }
 
   async resetPassword(token: string, password: string, ip?: string): Promise<void> {

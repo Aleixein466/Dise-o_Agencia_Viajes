@@ -23,13 +23,18 @@ describe("staff login hardening (Codex audit)", () => {
           roles: [],
         })),
         update,
+        updateMany: vi.fn(async () => ({ count: 1 })),
       },
       auditLog: { create: vi.fn(async () => ({})) },
     };
     const service = new AuthService({ client: async () => client } as never, parseEnv());
     await expect(service.login("a@x.test", "wrong", "1.1.1.1")).rejects.toMatchObject({ status: 401 });
     expect(update.mock.calls[0]![0]).toMatchObject({ data: { failedLoginCount: { increment: 1 } } });
-    expect(update.mock.calls[1]![0]).toMatchObject({ data: { lockedUntil: expect.any(Date) } });
+    // Lock applied only if the counter is still the one this failure produced (no reset by a success meanwhile).
+    expect(client.user.updateMany).toHaveBeenCalledWith({
+      where: { id: "u1", failedLoginCount: 5 },
+      data: { lockedUntil: expect.any(Date) },
+    });
   });
 
   it("spends an Argon2 verification on unknown accounts and rate-limits by IP", async () => {
@@ -50,25 +55,24 @@ describe("staff login hardening (Codex audit)", () => {
 
 describe("password reset (Codex audit)", () => {
   it("invalidates earlier tokens and mails a one-time link without logging it", async () => {
-    const updateMany = vi.fn(() => "updateMany");
-    const create = vi.fn(() => "create");
+    const updateMany = vi.fn(async () => ({ count: 1 }));
+    const create = vi.fn(async () => ({ id: "t-new" }));
     const client = {
       user: { findUnique: vi.fn(async () => ({ id: "u1", status: "ACTIVE", deletedAt: null })) },
       oneTimeToken: { updateMany, create },
       auditLog: { create: vi.fn(async () => ({})) },
-      $transaction: vi.fn(async () => []),
     };
     const mail = { send: vi.fn<(message: unknown) => Promise<void>>(async () => undefined) };
     const log = vi.spyOn(console, "warn").mockImplementation(() => undefined);
     const service = new AuthService(
       { client: async () => client } as never,
-      parseEnv(),
+      parseEnv({ MAIL_ADAPTER: "file" }),
       mail as never,
       new PublicRateLimiter(),
     );
     await service.forgotPassword("Staff@X.test", "1.1.1.1");
     expect(updateMany).toHaveBeenCalledWith({
-      where: { userId: "u1", purpose: "PASSWORD_RESET", usedAt: null },
+      where: { userId: "u1", purpose: "PASSWORD_RESET", usedAt: null, id: { not: "t-new" } },
       data: { usedAt: expect.any(Date) },
     });
     const sent = (mail.send.mock.calls[0] as unknown[])[0] as { to: string; text: string; kind: string };
@@ -93,5 +97,25 @@ describe("password reset (Codex audit)", () => {
     await service.forgotPassword("ghost@x.test", "2.2.2.3");
     await service.forgotPassword("ghost@x.test", "2.2.2.4");
     await expect(service.forgotPassword("ghost@x.test", "2.2.2.5")).rejects.toMatchObject({ status: 429 });
+  });
+});
+
+describe("password reset delivery failure (Codex audit pass 2)", () => {
+  it("keeps earlier links valid when the new one could not be delivered", async () => {
+    const updateMany = vi.fn();
+    const client = {
+      user: { findUnique: vi.fn(async () => ({ id: "u1", status: "ACTIVE", deletedAt: null })) },
+      oneTimeToken: { updateMany, create: vi.fn(async () => ({ id: "t-new" })) },
+      auditLog: { create: vi.fn(async () => ({})) },
+    };
+    const mail = { send: vi.fn(async () => Promise.reject(new Error("smtp down"))) };
+    vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    const service = new AuthService(
+      { client: async () => client } as never,
+      parseEnv({ MAIL_ADAPTER: "file" }),
+      mail as never,
+    );
+    await service.forgotPassword("staff@x.test", "3.3.3.3");
+    expect(updateMany).not.toHaveBeenCalled();
   });
 });
