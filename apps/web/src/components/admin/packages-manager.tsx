@@ -3,6 +3,13 @@ import { FormEvent, useCallback, useEffect, useState } from "react";
 import { fetchCsrfToken, requestJson } from "@/lib/auth/client";
 import type { AdminSession } from "@/lib/auth/types";
 type Rate = { id: string; name: string; amountCents: string; currency: string; conditions: { label?: string } | null };
+type History = {
+  id: string;
+  actorId: string | null;
+  before: { amountCents?: string } | null;
+  after: { amountCents?: string } | null;
+  createdAt: string;
+};
 type Pkg = {
   id: string;
   title: string;
@@ -27,6 +34,7 @@ export function PackagesManager({ session }: Readonly<{ session: AdminSession }>
   const [csrf, setCsrf] = useState(session.csrfToken);
   const [message, setMessage] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  const [history, setHistory] = useState<{ rate: string; rows: History[] } | null>(null);
   const load = useCallback(async () => {
     const r = await requestJson("/api/v1/catalog/packages?pageSize=50", "GET");
     if (r.ok && typeof r.data === "object" && r.data && Array.isArray((r.data as { items?: unknown }).items))
@@ -67,6 +75,16 @@ export function PackagesManager({ session }: Readonly<{ session: AdminSession }>
       if (detail.ok) setChosen(detail.data as Pkg);
       await load();
     }
+  }
+  async function showHistory(rate: Rate) {
+    setHistory({ rate: rate.conditions?.label ?? rate.name, rows: [] });
+    const r = await requestJson(`/api/v1/catalog/rates/${rate.id}/history`, "GET");
+    if (!r.ok || !Array.isArray(r.data)) {
+      setMessage("No se pudo consultar el historial autorizado.");
+      setHistory(null);
+      return;
+    }
+    setHistory({ rate: rate.conditions?.label ?? rate.name, rows: r.data as History[] });
   }
   return (
     <div className="admin-users">
@@ -152,9 +170,42 @@ export function PackagesManager({ session }: Readonly<{ session: AdminSession }>
                 <button className="admin-link-button" onClick={() => void rate(r)}>
                   Editar tarifa
                 </button>
+                <button className="admin-link-button" onClick={() => void showHistory(r)}>
+                  Ver historial
+                </button>
               </li>
             ))}
           </ul>
+          {history ? (
+            <section className="admin-panel" aria-live="polite">
+              <h3>Historial: {history.rate}</h3>
+              <button className="admin-link-button" onClick={() => setHistory(null)}>
+                Cerrar
+              </button>
+              {history.rows.length ? (
+                <ol className="admin-activity">
+                  {history.rows.map((row) => (
+                    <li key={row.id}>
+                      <strong>
+                        {row.before?.amountCents ? money(row.before.amountCents) : "Sin valor anterior"} →{" "}
+                        {row.after?.amountCents ? money(row.after.amountCents) : "Sin valor nuevo"}
+                      </strong>
+                      <br />
+                      <time>
+                        {new Intl.DateTimeFormat("es-CO", { dateStyle: "medium", timeStyle: "short" }).format(
+                          new Date(row.createdAt),
+                        )}
+                      </time>
+                      <br />
+                      <span>Actor: {row.actorId ?? "Sistema"}</span>
+                    </li>
+                  ))}
+                </ol>
+              ) : (
+                <p className="admin-empty">No hay cambios registrados.</p>
+              )}
+            </section>
+          ) : null}
         </section>
       ) : null}
     </div>
