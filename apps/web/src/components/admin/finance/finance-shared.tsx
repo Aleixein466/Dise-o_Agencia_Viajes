@@ -30,8 +30,13 @@ export function TargetFields({
   return (
     <>
       <label className="admin-field">
-        ID de la reserva
-        <input value={reservationId} onChange={(event) => onReservation(event.target.value)} autoComplete="off" />
+        Código de la reserva
+        <input
+          value={reservationId}
+          onChange={(event) => onReservation(event.target.value)}
+          autoComplete="off"
+          placeholder="RES-…"
+        />
       </label>
       <label className="admin-field">
         ID del plan de ahorro
@@ -46,5 +51,7 @@ export function targetBody(reservationId: string, planId: string): Record<string
   const reservation = reservationId.trim();
   const plan = planId.trim();
   if ((reservation && plan) || (!reservation && !plan)) return null;
-  return reservation ? { reservationId: reservation } : { savingsPlanId: plan };
+  if (!reservation) return { savingsPlanId: plan };
+  // Staff type the visible code (RES-…); a pasted UUID still works.
+  return /^RES-/i.test(reservation) ? { reservationCode: reservation.toUpperCase() } : { reservationId: reservation };
 }

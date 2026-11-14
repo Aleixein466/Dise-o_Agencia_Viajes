@@ -111,3 +111,9 @@ export function apiMessage(data: unknown, fallback: string): string {
   const message = (data as { message?: unknown } | null)?.message;
   return typeof message === "string" ? message : fallback;
 }
+
+/** Customer reference typed by staff: an email (normal case) or a pasted customer UUID. */
+export function customerRef(value: string): { customerEmail: string } | { customerId: string } {
+  const trimmed = value.trim();
+  return trimmed.includes("@") ? { customerEmail: trimmed.toLowerCase() } : { customerId: trimmed };
+}

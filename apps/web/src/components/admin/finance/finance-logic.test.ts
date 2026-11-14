@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   abonoStatusLabel,
   canDecideAbono,
+  customerRef,
   installmentStatusLabel,
   signedPesosToCents,
   validateInstallments,
@@ -35,5 +36,14 @@ describe("finance logic", () => {
   it("blocks the registrar from deciding", () => {
     expect(canDecideAbono("u1", "u1")).toBe(false);
     expect(canDecideAbono("u1", "u2")).toBe(true);
+  });
+});
+
+describe("customerRef", () => {
+  it("sends an email as customerEmail and anything else as customerId", () => {
+    expect(customerRef(" Lucia@Example.TEST ")).toEqual({ customerEmail: "lucia@example.test" });
+    expect(customerRef("2458c7ec-a6d7-4884-b238-143eb3b3ebf2")).toEqual({
+      customerId: "2458c7ec-a6d7-4884-b238-143eb3b3ebf2",
+    });
   });
 });

@@ -22,8 +22,14 @@ const uuid = z.uuid();
 const cents = z.string().regex(/^[1-9]\d{0,14}$/);
 const signedCents = z.string().regex(/^-?[1-9]\d{0,14}$/);
 const date = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
+const reservationCode = z
+  .string()
+  .trim()
+  .toUpperCase()
+  .regex(/^RES-[0-9A-F]{12}$/);
 const abonoFields = z.object({
   reservationId: z.uuid().optional(),
+  reservationCode: reservationCode.optional(),
   savingsPlanId: z.uuid().optional(),
   amountCents: cents,
   method: z.enum(["BANK_TRANSFER", "CASH"]),
@@ -33,12 +39,14 @@ const abonoFields = z.object({
 const reason = z.object({ reason: z.string().trim().min(3).max(300) });
 const adjustment = z.object({
   reservationId: z.uuid().optional(),
+  reservationCode: reservationCode.optional(),
   savingsPlanId: z.uuid().optional(),
   amountCents: signedCents,
   reason: z.string().trim().min(10).max(300),
 });
 const plan = z.object({
-  customerId: z.uuid(),
+  customerId: z.uuid().optional(),
+  customerEmail: z.email().max(254).optional(),
   name: z.string().trim().min(3).max(160),
   goalCents: cents,
   reservationId: z.uuid().optional(),
@@ -103,8 +111,14 @@ export class FinanceController {
       } else if (typeof part.value === "string" && part.value !== "") fields[part.fieldname] = part.value;
     }
     if (!raw || raw.length > RECEIPT_MAX_BYTES) throw new BadRequestException("Adjunta el comprobante");
-    const input = parse(abonoFields, fields);
-    return this.finance.registerAbono(principal.user.id, { ...input, amountCents: BigInt(input.amountCents) }, raw);
+    const { reservationCode: code, ...input } = parse(abonoFields, fields);
+    if (code && input.reservationId) throw new BadRequestException("Indica el código o el ID de la reserva, no ambos");
+    const reservationId = code ? await this.finance.reservationIdByCode(code) : input.reservationId;
+    return this.finance.registerAbono(
+      principal.user.id,
+      { ...input, reservationId, amountCents: BigInt(input.amountCents) },
+      raw,
+    );
   }
 
   @Get("finance/abonos")
@@ -165,9 +179,16 @@ export class FinanceController {
     @Headers("x-csrf-token") csrf?: string,
     @Headers("origin") origin?: string,
   ) {
-    const input = parse(adjustment, body);
+    const { reservationCode: code, ...input } = parse(adjustment, body);
+    if (code && input.reservationId) throw new BadRequestException("Indica el código o el ID de la reserva, no ambos");
     const principal = await this.writer(request, csrf, origin, "payments:approve");
-    return this.finance.adjust(principal.user.id, input, BigInt(input.amountCents), input.reason);
+    const reservationId = code ? await this.finance.reservationIdByCode(code) : input.reservationId;
+    return this.finance.adjust(
+      principal.user.id,
+      { reservationId, savingsPlanId: input.savingsPlanId },
+      BigInt(input.amountCents),
+      input.reason,
+    );
   }
 
   @Get("finance/ledger")
@@ -183,10 +204,14 @@ export class FinanceController {
     @Headers("x-csrf-token") csrf?: string,
     @Headers("origin") origin?: string,
   ) {
-    const input = parse(plan, body);
+    const { customerEmail, ...input } = parse(plan, body);
+    if (Boolean(customerEmail) === Boolean(input.customerId))
+      throw new BadRequestException("Indica el correo o el ID del cliente, solo uno");
     const principal = await this.writer(request, csrf, origin, "payments:approve");
+    const customerId = input.customerId ?? (await this.finance.customerIdByEmail(customerEmail!));
     return this.finance.createPlan(principal.user.id, {
       ...input,
+      customerId,
       goalCents: BigInt(input.goalCents),
       installments: input.installments.map((row) => ({ dueOn: row.dueOn, amountCents: BigInt(row.amountCents) })),
     });

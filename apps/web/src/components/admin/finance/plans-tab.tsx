@@ -14,6 +14,7 @@ import {
   validateReason,
   type InstallmentRow,
   type PlanView,
+  customerRef,
 } from "./finance-logic";
 import { API, NoticeLine, day, money, type Notice } from "./finance-shared";
 
@@ -108,7 +109,7 @@ export function PlansTab({ session, csrf }: Readonly<{ session: AdminSession; cs
       `${API}/savings-plans`,
       "POST",
       {
-        customerId: customerId.trim(),
+        ...customerRef(customerId),
         name: name.trim(),
         goalCents: pesosToPositiveCents(goal),
         installments: rows.map((row) => ({ dueOn: row.dueOn, amountCents: pesosToPositiveCents(row.amount) })),
@@ -154,8 +155,13 @@ export function PlansTab({ session, csrf }: Readonly<{ session: AdminSession; cs
           <h2 id="plan-form-title">Crear plan de ahorro</h2>
           <form className="admin-form" onSubmit={create} noValidate>
             <label className="admin-field">
-              ID del cliente
-              <input value={customerId} onChange={(event) => setCustomerId(event.target.value)} autoComplete="off" />
+              Correo del cliente
+              <input
+                value={customerId}
+                onChange={(event) => setCustomerId(event.target.value)}
+                autoComplete="off"
+                inputMode="email"
+              />
             </label>
             <label className="admin-field">
               Nombre del plan

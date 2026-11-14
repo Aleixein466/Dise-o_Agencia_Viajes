@@ -66,10 +66,11 @@ test("finance: manual abono with four-eyes approval, duplicates refused, savings
 
   // The reservation confirmed by the portal spec (deposit paid, balance left).
   const list = (await (await admin.request.get("/api/v1/reservations?status=CONFIRMED")).json()) as {
-    items: Array<{ id: string }>;
+    items: Array<{ id: string; code: string }>;
   };
   expect(list.items.length).toBeGreaterThan(0);
   const reservationId = list.items[0].id;
+  const reservationCode = list.items[0].code;
   type Detail = { customer: { id: string; email: string }; payment: { paidCents: string; balanceCents: string } };
   const detail = (await (await admin.request.get(`/api/v1/reservations/${reservationId}`)).json()) as Detail;
   const paidBefore = BigInt(detail.payment.paidCents);
@@ -100,7 +101,7 @@ test("finance: manual abono with four-eyes approval, duplicates refused, savings
   // Registrar records a transfer through the UI.
   const bankRef = `E2E-${randomUUID().slice(0, 8)}`;
   await registrar.goto("/admin/finanzas");
-  await registrar.getByLabel("ID de la reserva").fill(reservationId);
+  await registrar.getByLabel("Código de la reserva").fill(reservationCode);
   await registrar.getByLabel("Valor (COP)").fill("100000");
   await registrar.getByLabel("Método").selectOption("BANK_TRANSFER");
   await registrar.getByLabel("Referencia bancaria").fill(bankRef);
@@ -197,7 +198,7 @@ test("finance: manual abono with four-eyes approval, duplicates refused, savings
   const planName = `Ahorro E2E ${bankRef}`;
   await approver.getByRole("button", { name: "Planes de ahorro" }).click();
   await expect(approver.getByText("Los planes de ahorro no generan cobros automáticos.")).toBeVisible();
-  await approver.getByLabel("ID del cliente").fill(detail.customer.id);
+  await approver.getByLabel("Correo del cliente").fill(detail.customer.email);
   await approver.getByLabel("Nombre del plan").fill(planName);
   await approver.getByLabel("Meta (COP)").fill("200000");
   await approver.getByLabel("Fecha de la cuota 1").fill(inDays(30));

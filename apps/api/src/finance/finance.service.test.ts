@@ -383,16 +383,14 @@ describe("Codex re-audit fixes", () => {
     const tx = {
       $queryRaw: vi.fn(),
       savingsPlan: {
-        findUnique: vi
-          .fn()
-          .mockResolvedValue({
-            id: "p",
-            name: "P",
-            status: "COMPLETED",
-            goalCents: 100n,
-            customerId: "c1",
-            currency: "COP",
-          }),
+        findUnique: vi.fn().mockResolvedValue({
+          id: "p",
+          name: "P",
+          status: "COMPLETED",
+          goalCents: 100n,
+          customerId: "c1",
+          currency: "COP",
+        }),
       },
       ledgerEntry: { aggregate: vi.fn().mockResolvedValue({ _sum: { amountCents: 100n } }), create: vi.fn() },
     };
@@ -406,5 +404,32 @@ describe("Codex re-audit fixes", () => {
       ),
     ).rejects.toThrow("Solo se pueden ajustar planes de ahorro activos");
     expect(tx.ledgerEntry.create).not.toHaveBeenCalled();
+  });
+});
+
+describe("finance target resolution (codes instead of UUIDs)", () => {
+  it("resolves a reservation code or answers 404", async () => {
+    const findUnique = vi.fn().mockResolvedValueOnce({ id: resId }).mockResolvedValueOnce(null);
+    const value = service({ reservation: { findUnique } });
+    await expect(value.reservationIdByCode("RES-7865FB26B05A")).resolves.toBe(resId);
+    await expect(value.reservationIdByCode("RES-000000000000")).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it("prefers the customer linked to a portal account and refuses ambiguity", async () => {
+    const rows = (list: object[]) => service({ customer: { findMany: vi.fn().mockResolvedValue(list) } });
+    await expect(
+      rows([
+        { id: "a", userId: null },
+        { id: "b", userId: "u" },
+      ]).customerIdByEmail(" Ana@X.test "),
+    ).resolves.toBe("b");
+    await expect(rows([{ id: "a", userId: null }]).customerIdByEmail("ana@x.test")).resolves.toBe("a");
+    await expect(
+      rows([
+        { id: "a", userId: null },
+        { id: "c", userId: null },
+      ]).customerIdByEmail("ana@x.test"),
+    ).rejects.toBeInstanceOf(ConflictException);
+    await expect(rows([]).customerIdByEmail("nadie@x.test")).rejects.toBeInstanceOf(NotFoundException);
   });
 });

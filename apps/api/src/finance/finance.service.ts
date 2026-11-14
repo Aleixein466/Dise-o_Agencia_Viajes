@@ -413,6 +413,30 @@ export class FinanceService {
     });
   }
 
+  // ---------- Lookups by visible identifiers (staff types codes/emails, never raw UUIDs) ----------
+
+  async reservationIdByCode(code: string): Promise<string> {
+    const client = await this.db.client();
+    const row = await client.reservation.findUnique({ where: { code }, select: { id: true } });
+    if (!row) throw new NotFoundException("No existe una reserva con ese código");
+    return row.id;
+  }
+
+  /** Public requests may create several customer rows per email; the one linked to a portal account wins. */
+  async customerIdByEmail(emailInput: string): Promise<string> {
+    const client = await this.db.client();
+    const rows = await client.customer.findMany({
+      where: { email: emailInput.trim().toLowerCase() },
+      select: { id: true, userId: true },
+      take: 50,
+    });
+    const linked = rows.filter((row) => row.userId);
+    const pick = linked.length === 1 ? linked[0] : linked.length === 0 && rows.length === 1 ? rows[0] : null;
+    if (!rows.length) throw new NotFoundException("No existe un cliente con ese correo");
+    if (!pick) throw new ConflictException("Hay varios clientes con ese correo; usa el ID del cliente");
+    return pick.id;
+  }
+
   async ledger(target: Target) {
     exactlyOne(target);
     const client = await this.db.client();

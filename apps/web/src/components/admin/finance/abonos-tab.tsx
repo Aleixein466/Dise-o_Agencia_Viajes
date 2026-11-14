@@ -65,7 +65,7 @@ export function AbonosTab({ session, csrf }: Readonly<{ session: AdminSession; c
     const target = targetBody(reservationId, planId);
     const cents = pesosToPositiveCents(amount);
     if (!target)
-      return setNotice({ kind: "error", text: "Indica el ID de la reserva o el del plan de ahorro, solo uno." });
+      return setNotice({ kind: "error", text: "Indica el código de la reserva o el ID del plan de ahorro, solo uno." });
     if (!cents) return setNotice({ kind: "error", text: "El valor debe ser en pesos, solo números." });
     if (method === "BANK_TRANSFER" && !bankReference.trim())
       return setNotice({ kind: "error", text: "La referencia bancaria es obligatoria en transferencias." });
