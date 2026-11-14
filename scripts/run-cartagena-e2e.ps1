@@ -88,6 +88,7 @@ $env:APP_ORIGIN = "http://127.0.0.1:3201"
 $env:WEB_ORIGIN = "http://127.0.0.1:3201"
 # Public intake is opened only for this isolated E2E run; it stays "false" by default until legal approval.
 $env:PUBLIC_QUOTE_REQUESTS_ENABLED = "true"
+$env:PQRS_INTAKE_ENABLED = "true"
 # Simulated payment provider (no money moves); refused by the API in production.
 $env:PAYMENT_ADAPTER = "sandbox_test"
 # Test-only mail sink (customer login codes); refused by the API in production.
@@ -133,7 +134,7 @@ try {
   $api = Start-Logged "api" "corepack pnpm --filter @ricaurte/api start"
   Wait-Ready "api" $api "http://127.0.0.1:4100/api/v1/auth/session" 401 $ReadyTimeoutSec
   Log "web" "starting on :3201"
-  $web = Start-Logged "web" "set NODE_ENV=production&& corepack pnpm --filter @ricaurte/web exec next start -p 3201"
+  $web = Start-Logged "web" "set NODE_ENV=production&& corepack pnpm --filter @ricaurte/web exec next start -H 127.0.0.1 -p 3201"
   Wait-Ready "web" $web "http://127.0.0.1:3201/ingresar" 200 $ReadyTimeoutSec
   if ($ServeOnly) {
     $stopFile = Join-Path $logDir "stop"
