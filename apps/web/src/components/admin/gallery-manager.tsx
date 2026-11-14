@@ -86,7 +86,8 @@ export function GalleryManager({ session }: Readonly<{ session: AdminSession }>)
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const form = new FormData(event.currentTarget);
+    const formElement = event.currentTarget;
+    const form = new FormData(formElement);
     const file = form.get("file");
     const ownerId = String(form.get("owner") ?? "");
     if (
@@ -113,7 +114,7 @@ export function GalleryManager({ session }: Readonly<{ session: AdminSession }>)
       setMessage("La carga fue rechazada. Revisa el archivo, los permisos y el token CSRF.");
       return;
     }
-    event.currentTarget.reset();
+    formElement.reset();
     setPreview(null);
     if (replace) {
       const detached = await mutation(

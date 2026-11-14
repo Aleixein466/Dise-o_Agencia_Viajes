@@ -20,7 +20,15 @@ const packageSelect = {
   },
   priceRules: {
     where: { active: false },
-    select: { id: true, name: true, amountCents: true, currency: true, conditions: true, updatedAt: true },
+    select: {
+      id: true,
+      name: true,
+      amountCents: true,
+      currency: true,
+      conditions: true,
+      active: true,
+      updatedAt: true,
+    },
   },
 };
 function page(total: number, value: number, size: number) {

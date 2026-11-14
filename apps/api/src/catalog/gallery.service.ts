@@ -46,7 +46,12 @@ export class GalleryService {
     }
     const client = await this.db.client();
     await this.requireOwner(client, owner);
-    const encoded = await image.rotate().webp({ quality: 88 }).toBuffer();
+    let encoded: Buffer;
+    try {
+      encoded = await image.rotate().webp({ quality: 88 }).toBuffer();
+    } catch {
+      throw new BadRequestException("Imagen corrupta o con recursos no permitidos");
+    }
     const key = `${randomUUID()}.webp`;
     await mkdir(base(), { recursive: true });
     await writeFile(join(base(), key), encoded, { flag: "wx" });

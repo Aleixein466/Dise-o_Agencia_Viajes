@@ -10,7 +10,8 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "auth:bootstrap": "tsx src/auth/bootstrap.ts",
-    "catalog:import": "tsx src/catalog/import-portfolio.ts"
+    "catalog:import": "tsx src/catalog/import-portfolio.ts",
+    "e2e:seed-cartagena": "tsx src/e2e/seed-cartagena.ts"
   },
   "dependencies": {
     "@fastify/helmet": "13.2.0",

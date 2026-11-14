@@ -52,6 +52,14 @@ Los comandos raíz de Turbo y el script de build del paquete web no pudieron inv
 
 ## Próximo paso desbloqueado
 
+## Actualización: E2E Cartagena y Docker (2026-11-14)
+
+- Docker Desktop fue verificado en C:\\Users\\alexi\\AppData\\Local\\Programs\\DockerDesktop\\resources\\bin\\docker.exe: Engine 29.9.3, Docker Desktop 4.99.0 y Compose 5.7.0. PostgreSQL local estaba sano y limitado a 127.0.0.1:5433.
+- Se creó la base exclusivamente E2E ricaurte_cartagena_e2e, migrada con las dos migraciones Prisma. Tiene un administrador temporal y un usuario FINANCE temporal sin catalog:write; las credenciales se escriben sólo en %TEMP%, nunca en Git.
+- El sembrador crea Cartagena E2E, hotel, acomodación, paquete y tarifa inactiva/ficticia; elimina solamente sesiones, MFA y auditoría de esas entidades temporales para repetición determinista.
+- Playwright contra next build + next start y NestJS aislado aprobó 1/1 escenario: MFA, acceso a Cartagena, hotel, edición de tarifa, persistencia, historial con actor y antes/después, CSRF 403, galería privada, RBAC 403 y lectura privada 403. PostgreSQL confirmó 123460000|false|true y una auditoría pricing.draft_updated.
+- Comandos Windows reproducibles: .\\scripts\\provision-cartagena-e2e.ps1; .\\scripts\\seed-cartagena-e2e.ps1; .\\scripts\\run-cartagena-e2e.ps1. El runner construye API/Web, inicia puertos 4100/3201 y los detiene al terminar.
+
 ## Actualización: galería privada y filtros de tarifa (2026-11-13)
 
 - Se amplió la API existente de galería, sin crear un catálogo paralelo: GET /api/v1/gallery, asociación, actualización de metadatos/orden/portada y desvinculación. Todas las mutaciones conservan MFA, catalog:write, CSRF y auditoría; las lecturas de binarios siguen exigiendo sesión autorizada y emiten Cache-Control: private, no-store.
