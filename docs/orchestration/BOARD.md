@@ -110,3 +110,17 @@ Leyenda: **Implementado** (código + pruebas) · **Parcial** · **Ausente** · *
 - E2E aislado completo: **31/31 + auth 2/2** (PostgreSQL `ricaurte_cartagena_e2e_ci`, 1 worker). API 339/339, web 179/179.
 - Siguiente: rediseño Tropical Premium. 21st.dev sigue sin conectar (sin MCP ni `API_KEY_21ST`).
 - Incidencia aparte, no de la aplicación: el error de autoactualización de Claude Code se registra fuera del proyecto y no bloquea las pruebas.
+
+## Rediseño Tropical Premium (2026-11-15, commit `95ceff7`)
+
+| Área                                              | Estado                                | Evidencia                                                                            |
+| ------------------------------------------------- | ------------------------------------- | ------------------------------------------------------------------------------------ |
+| Sistema visual + fuentes                          | Implementado y probado                | `globals.css`, `next/font` (DM Sans, Playfair); fuentes cargadas en navegador        |
+| Inicio, destinos, cotizar, contacto, PQRS, acceso | Revisado en navegador (360 y 1366 px) | 0 px de desborde, 0 errores de consola; capturas en `%TEMP%\ricaurte-redesign\after` |
+| Portal y admin                                    | Implementado y probado                | `portal.css`, `admin.css`; barridos responsive y axe de la E2E                       |
+
+- E2E aislado completo: **31/31** tras corregir `scrollable-region-focusable` en el cronograma de ahorro del portal (región enfocable). Domain 55, API 339, web 179; lint, typecheck y prettier OK.
+- 21st.dev **conectado** (plan gratuito: búsqueda libre, 2 recuperaciones de código/día, sin generación IA). Sus componentes asumen Tailwind/shadcn; se usan como referencia y se implementan en el CSS actual.
+- Referencias TikTok: inaccesibles (página vacía sin JavaScript); no se describe su contenido.
+- Sin auditoría Codex en este lote (CLI no disponible en la máquina). Revisión independiente pendiente.
+- Docker Desktop estaba apagado: se arrancaron los contenedores existentes (PostgreSQL :5433, Mailpit); volúmenes intactos.
