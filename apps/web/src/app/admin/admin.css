@@ -713,3 +713,102 @@ body:has(.auth-root) > .site-footer {
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+/* Audit log viewer */
+.admin-audit-filters {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.admin-audit-actions {
+  grid-column: 1 / -1;
+}
+.admin-audit-status {
+  margin: 0 0 12px;
+}
+.admin-audit-table {
+  min-width: 860px;
+}
+.admin-audit-id {
+  color: var(--muted);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+.admin-audit-detail-row > td {
+  background: var(--cream);
+}
+.admin-audit-detail h4 {
+  margin: 14px 0 6px;
+  color: var(--navy);
+  font-size: 13px;
+}
+.admin-audit-diff {
+  display: grid;
+  gap: 6px;
+}
+.admin-audit-diff-head,
+.admin-audit-diff-row {
+  display: grid;
+  grid-template-columns: minmax(120px, 0.6fr) minmax(0, 1fr) minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+}
+.admin-audit-diff-head {
+  color: var(--navy);
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.admin-audit-diff-row {
+  padding: 6px 8px;
+  border-left: 4px solid transparent;
+  border-radius: 6px;
+}
+.admin-audit-diff-changed {
+  border-left-color: var(--orange-dark);
+  background: #fff1e6;
+}
+.admin-audit-key {
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+.admin-audit-flag {
+  color: var(--orange-dark);
+  font-size: 12px;
+}
+.admin-audit-diff pre,
+.admin-audit-json {
+  margin: 0;
+  max-width: 100%;
+  overflow-x: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 12px;
+}
+@media (max-width: 760px) {
+  .admin-audit-filters {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .admin-audit-diff-head {
+    display: none;
+  }
+  .admin-audit-diff-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (max-width: 560px) {
+  .admin-audit-filters {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.admin-transport-filters {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+  margin-bottom: 16px;
+}
+@media (min-width: 700px) {
+  .admin-transport-filters {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}

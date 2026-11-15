@@ -36,6 +36,10 @@ import { CustomerPqrsController, PublicPqrsController, StaffPqrsController } fro
 import { PqrsService } from "./pqrs/pqrs.service";
 import { DashboardController } from "./dashboard/dashboard.controller";
 import { DashboardService } from "./dashboard/dashboard.service";
+import { AuditController } from "./audit/audit.controller";
+import { AuditService } from "./audit/audit.service";
+import { TransportOptionsController } from "./catalog/transport-options.controller";
+import { TransportOptionsService } from "./catalog/transport-options.service";
 
 @Module({})
 export class AppModule {
@@ -63,6 +67,8 @@ export class AppModule {
         CustomerPqrsController,
         StaffPqrsController,
         DashboardController,
+        AuditController,
+        TransportOptionsController,
       ],
       providers: [
         { provide: ENV, useValue: env },
@@ -85,6 +91,8 @@ export class AppModule {
         NotificationsService,
         PqrsService,
         DashboardService,
+        AuditService,
+        TransportOptionsService,
       ],
     };
   }

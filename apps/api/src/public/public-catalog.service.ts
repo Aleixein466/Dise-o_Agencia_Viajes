@@ -47,7 +47,15 @@ const ruleSelect = {
   minTravelers: true,
   maxTravelers: true,
   season: {
-    select: { id: true, startsOn: true, endsOn: true, isFictitious: true, active: true, destinationId: true, packageId: true },
+    select: {
+      id: true,
+      startsOn: true,
+      endsOn: true,
+      isFictitious: true,
+      active: true,
+      destinationId: true,
+      packageId: true,
+    },
   },
   ageRule: { select: { id: true, isFictitious: true, active: true } },
 } as const;
@@ -199,6 +207,7 @@ export class PublicCatalogService {
             transportOptionId: true,
             tourId: true,
             addOnId: true,
+            transportOption: { select: { active: true, deletedAt: true } },
             hotel: {
               select: {
                 roomTypes: { where: { active: true, deletedAt: null }, select: { id: true, maxOccupancy: true } },
@@ -210,7 +219,13 @@ export class PublicCatalogService {
     });
     if (!pkg) throw new NotFoundException();
     const has = (field: "hotelId" | "transportOptionId" | "tourId" | "addOnId", id: string) =>
-      pkg.components.some((c) => c[field] === id && (field !== "tourId" || !c.included));
+      pkg.components.some(
+        (c) =>
+          c[field] === id &&
+          (field !== "tourId" || !c.included) &&
+          // Same rule as the builder: an inactive or deleted transport option is never offered nor priced.
+          (field !== "transportOptionId" || (!!c.transportOption?.active && !c.transportOption.deletedAt)),
+      );
     // A room type is valid when it belongs to one of the package's hotels (and to the chosen hotel, if any).
     const room = input.roomTypeId
       ? pkg.components.flatMap((c) =>

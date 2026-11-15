@@ -50,7 +50,13 @@ const promo = (extra: Record<string, unknown> = {}) => ({
 });
 function service(
   packageRules: Rule[],
-  opts: { targeted?: Rule[]; ageRules?: unknown[]; promotions?: unknown[]; maxOccupancy?: number } = {},
+  opts: {
+    targeted?: Rule[];
+    ageRules?: unknown[];
+    promotions?: unknown[];
+    maxOccupancy?: number;
+    transport?: { active: boolean; deletedAt: Date | null };
+  } = {},
 ) {
   const promotionFind = vi.fn(async () => opts.promotions ?? []);
   const db = {
@@ -78,6 +84,7 @@ function service(
               transportOptionId: bus,
               tourId: null,
               addOnId: null,
+              transportOption: opts.transport ?? { active: true, deletedAt: null },
               hotel: null,
             },
           ],
@@ -121,6 +128,17 @@ describe("PublicCatalogService pricing", () => {
     // Two unbound package rates are ambiguous: never guess a base price.
     const ambiguous = await service([rule("a", 100n), rule("b", 200n)], { targeted }).value.preview(selection);
     expect(ambiguous).toMatchObject({ status: "REQUIRES_MANUAL_REVIEW", totalCents: null });
+  });
+
+  it("refuses to price an inactive or deleted transport option even when sent directly", async () => {
+    const targeted = [rule("bus", 50n, { transportOptionId: bus })];
+    for (const transport of [
+      { active: false, deletedAt: null },
+      { active: true, deletedAt: new Date() },
+    ]) {
+      const { value } = service([rule("base", 100n)], { targeted, transport });
+      await expect(value.preview({ ...base, transportOptionId: bus })).rejects.toThrow();
+    }
   });
 
   it("applies a real season only inside its window and asks for the travel date", async () => {
