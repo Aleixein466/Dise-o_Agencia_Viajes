@@ -96,3 +96,17 @@ Leyenda: **Implementado** (código + pruebas) · **Parcial** · **Ausente** · *
 
 - PQRS completo (API + web + E2E); radicación pública apagada por defecto (`PQRS_INTAKE_ENABLED`). Festivos en el plazo: pendiente legal.
 - Demo local verificada en navegador: `scripts/start-demo.ps1 -Populate` / `scripts/stop-demo.ps1`. Ver `CODEX_HANDOFF.md`.
+
+## Módulos Clientes, Cupos, Contenido y Configuración (2026-11-15)
+
+| Módulo        | Estado                 | Evidencia                                                                     |
+| ------------- | ---------------------- | ----------------------------------------------------------------------------- |
+| Clientes      | Implementado y probado | `apps/api/src/customers`, `/admin/clientes`, `public-admin-customers.spec.ts` |
+| Cupos         | Implementado y probado | `apps/api/src/catalog/departures*`, `/admin/cupos`, migración aditiva         |
+| Contenido     | Implementado y probado | `apps/api/src/content`, `/admin/contenido`, publicación con aprobación        |
+| Configuración | Implementado y probado | `apps/api/src/settings`, `/admin/configuracion`, rechaza secretos             |
+| QR de MFA     | Implementado y probado | `uqr` local, `auth-admin.spec.ts` con TOTP calculado                          |
+
+- E2E aislado completo: **31/31 + auth 2/2** (PostgreSQL `ricaurte_cartagena_e2e_ci`, 1 worker). API 339/339, web 179/179.
+- Siguiente: rediseño Tropical Premium. 21st.dev sigue sin conectar (sin MCP ni `API_KEY_21ST`).
+- Incidencia aparte, no de la aplicación: el error de autoactualización de Claude Code se registra fuera del proyecto y no bloquea las pruebas.

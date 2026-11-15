@@ -24,3 +24,11 @@ Aprobaciones del propietario pendientes:
 - Tarifas reales del portafolio: todas siguen en DRAFT/ficticias. El propietario ya puede crearlas y aprobarlas desde `/admin/tarifas` (temporadas, edades, promociones).
 - Llaves sandbox de Wompi: el adaptador `wompi_sandbox` está listo, pero no se ha validado contra el sandbox real.
 - Hosting del API y de PostgreSQL para staging.
+
+Actualización 2026-11-15:
+
+| Hito | Alcance                                   | Depende de | Responsable                  | Estado                 | Aceptación                                                     |
+| ---- | ----------------------------------------- | ---------- | ---------------------------- | ---------------------- | -------------------------------------------------------------- |
+| 8    | QR de MFA local (uqr)                     | 2          | Claude                       | IMPLEMENTADO Y PROBADO | E2E auth con TOTP calculado; el secreto no sale del navegador  |
+| 9    | Clientes, Cupos, Contenido, Configuración | 4, 2a      | builders + Codex (auditoría) | IMPLEMENTADO Y PROBADO | E2E 31/31 + auth 2/2; hallazgo Medio de Codex corregido        |
+| 10   | Rediseño Tropical Premium                 | 9          | Claude + architect           | PENDIENTE              | Capturas antes/después 360/768/1366/1920, a11y, reduced-motion |

@@ -273,3 +273,16 @@ Restaurar el CLI Docker de Windows, validar `docker compose config`, levantar ú
 - **Referencias de TikTok** (`vt.tiktok.com/ZSpVqeHbA`, `vt.tiktok.com/ZSpVV3fYn`, `@rakitdata.id`): bloqueadas para clientes automáticos. Las páginas solo devolvieron "TikTok - Make Your Day" o "Please wait...". No se describe su contenido y no se usaron como referencia.
 - **Guía de diseño filtrada** (`claude-design.md` de un repositorio de prompts filtrados): no se usó, porque es un documento interno de terceros obtenido sin autorización. El rediseño sigue la identidad propia del proyecto.
 - **21st.dev:** el plugin no figura instalado en esta sesión, no hay herramientas MCP de 21st y falta `API_KEY_21ST`. Bloqueado: se usan recursos locales y no se consumen créditos.
+
+## Actualización: módulos Clientes, Cupos, Contenido y Configuración (2026-11-15)
+
+- **Clientes** (`customers:read/write`): búsqueda, perfil con historial, edición de contacto, notas internas (`CrmNote`), documentos enmascarados; 409 `DUPLICATE_CUSTOMER` / `CUSTOMER_HAS_ACCOUNT`.
+- **Cupos** (`catalog:write`): capacidad por salida, retenciones/liberaciones atómicas, 409 `OVERBOOKING`, piso de capacidad; migración aditiva `20261118_departure_seat_changes`.
+- **Contenido** (`content:write`): FAQ, páginas y bloques del inicio en borrador; publicar exige `confirmApproved: true`; nada se borra (se archiva). Público: `GET /public/content`, `/public/content/pages/:slug`.
+- **Configuración** (`settings:write`): perfil de agencia; 400 `SECRETS_NOT_ALLOWED`. Público: `GET /public/agency`.
+- **Tarifas:** búsqueda por nombre (`q`) en temporadas, edades y promociones.
+- **Auditoría Codex:** _Medio, corregido_: la auditoría de `customers.updated` guardaba nombre y país antes/después; ahora solo `changed`.
+- **Defectos hallados por E2E y corregidos:** colisión de `id` entre encabezado y campo "Título" en Contenido; foco del perfil de Clientes antes del render; temporadas de corridas previas empujaban la fila a la página 2; locator ambiguo del historial de bloques (sección anidada).
+- **Runner E2E:** `-Spec "a.spec.ts,b.spec.ts"` corre lotes con la misma instancia aislada (omite auth). Cada lote debe empezar por `catalog-cartagena.spec.ts`, que crea las sesiones admin/finance que el seed invalida.
+- **Memoria:** la corrida del 2026-11-15 02:xx fue cortada por el sistema (≈1,4 GB libres; Edge, VS Code y WSL ajenos a la prueba). Se reutilizó el build vigente (`-SkipBuild`) y se validó primero por lotes. Resultado: **31/31 + auth 2/2**.
+- **Pendiente:** el sitio público aún no consume `/public/content` ni `/public/agency`; los medios públicos solo devuelven `{id, alt}`.

@@ -1,4 +1,4 @@
-[CmdletBinding()]
+﻿[CmdletBinding()]
 param(
   # "ci" runs a second, fully isolated instance (database ricaurte_cartagena_e2e_ci, ports 4200/3301, build in
   # apps/web/.next-ci, logs in %TEMP%\ricaurte-e2e-ci) so tests never disturb a demo served by the default instance.
@@ -15,7 +15,10 @@ param(
   [switch]$Mailpit,
   [int]$BuildTimeoutSec = 600,
   [int]$ReadyTimeoutSec = 60,
-  [int]$PlaywrightTimeoutSec = 600
+  [int]$PlaywrightTimeoutSec = 600,
+  # Run only these spec files (catalog config), e.g. -Spec public-admin-content.spec.ts; skips the auth stage.
+  # Used for low-memory batches: same isolated DB/ports, nothing else changes.
+  [string[]]$Spec = @()
 )
 
 # Each stage logs to %TEMP%\ricaurte-e2e\<stage>.log, streams its output live, and is killed (whole process tree)
@@ -179,8 +182,12 @@ try {
   } else {
     # list reporter only (the HTML reporter is not needed here) plus a Playwright-side global timeout below ours.
     $pwGlobalMs = ($PlaywrightTimeoutSec - 30) * 1000
-    Invoke-Stage "playwright" "corepack pnpm --filter @ricaurte/web exec playwright test -c playwright.catalog.config.ts --reporter=list --global-timeout=$pwGlobalMs" $PlaywrightTimeoutSec
-    Invoke-Stage "playwright-auth" "corepack pnpm --filter @ricaurte/web exec playwright test -c playwright.auth.config.ts --reporter=list --global-timeout=120000" 180
+    $Spec = @($Spec | ForEach-Object { $_ -split "," } | Where-Object { $_ })
+    $specArgs = $Spec -join " "
+    Invoke-Stage "playwright" "corepack pnpm --filter @ricaurte/web exec playwright test -c playwright.catalog.config.ts --reporter=list --global-timeout=$pwGlobalMs $specArgs" $PlaywrightTimeoutSec
+    if ($Spec.Count -eq 0) {
+      Invoke-Stage "playwright-auth" "corepack pnpm --filter @ricaurte/web exec playwright test -c playwright.auth.config.ts --reporter=list --global-timeout=120000" 180
+    } else { Log "playwright-auth" "skipped (-Spec batch)" }
   }
   $exitCode = 0
 } catch {

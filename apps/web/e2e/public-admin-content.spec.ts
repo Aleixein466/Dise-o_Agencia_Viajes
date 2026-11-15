@@ -251,7 +251,7 @@ test.describe("Admin content", () => {
     await expect(hero.getByRole("status").filter({ hasText: "Retirado del sitio" })).toBeVisible();
     expect((await publicContent(page)).home.hero).toBeNull();
     await hero.getByRole("button", { name: /^Historial de Portada/ }).click();
-    const history = page.locator("section").filter({ has: page.getByRole("heading", { name: /^Historial: Portada/ }) });
+    const history = page.getByRole("region", { name: /^Historial: Portada/ });
     await expect(history).toContainText("Borrador guardado");
     await expect(history).toContainText("Publicado");
     await context.close();
