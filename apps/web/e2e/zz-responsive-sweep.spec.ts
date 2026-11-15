@@ -122,6 +122,9 @@ test("back-office screens are responsive and accessible", async ({ browser }) =>
     ["/admin/reservas", "reservas"],
     ["/admin/galeria", "galeria"],
     ["/admin/tarifas", "tarifas"],
+    ["/admin/tarifas?tab=temporadas", "tarifas-temporadas"],
+    ["/admin/tarifas?tab=edades", "tarifas-edades"],
+    ["/admin/tarifas?tab=promociones", "tarifas-promociones"],
     ["/admin/paquetes", "paquetes"],
     ["/admin/usuarios", "usuarios"],
   ] as const)

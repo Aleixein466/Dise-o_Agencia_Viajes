@@ -2,6 +2,8 @@
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import { fetchCsrfToken, requestJson } from "@/lib/auth/client";
 import type { AdminSession } from "@/lib/auth/types";
+import { PriceRuleForm } from "./commercial/price-rule-form";
+import { formatCop } from "./commercial/helpers";
 import { useDialog } from "./use-dialog";
 type Rate = {
   id: string;
@@ -29,15 +31,12 @@ type Pkg = {
   summary: string | null;
   includes: unknown;
   excludes: unknown;
-  destination: { name: string };
+  destination: { id?: string; name: string };
   hotels: { id: string; name: string }[];
   itinerary: { day: number; title: string; description: string }[];
   priceRules: Rate[];
 };
-const money = (cents: string) =>
-  new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", maximumFractionDigits: 0 }).format(
-    Number(BigInt(cents) / BigInt(100)),
-  );
+const money = formatCop;
 export function PackagesManager({ session }: Readonly<{ session: AdminSession }>) {
   const { confirm, prompt, dialog } = useDialog();
   const [items, setItems] = useState<Pkg[]>([]);
@@ -47,6 +46,7 @@ export function PackagesManager({ session }: Readonly<{ session: AdminSession }>
   const [message, setMessage] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const [history, setHistory] = useState<{ rate: string; rows: History[] } | null>(null);
+  const [ruleForm, setRuleForm] = useState<{ rate: Rate | null } | null>(null);
   const [query, setQuery] = useState("");
   const [destination, setDestination] = useState("");
   const [hotel, setHotel] = useState("");
@@ -119,6 +119,15 @@ export function PackagesManager({ session }: Readonly<{ session: AdminSession }>
       }
       await load();
     }
+  }
+  async function ruleSaved(text: string) {
+    setRuleForm(null);
+    setMessage(text);
+    if (chosen) {
+      const detail = await requestJson(`/api/v1/catalog/packages/${chosen.id}/preview`, "GET");
+      if (detail.ok) setChosen(detail.data as Pkg);
+    }
+    await load();
   }
   async function showHistory(rate: Rate) {
     setHistory({ rate: rate.conditions?.label ?? rate.name, rows: [] });
@@ -265,6 +274,9 @@ export function PackagesManager({ session }: Readonly<{ session: AdminSession }>
             ))}
           </ol>
           <h3>Tarifas</h3>
+          <button type="button" className="admin-btn admin-btn-quiet" onClick={() => setRuleForm({ rate: null })}>
+            Nueva tarifa con condiciones
+          </button>
           <ul className="admin-activity">
             {chosen.priceRules.map((r) => (
               <li key={r.id}>
@@ -275,6 +287,11 @@ export function PackagesManager({ session }: Readonly<{ session: AdminSession }>
                 {r.isFictitious !== false && !r.active ? (
                   <button className="admin-link-button" onClick={() => void rate(r)}>
                     Editar tarifa
+                  </button>
+                ) : null}
+                {r.isFictitious !== false && !r.active ? (
+                  <button className="admin-link-button" onClick={() => setRuleForm({ rate: r })}>
+                    Condiciones comerciales
                   </button>
                 ) : null}
                 <button className="admin-link-button" onClick={() => void showHistory(r)}>
@@ -302,6 +319,18 @@ export function PackagesManager({ session }: Readonly<{ session: AdminSession }>
               </li>
             ))}
           </ul>
+          {ruleForm ? (
+            <PriceRuleForm
+              key={ruleForm.rate?.id ?? "new"}
+              csrf={csrf}
+              packageId={chosen.id}
+              destinationId={chosen.destination.id}
+              hotelIds={chosen.hotels.map((h) => h.id)}
+              rate={ruleForm.rate}
+              onSaved={(text) => void ruleSaved(text)}
+              onCancel={() => setRuleForm(null)}
+            />
+          ) : null}
           {history ? (
             <section className="admin-panel" aria-live="polite">
               <h3>Historial: {history.rate}</h3>

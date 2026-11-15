@@ -4,6 +4,7 @@ export default defineConfig({
   testDir: "e2e",
   testMatch: [
     "catalog-cartagena.spec.ts",
+    "public-admin-commercial-rules.spec.ts",
     "public-builder.spec.ts",
     "public-crm.spec.ts",
     "public-portal.spec.ts",
