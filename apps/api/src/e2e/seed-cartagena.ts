@@ -270,6 +270,21 @@ async function seedPublicBuilder(db: ReturnType<typeof createDbClient>) {
   else await db.priceRule.create({ data: { packageId: pkg.id, name, ...rule } });
   // Only one approved base rate, so the public base selection stays unambiguous.
   await db.priceRule.updateMany({ where: { packageId: pkg.id, name: { not: name } }, data: { active: false } });
+  // Authorized test promotion for the pricing-rules E2E (isolated database only; 10 %, package-scoped, no cap).
+  const promotion = {
+    name: "Promoción E2E 10 %",
+    discountType: "PERCENT" as const,
+    percentBps: 1000,
+    amountOffCents: null,
+    startsAt: new Date("2026-01-01T00:00:00Z"),
+    endsAt: new Date("2099-12-31T23:59:59Z"),
+    maxRedemptions: null,
+    destinationId: null,
+    packageId: pkg.id,
+    active: true,
+    isFictitious: false,
+  };
+  await db.promotion.upsert({ where: { code: "E2E10" }, update: promotion, create: { code: "E2E10", ...promotion } });
   const body = "Documento de prueba E2E. No es un texto legal vigente.";
   await db.legalDocument.upsert({
     where: { type_version: { type: "DATA_TREATMENT_AUTHORIZATION", version: "e2e-v1" } },

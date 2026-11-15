@@ -7,6 +7,7 @@ export default defineConfig({
     "public-builder.spec.ts",
     "public-crm.spec.ts",
     "public-portal.spec.ts",
+    "public-pricing-rules.spec.ts",
     "public-pqrs-portal.spec.ts",
     "public-pqrs.spec.ts",
     "public-savings-finance.spec.ts",

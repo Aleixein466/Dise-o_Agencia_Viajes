@@ -85,6 +85,31 @@ test("public screens are responsive and accessible", async ({ page }) => {
     await check(page, path, label);
 });
 
+test("admin dashboard shows role-scoped indicators", async ({ browser }) => {
+  const adminContext = await browser.newContext({ storageState: adminStatePath });
+  const admin = await adminContext.newPage();
+  await admin.goto("/admin");
+  for (const title of ["Solicitudes abiertas", "Reservas en curso", "Abonos por aprobar", "PQRS abiertas"])
+    await expect(admin.getByRole("heading", { name: title })).toBeVisible();
+  await expect(admin.getByText("Sin datos todavía")).toHaveCount(0);
+  await admin.getByRole("link", { name: "Abrir pqrs abiertas" }).click();
+  await expect(admin).toHaveURL(/\/admin\/pqrs$/);
+  await adminContext.close();
+
+  // FINANCE has no pqrs:read: the API omits that block and the page shows no PQRS card.
+  const financeContext = await browser.newContext({ storageState: financeStatePath });
+  const finance = await financeContext.newPage();
+  const [summary] = await Promise.all([
+    finance.waitForResponse((r) => r.url().endsWith("/api/v1/admin/dashboard")),
+    finance.goto("/admin"),
+  ]);
+  expect(summary.status()).toBe(200);
+  expect(Object.keys(await summary.json()).sort()).toEqual(["payments", "quotes", "reservations"]);
+  await expect(finance.getByRole("heading", { name: "Abonos por aprobar" })).toBeVisible();
+  await expect(finance.getByRole("heading", { name: "PQRS abiertas" })).toHaveCount(0);
+  await financeContext.close();
+});
+
 test("back-office screens are responsive and accessible", async ({ browser }) => {
   test.setTimeout(300_000);
   const adminContext = await browser.newContext({ storageState: adminStatePath });
