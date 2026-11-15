@@ -24,6 +24,7 @@ const listQuery = z.object({
   scope: z.enum(["GLOBAL", "DESTINATION", "PACKAGE"]).optional(),
   destinationId: z.uuid().optional(),
   packageId: z.uuid().optional(),
+  q: z.string().trim().min(1).max(80).optional(),
 });
 const stamp = { expectedUpdatedAt: z.iso.datetime().transform((value) => new Date(value)) };
 const transition = z.object(stamp).strict();

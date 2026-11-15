@@ -65,6 +65,12 @@ function matches(row: Row, where: Record<string, unknown> | undefined): boolean 
             : same(cell, op.equals);
         if (!ok) return false;
       }
+      if ("contains" in op) {
+        const needle = String(op.contains);
+        const hay = String(cell ?? "");
+        const ok = op.mode === "insensitive" ? hay.toLowerCase().includes(needle.toLowerCase()) : hay.includes(needle);
+        if (!ok) return false;
+      }
       continue;
     }
     if (!same(cell, value)) return false;
@@ -259,6 +265,13 @@ describe("seasons", () => {
     expect((await w.rules.seasons({ status: "approved" }, 1, 20)).items.map((s) => s.id)).toEqual([a.id]);
     expect((await w.rules.seasons({ scope: "GLOBAL" }, 1, 20)).total).toBe(1);
     expect(await w.rules.seasons({}, 1, 20)).toMatchObject({ total: 2, page: 1, pageSize: 20, pages: 1 });
+  });
+  it("searches by name, case-insensitive", async () => {
+    const w = world();
+    const a = await w.rules.createSeason(season({ name: "Temporada Alta Diciembre" }), ACTOR);
+    await w.rules.createSeason(season({ name: "Semana Santa" }), ACTOR);
+    expect((await w.rules.seasons({ q: "alta dic" }, 1, 20)).items.map((s) => s.id)).toEqual([a.id]);
+    expect((await w.rules.seasons({ q: "nada" }, 1, 20)).total).toBe(0);
   });
 });
 

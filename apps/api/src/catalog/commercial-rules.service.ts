@@ -16,6 +16,8 @@ export type ListFilter = {
   scope?: ScopeFilter;
   destinationId?: string;
   packageId?: string;
+  /** Case-insensitive name search. */
+  q?: string;
 };
 
 export const badRequest = (code: string, message: string) =>
@@ -37,6 +39,7 @@ const statusWhere: Record<LifecycleStatus, { active: boolean; isFictitious?: boo
 function scopeWhere(filter: ListFilter) {
   return [
     ...(filter.status ? [statusWhere[filter.status]] : []),
+    ...(filter.q ? [{ name: { contains: filter.q, mode: "insensitive" as const } }] : []),
     ...(filter.destinationId ? [{ destinationId: filter.destinationId }] : []),
     ...(filter.packageId ? [{ packageId: filter.packageId }] : []),
     ...(filter.scope === "GLOBAL" ? [{ destinationId: null, packageId: null }] : []),

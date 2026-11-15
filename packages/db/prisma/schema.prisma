@@ -128,6 +128,12 @@ enum AvailabilityStatus {
   SOLD_OUT
   TO_CONFIRM
 }
+enum DepartureChangeKind {
+  CREATED
+  CAPACITY
+  HOLD
+  RELEASE
+}
 enum MediaVisibility {
   PUBLIC
   PRIVATE
@@ -321,6 +327,7 @@ model User {
   tasksCreated FollowUpTask[] @relation("task_creator")
   crmNotes CrmNote[]
   mediaUploaded MediaAsset[]
+  departureSeatChanges DepartureSeatChange[]
   @@map("users")
 }
 
@@ -881,8 +888,28 @@ model Departure {
   reservations Reservation[]
   quotes Quote[]
   priceRules PriceRule[]
+  seatChanges DepartureSeatChange[]
   @@index([packageId, startsAt, published])
   @@map("departures")
+}
+
+/// Append-only history of manual seat changes (capacity typed by staff, manual holds and releases). Never inventory
+/// from a hotel or airline. delta: CREATED = initial capacity, CAPACITY = new - old, HOLD = +n, RELEASE = -n.
+model DepartureSeatChange {
+  id String @id @default(uuid()) @db.Uuid
+  departureId String @db.Uuid @map("departure_id")
+  actorId String? @db.Uuid @map("actor_id")
+  kind DepartureChangeKind
+  delta Int
+  capacityAfter Int @map("capacity_after")
+  heldAfter Int @map("held_after")
+  soldAfter Int @map("sold_after")
+  reason String? @db.VarChar(300)
+  createdAt DateTime @default(now()) @map("created_at")
+  departure Departure @relation(fields: [departureId], references: [id], onDelete: Restrict)
+  actor User? @relation(fields: [actorId], references: [id], onDelete: SetNull)
+  @@index([departureId, createdAt])
+  @@map("departure_seat_changes")
 }
 
 // ---------------------------------------------------------------------------

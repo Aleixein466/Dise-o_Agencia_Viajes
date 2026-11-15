@@ -40,6 +40,16 @@ import { AuditController } from "./audit/audit.controller";
 import { AuditService } from "./audit/audit.service";
 import { TransportOptionsController } from "./catalog/transport-options.controller";
 import { TransportOptionsService } from "./catalog/transport-options.service";
+import { DeparturesController } from "./catalog/departures.controller";
+import { DeparturesService } from "./catalog/departures.service";
+import { CustomersController } from "./customers/customers.controller";
+import { CustomersService } from "./customers/customers.service";
+import { ContentController, PublicContentController } from "./content/content.controller";
+import { ContentService } from "./content/content.service";
+import { ContentBlocksService } from "./content/content-blocks.service";
+import { PublicContentService } from "./content/public-content.service";
+import { PublicAgencyController, SettingsController } from "./settings/settings.controller";
+import { SettingsService } from "./settings/settings.service";
 
 @Module({})
 export class AppModule {
@@ -69,6 +79,12 @@ export class AppModule {
         DashboardController,
         AuditController,
         TransportOptionsController,
+        DeparturesController,
+        CustomersController,
+        ContentController,
+        PublicContentController,
+        SettingsController,
+        PublicAgencyController,
       ],
       providers: [
         { provide: ENV, useValue: env },
@@ -93,6 +109,12 @@ export class AppModule {
         DashboardService,
         AuditService,
         TransportOptionsService,
+        DeparturesService,
+        CustomersService,
+        ContentService,
+        ContentBlocksService,
+        PublicContentService,
+        SettingsService,
       ],
     };
   }

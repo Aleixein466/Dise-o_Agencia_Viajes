@@ -93,6 +93,8 @@ test.describe("Admin commercial rules", () => {
 
     await openTab(page, "temporadas");
     await expect(page.getByRole("link", { name: "Temporadas", exact: true })).toHaveAttribute("aria-current", "page");
+    // Earlier runs leave inactive seasons on the same dates; search keeps this run's rows on the first page.
+    await page.getByLabel("Buscar por nombre").fill(`${stamp}`);
 
     // Inline validation: empty form shows field errors and focuses the first invalid field.
     await page.getByRole("button", { name: "Nueva temporada" }).click();

@@ -72,6 +72,7 @@ export function RuleManager<T extends RuleItem>({
   const [page, setPage] = useState(1);
   const [statusFilter, setStatusFilter] = useState("");
   const [scopeFilter, setScopeFilter] = useState("");
+  const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -104,6 +105,7 @@ export function RuleManager<T extends RuleItem>({
     const query = new URLSearchParams({ page: String(page), pageSize: String(PAGE_SIZE) });
     if (statusFilter) query.set("status", statusFilter);
     if (scopeFilter) query.set("scope", scopeFilter);
+    if (search.trim()) query.set("q", search.trim().slice(0, 80));
     const result = await requestJson(`${base}?${query.toString()}`, "GET");
     if (current !== requestId.current) return;
     setLoading(false);
@@ -113,7 +115,7 @@ export function RuleManager<T extends RuleItem>({
       setMeta({ total: data.total ?? data.items.length, pages: Math.max(1, data.pages ?? 1) });
       setLoadError(null);
     } else setLoadError(describeError(result).message);
-  }, [base, page, statusFilter, scopeFilter]);
+  }, [base, page, statusFilter, scopeFilter, search]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => void load(), 0);
@@ -252,6 +254,20 @@ export function RuleManager<T extends RuleItem>({
           role="group"
           aria-label={`Filtros de ${config.title.toLowerCase()}`}
         >
+          <div className="admin-field">
+            <label htmlFor={`${prefix}-f-q`}>Buscar por nombre</label>
+            <input
+              id={`${prefix}-f-q`}
+              type="search"
+              value={search}
+              maxLength={80}
+              autoComplete="off"
+              onChange={(event) => {
+                setPage(1);
+                setSearch(event.target.value);
+              }}
+            />
+          </div>
           <div className="admin-field">
             <label htmlFor={`${prefix}-f-status`}>Estado</label>
             <select
