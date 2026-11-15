@@ -20,7 +20,7 @@ export const ADMIN_MODULES: readonly AdminModule[] = [
   moduleFor("tours", "Tours", "catalog"),
   moduleFor("galeria", "Galería", "catalog"),
   moduleFor("tarifas", "Tarifas y temporadas", "catalog"),
-  moduleFor("cupos", "Cupos", "inventory"),
+  moduleFor("cupos", "Cupos", "catalog"),
   moduleFor("solicitudes", "Solicitudes", "quotes"),
   moduleFor("cotizaciones", "Cotizaciones", "quotes"),
   moduleFor("reservas", "Reservas", "reservations"),

@@ -261,3 +261,15 @@ Restaurar el CLI Docker de Windows, validar `docker compose config`, levantar ú
   - las limpiezas del E2E solo desactivan, por diseño (nada se borra);
   - `facets` agrupa toda la bitácora en cada consulta; conviene un índice o caché si crece.
 - **Siguen "en construcción":** Cupos, Clientes, Contenido y Configuración.
+
+## Actualización: QR de MFA y bloqueos externos (2026-11-14)
+
+- **QR de MFA** (`uqr@0.1.3`, instalada con autorización expresa).
+  - El navegador valida la URL `otpauth://totp` que devuelve `/auth/mfa/setup`: tipo TOTP y secreto base32 de 16 caracteres o más. Si no cumple, no se muestra nada.
+  - El QR se genera localmente como SVG en una URL `data:`. No sale a la red y no se registra en logs.
+  - Se muestran la clave manual en grupos de 4, los pasos en español, el texto alternativo y la advertencia de no compartir.
+  - Prueba unitaria: `src/lib/auth/totp-enrollment.test.ts`.
+  - El E2E `auth-admin` ahora ingresa con un TOTP calculado (RFC 6238) a partir de la clave manual que se ve en pantalla. Resultado: **20/20 + auth 2/2**.
+- **Referencias de TikTok** (`vt.tiktok.com/ZSpVqeHbA`, `vt.tiktok.com/ZSpVV3fYn`, `@rakitdata.id`): bloqueadas para clientes automáticos. Las páginas solo devolvieron "TikTok - Make Your Day" o "Please wait...". No se describe su contenido y no se usaron como referencia.
+- **Guía de diseño filtrada** (`claude-design.md` de un repositorio de prompts filtrados): no se usó, porque es un documento interno de terceros obtenido sin autorización. El rediseño sigue la identidad propia del proyecto.
+- **21st.dev:** el plugin no figura instalado en esta sesión, no hay herramientas MCP de 21st y falta `API_KEY_21ST`. Bloqueado: se usan recursos locales y no se consumen créditos.

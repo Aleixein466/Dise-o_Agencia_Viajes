@@ -75,6 +75,39 @@ Navegador ──HTTPS──> Web Next.js (Vercel, rama `staging`, protegida) ─
   lanzamiento.
 - **Imagen base:** `node:24-bookworm-slim` sin digest. Al aprobar staging, fijar el digest (`node:24-bookworm-slim@sha256:…`).
 
+## Respaldo y restauración (procedimiento)
+
+Todos los comandos corren en el servidor de staging, dentro de `deploy/staging/` y con las variables del `.env` de
+staging cargadas. Ninguno borra volúmenes. **No se aplican a producción** sin autorización escrita.
+
+1. **Respaldo diario de la base** (formato custom, comprimido):
+
+   ```sh
+   docker compose -f docker-compose.staging.yml exec -T postgres      sh -c 'pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Fc' > "backups/pg-$(date +%F).dump"
+   ```
+
+2. **Copia de los medios** (volumen `staging_media`, en solo lectura; Compose le antepone el nombre del proyecto, así que el nombre real se confirma con `docker volume ls`):
+
+   ```sh
+   docker run --rm -v staging_media:/data:ro -v "$PWD/backups:/out" alpine      tar czf "/out/media-$(date +%F).tgz" -C /data .
+   ```
+
+3. **Retención:** conservar 14 diarios y 8 semanales fuera del servidor (almacenamiento cifrado del proveedor). Los
+   archivos contienen datos personales: se tratan según la política de datos y nunca se suben al repositorio.
+4. **Prueba de restauración** (mensual y antes del lanzamiento), sobre una base **nueva**, nunca encima de la actual:
+
+   ```sh
+   docker compose -f docker-compose.staging.yml exec -T postgres      sh -c 'createdb -U "$POSTGRES_USER" ricaurte_restore_check'
+   docker compose -f docker-compose.staging.yml exec -T postgres      sh -c 'pg_restore -U "$POSTGRES_USER" -d ricaurte_restore_check --no-owner' < backups/pg-AAAA-MM-DD.dump
+   ```
+
+   Verificar los conteos de `users`, `quotes`, `reservations`, `payments` y `audit_logs` contra la base actual, y
+   anotar el resultado y la fecha en `CODEX_HANDOFF.md`. Luego borrar solo la base de prueba
+   (`dropdb ricaurte_restore_check`).
+
+5. **Restauración real** (incidente): detener `api` y `web`, restaurar sobre una base nueva, apuntar
+   `POSTGRES_DB` a ella, reiniciar y verificar. La base anterior se conserva hasta confirmar.
+
 ## Verificación local realizada
 
 - `docker compose -f deploy/staging/docker-compose.staging.yml config` es válido. Sin secretos, Compose se niega a
