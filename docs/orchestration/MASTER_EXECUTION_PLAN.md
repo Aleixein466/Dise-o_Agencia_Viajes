@@ -21,6 +21,6 @@ Base: `codex/continue-auth-admin`. Coordinación: Claude. Agentes: Codex (`codex
 Aprobaciones del propietario pendientes:
 
 - Política de datos y textos legales: `PUBLIC_QUOTE_REQUESTS_ENABLED` sigue en false hasta que se aprueben.
-- Tarifas reales del portafolio: todas siguen en DRAFT/ficticias.
+- Tarifas reales del portafolio: todas siguen en DRAFT/ficticias. El propietario ya puede crearlas y aprobarlas desde `/admin/tarifas` (temporadas, edades, promociones).
 - Llaves sandbox de Wompi: el adaptador `wompi_sandbox` está listo, pero no se ha validado contra el sandbox real.
 - Hosting del API y de PostgreSQL para staging.

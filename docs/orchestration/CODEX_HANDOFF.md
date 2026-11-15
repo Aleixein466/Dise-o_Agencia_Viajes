@@ -219,3 +219,25 @@ Restaurar el CLI Docker de Windows, validar `docker compose config`, levantar ú
 - **Pendiente visual:**
   - QR de MFA: no hay librería y no se agregó dependencia; se muestra la URL `otpauth`;
   - módulos "en construcción".
+
+## Actualización: administración de reglas comerciales (2026-11-14)
+
+- **API** (`apps/api/src/catalog/commercial-rules.*`; contrato `contracts/commercial-rules-admin.md`):
+  - CRUD de temporadas (con alcance global, destino o paquete), bandas de edad y promociones;
+  - campos comerciales de las tarifas: temporada, banda, acomodación, ocupación, límites, prioridad y vigencia;
+  - ciclo borrador → aprobada → inactiva. Solo se editan y aprueban borradores, y nada se borra;
+  - `expectedUpdatedAt` devuelve 409 si el registro cambió; la auditoría before/after va en la misma transacción.
+- **Al aprobar:** se bloquean los solapes de temporadas o bandas y los empates de tarifas (`PRICE_RULE_AMBIGUOUS`), con `pg_advisory_xact_lock`.
+- **Permisos:** escribir exige `catalog:write`; aprobar y desactivar exigen `catalog:publish`, siempre con MFA, CSRF y Origin. FINANCE recibe 403.
+- **Migración aditiva `20261117_commercial_rules_admin`:** `seasons.package_id`, `seasons.active` y `age_rules.active`. Además, `schema.prisma` declara el índice `quotes(created_by_id, created_at)`, que CI marcaba como drift.
+- **Cotizador público:** ignora temporadas y bandas inactivas y respeta el alcance por paquete.
+- **Errores:** `ProblemFilter` ahora expone `code` y `conflictId` validados. Antes los descartaba y la web no podía explicar un 409. Los mensajes y las trazas siguen solo en el log.
+- **Web** (`/admin/tarifas?tab=reglas|temporadas|edades|promociones`): tablas con filtros, estados y paginación; formularios con errores por campo; aprobación con el diálogo accesible; historial.
+- **Auditoría Codex, dos pasadas:**
+  - primera: carrera en `PATCH rates/:id` y reaprobación de tarifas desactivadas, ambas corregidas;
+  - segunda (13 áreas): montos con ceros a la izquierda y limpieza paginada del E2E, ambas corregidas; el resto, limpio.
+- **E2E automatizado:** `run-cartagena-e2e.ps1` siembra la base aislada en cada ejecución (`-SkipSeed` lo omite) y corre `auth-admin.spec.ts` con un ADMIN propio que se reinicia en cada siembra.
+  - Resultado: **16/16 + auth 2/2**.
+  - La configuración smoke de CI (`playwright.config.ts`) excluye las pruebas que necesitan base de datos.
+- **PR borrador #5** (`codex/continue-auth-admin` → `integration/f2`): en la primera corrida, CI falló en `database` (drift del índice) y en `e2e` (pruebas con base de datos dentro del smoke). Ambas causas están corregidas en este lote.
+- **21st.dev:** el MCP no está conectado (falta `API_KEY_21ST` y no hay herramientas disponibles). Se usaron los estilos existentes del panel y no se consumieron créditos.

@@ -59,6 +59,36 @@ async function main() {
       db.mfaRecoveryCode.deleteMany({ where: { userId: restricted.id } }),
       db.session.deleteMany({ where: { userId: restricted.id } }),
     ]);
+    // Dedicated ADMIN for auth-admin.spec.ts: reset on every seed (no MFA, no sessions) so that spec never
+    // depends on what the catalog suite did with the main administrator.
+    const authEmail = "auth.cartagena-e2e@ricaurte.test";
+    const authUser = await db.user.upsert({
+      where: { email: authEmail },
+      update: {
+        name: "Auth Admin E2E",
+        status: "ACTIVE",
+        failedLoginCount: 0,
+        lockedUntil: null,
+        passwordHash: await hash(password.normalize("NFKC"), options),
+      },
+      create: {
+        email: authEmail,
+        name: "Auth Admin E2E",
+        status: "ACTIVE",
+        passwordHash: await hash(password.normalize("NFKC"), options),
+      },
+      select: { id: true },
+    });
+    await db.userRoleAssignment.upsert({
+      where: { userId_roleCode: { userId: authUser.id, roleCode: "ADMIN" } },
+      update: {},
+      create: { userId: authUser.id, roleCode: "ADMIN" },
+    });
+    await db.$transaction([
+      db.mfaFactor.deleteMany({ where: { userId: authUser.id } }),
+      db.mfaRecoveryCode.deleteMany({ where: { userId: authUser.id } }),
+      db.session.deleteMany({ where: { userId: authUser.id } }),
+    ]);
     // Second FINANCE user: manual abonos need an approver different from the registrar (four eyes).
     const approverEmail = "finance2.cartagena-e2e@ricaurte.test";
     const approver = await db.user.upsert({

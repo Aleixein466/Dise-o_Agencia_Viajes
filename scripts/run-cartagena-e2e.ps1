@@ -5,6 +5,8 @@ param(
   [ValidateSet("default", "ci")][string]$Instance = "default",
   [string]$CredentialsPath,
   [switch]$SkipBuild,
+  # Reseed the isolated database first (default) so every run starts from the same state; -SkipSeed keeps it.
+  [switch]$SkipSeed,
   # Start API + web and keep them up for inspection/demo (no tests). Bounded: stops after -ServeMinutes or when
   # the file %TEMP%\ricaurte-e2e\stop appears.
   [switch]$ServeOnly,
@@ -133,6 +135,17 @@ $env:E2E_RESTRICTED_EMAIL = $credentials.restrictedEmail
 $env:E2E_RESTRICTED_PASSWORD = $credentials.restrictedPassword
 $env:CI = "1"
 
+# Same test-only password as the FINANCE users; the seeder resets this dedicated ADMIN (no MFA) every run.
+$env:AUTH_E2E_RUN = "1"
+$env:AUTH_E2E_BASE_URL = "http://127.0.0.1:$webPort"
+$env:AUTH_E2E_EMAIL = "auth.cartagena-e2e@ricaurte.test"
+$env:AUTH_E2E_PASSWORD = $credentials.restrictedPassword
+
+if (-not $SkipSeed -and -not $ServeOnly) {
+  $seedScript = Join-Path $PSScriptRoot "seed-cartagena-e2e.ps1"
+  Invoke-Stage "seed" "powershell -NoProfile -ExecutionPolicy Bypass -File `"$seedScript`" -Instance $Instance -CredentialsPath `"$CredentialsPath`"" 300
+} else { Log "seed" "skipped" }
+
 if (-not $SkipBuild) {
   $env:NODE_ENV = "production"
   Invoke-Stage "build-api" "corepack pnpm --filter @ricaurte/api build" $BuildTimeoutSec
@@ -161,6 +174,7 @@ try {
     # list reporter only (the HTML reporter is not needed here) plus a Playwright-side global timeout below ours.
     $pwGlobalMs = ($PlaywrightTimeoutSec - 30) * 1000
     Invoke-Stage "playwright" "corepack pnpm --filter @ricaurte/web exec playwright test -c playwright.catalog.config.ts --reporter=list --global-timeout=$pwGlobalMs" $PlaywrightTimeoutSec
+    Invoke-Stage "playwright-auth" "corepack pnpm --filter @ricaurte/web exec playwright test -c playwright.auth.config.ts --reporter=list --global-timeout=120000" 180
   }
   $exitCode = 0
 } catch {

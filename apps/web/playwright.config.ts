@@ -1,4 +1,13 @@
 import { defineConfig, devices, type PlaywrightTestProject } from "@playwright/test";
+import catalog from "./playwright.catalog.config";
+import auth from "./playwright.auth.config";
+
+// Database-backed specs run only through scripts/run-cartagena-e2e.ps1 (isolated seeded database + API);
+// this smoke config (CI `pnpm test:e2e`) serves the web alone, so it must not pick them up.
+const databaseSpecs = [catalog.testMatch, auth.testMatch]
+  .flat()
+  .filter((m): m is string => typeof m === "string")
+  .map((name) => `**/${name}`);
 
 const baseURL = process.env.BASE_URL ?? "http://127.0.0.1:3100";
 const sizes = [
@@ -10,6 +19,7 @@ const sizes = [
 
 export default defineConfig({
   testDir: "e2e",
+  testIgnore: databaseSpecs,
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
