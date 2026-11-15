@@ -214,7 +214,8 @@ Restaurar el CLI Docker de Windows, validar `docker compose config`, levantar ú
   - **No se ha probado contra el sandbox real**: faltan llaves. Por defecto `PAYMENT_ADAPTER=disabled`.
 - **Tablero admin:** `GET /api/v1/admin/dashboard` devuelve solo conteos y únicamente los bloques que el rol puede leer (`requireStaff` con MFA). La web muestra tarjetas con enlaces en lugar de "Sin datos todavía".
 - **SEO y a11y:** `robots` excluye las rutas privadas reales y los botones de quitar cuota tienen nombre accesible.
+- **Diálogos accesibles:** `components/admin/use-dialog.tsx` (`<dialog>` modal) reemplaza `window.confirm` y `window.prompt` en seis gestores.
+- **E2E (ci, 2026-11-14):** 12/12 en `playwright.catalog.config.ts`, con los nuevos `public-pricing-rules.spec.ts` y la prueba del tablero por rol; `auth-admin.spec.ts` 2/2 en una instancia recién sembrada.
 - **Pendiente visual:**
   - QR de MFA: no hay librería y no se agregó dependencia; se muestra la URL `otpauth`;
-  - confirmaciones nativas en algunos gestores;
   - módulos "en construcción".

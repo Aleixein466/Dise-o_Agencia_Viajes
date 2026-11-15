@@ -3,6 +3,7 @@
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import { fetchCsrfToken, requestJson } from "@/lib/auth/client";
 import type { AdminSession } from "@/lib/auth/types";
+import { useDialog } from "./use-dialog";
 
 type Destination = {
   id: string;
@@ -17,6 +18,7 @@ type Destination = {
 const empty = { slug: "", name: "", country: "Colombia", region: "", description: "", category: "NACIONAL" };
 
 export function DestinationsManager({ session }: Readonly<{ session: AdminSession }>) {
+  const { confirm, dialog } = useDialog();
   const [items, setItems] = useState<Destination[]>([]);
   const [form, setForm] = useState(empty);
   const [csrf, setCsrf] = useState(session.csrfToken);
@@ -52,7 +54,7 @@ export function DestinationsManager({ session }: Readonly<{ session: AdminSessio
     await load();
   }
   async function status(item: Destination, action: "publish" | "archive") {
-    if (!window.confirm(`${action === "publish" ? "Publicar" : "Archivar"} ${item.name}?`)) return;
+    if (!(await confirm(`${action === "publish" ? "Publicar" : "Archivar"} ${item.name}?`))) return;
     setPending(true);
     const result = await requestJson(`/api/v1/catalog/destinations/${item.id}/${action}`, "POST", {}, csrf);
     setPending(false);
@@ -63,6 +65,7 @@ export function DestinationsManager({ session }: Readonly<{ session: AdminSessio
   }
   return (
     <div className="admin-users">
+      {dialog}
       <section className="admin-panel">
         <h2>Nuevo destino</h2>
         <form className="admin-form admin-users-form" onSubmit={submit}>

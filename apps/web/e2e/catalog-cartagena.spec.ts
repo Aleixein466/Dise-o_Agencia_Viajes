@@ -48,8 +48,9 @@ test.describe("Cartagena E2E catalog", () => {
     });
     expect(fixture.active).toBeFalsy();
 
-    page.once("dialog", (dialog) => dialog.accept("123460000"));
     await page.getByRole("button", { name: /Editar tarifa/ }).click();
+    await page.getByRole("dialog").getByRole("textbox").fill("123460000");
+    await page.getByRole("dialog").getByRole("button", { name: "Guardar" }).click();
     await expect(page.getByRole("status")).toContainText(/Tarifa de borrador actualizada/);
     await page.reload();
     await page.getByPlaceholder("Nombre o referencia").fill("Cartagena E2E");

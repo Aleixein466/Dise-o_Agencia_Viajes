@@ -4,6 +4,7 @@
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { fetchCsrfToken, requestJson } from "@/lib/auth/client";
 import type { AdminSession } from "@/lib/auth/types";
+import { useDialog } from "./use-dialog";
 
 type OwnerType = "destination" | "hotel" | "package";
 type Owner = { id: string; name: string };
@@ -40,6 +41,7 @@ async function mutation(path: string, method: "POST" | "PATCH" | "DELETE", csrf:
 }
 
 export function GalleryManager({ session }: Readonly<{ session: AdminSession }>) {
+  const { confirm, prompt, dialog } = useDialog();
   const [csrf, setCsrf] = useState(session.csrfToken);
   const [kind, setKind] = useState<OwnerType>("destination");
   const [owners, setOwners] = useState<Owner[]>([]);
@@ -143,7 +145,12 @@ export function GalleryManager({ session }: Readonly<{ session: AdminSession }>)
     if (saved) await loadAssets(filterOwner ? kind : undefined, filterOwner || undefined);
   }
   async function detach(asset: Asset, owner: AssetOwner) {
-    if (!window.confirm(`¿Desvincular esta imagen de ${owner.name}? El archivo se conservará si tiene otros usos.`))
+    if (
+      !(await confirm(`¿Desvincular esta imagen de ${owner.name}? El archivo se conservará si tiene otros usos.`, {
+        confirmLabel: "Desvincular",
+        danger: true,
+      }))
+    )
       return;
     setBusy(true);
     const deleted = await mutation(`/api/v1/gallery/${asset.id}/association/${owner.type}/${owner.id}`, "DELETE", csrf);
@@ -154,9 +161,9 @@ export function GalleryManager({ session }: Readonly<{ session: AdminSession }>)
     if (deleted) await loadAssets(filterOwner ? kind : undefined, filterOwner || undefined);
   }
   async function associate(asset: Asset) {
-    const ownerId = window.prompt("Pega el identificador del destino, paquete u hotel autorizado:");
+    const ownerId = await prompt("Pega el identificador del destino, paquete u hotel autorizado:", "");
     if (!ownerId) return;
-    const type = window.prompt("Tipo: destination, package u hotel", kind) as OwnerType | null;
+    const type = (await prompt("Tipo: destination, package u hotel", kind)) as OwnerType | null;
     if (!type || !kinds.some((entry) => entry.value === type)) return;
     setBusy(true);
     const saved = await mutation(`/api/v1/gallery/${asset.id}/associate`, "POST", csrf, { type, id: ownerId });
@@ -167,6 +174,7 @@ export function GalleryManager({ session }: Readonly<{ session: AdminSession }>)
 
   return (
     <div className="admin-users">
+      {dialog}
       <section className="admin-panel">
         <h2>Galería privada</h2>
         <p className="admin-hint">

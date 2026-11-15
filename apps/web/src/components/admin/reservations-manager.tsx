@@ -5,6 +5,7 @@ import { useReveal } from "./use-reveal";
 import { formatCop } from "@/components/public/money";
 import { fetchCsrfToken, requestJson } from "@/lib/auth/client";
 import type { AdminSession } from "@/lib/auth/types";
+import { useDialog } from "./use-dialog";
 import {
   RESERVATION_ACTION_LABELS,
   RESERVATION_STATUSES,
@@ -92,6 +93,7 @@ export function ReservationsManager({
   initialId,
   canWrite,
 }: Readonly<{ session: AdminSession; initialId: string | null; canWrite: boolean }>) {
+  const { confirm, dialog } = useDialog();
   const [csrf, setCsrf] = useState(session.csrfToken);
   const [advisors, setAdvisors] = useState<Person[]>([]);
   const [page, setPage] = useState<Page | null>(null);
@@ -197,7 +199,7 @@ export function ReservationsManager({
       setError("Indica un motivo (mínimo 3 caracteres).");
       return;
     }
-    if (action === "APPROVE_FOR_PAYMENT" && !window.confirm(APPROVE_CONFIRM)) return;
+    if (action === "APPROVE_FOR_PAYMENT" && !(await confirm(APPROVE_CONFIRM))) return;
     let depositCents: string | null = null;
     if (action === "APPROVE_FOR_PAYMENT" && deposit.trim()) {
       depositCents = parseDepositPesos(deposit);
@@ -244,6 +246,7 @@ export function ReservationsManager({
 
   return (
     <div className="admin-users">
+      {dialog}
       <section className="admin-panel" aria-labelledby="res-list-title">
         <h2 id="res-list-title">Reservas</h2>
         <form className="admin-users-filters" style={filterStyle} onSubmit={applySearch} role="search">

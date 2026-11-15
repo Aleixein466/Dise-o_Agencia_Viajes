@@ -47,8 +47,12 @@ test.describe("authentication and staff administration", () => {
     await expect(page.getByRole("status")).toContainText("Empleado creado");
     await expect(page.getByText(`Asesora E2E ${suffix}`)).toBeVisible();
 
-    page.once("dialog", (dialog) => dialog.accept());
-    await page.getByRole("button", { name: "Desactivar" }).last().click();
+    // Target the new employee's row: the shared E2E database also lists customer accounts (staff may not disable those).
+    await page
+      .getByRole("row", { name: new RegExp(`Asesora E2E ${suffix}`) })
+      .getByRole("button", { name: "Desactivar" })
+      .click();
+    await page.getByRole("dialog").getByRole("button", { name: "Confirmar" }).click();
     await expect(page.getByRole("status")).toContainText("sesiones revocadas");
   });
 });

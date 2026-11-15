@@ -176,8 +176,8 @@ test("portal: verified customer accepts a proposal, requests a reservation, staf
   await page.getByRole("button", { name: "Iniciar validación" }).click();
   // Staff decides the minimum deposit (COP 200.000 of 1.000.000); nothing is invented by the system.
   await page.getByLabel("Abono mínimo requerido (COP)").fill("200000");
-  page.once("dialog", (dialog) => void dialog.accept());
   await page.getByRole("button", { name: "Confirmar disponibilidad" }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "Confirmar", exact: true }).click();
   await expect(page.getByRole("button", { name: "Confirmar disponibilidad" })).toHaveCount(0);
 
   // Stale version is rejected (no lost update).

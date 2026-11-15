@@ -2,6 +2,7 @@
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import { fetchCsrfToken, requestJson } from "@/lib/auth/client";
 import type { AdminSession } from "@/lib/auth/types";
+import { useDialog } from "./use-dialog";
 type Rate = {
   id: string;
   name: string;
@@ -38,6 +39,7 @@ const money = (cents: string) =>
     Number(BigInt(cents) / BigInt(100)),
   );
 export function PackagesManager({ session }: Readonly<{ session: AdminSession }>) {
+  const { confirm, prompt, dialog } = useDialog();
   const [items, setItems] = useState<Pkg[]>([]);
   const [chosen, setChosen] = useState<Pkg | null>(null);
   const [csrf, setCsrf] = useState(session.csrfToken);
@@ -79,7 +81,7 @@ export function PackagesManager({ session }: Readonly<{ session: AdminSession }>
     if (r.ok) await load();
   }
   async function rate(rate: Rate) {
-    const value = window.prompt("Valor en centavos COP (sin decimales)", rate.amountCents);
+    const value = await prompt("Valor en centavos COP (sin decimales)", rate.amountCents);
     if (!value?.match(/^\d+$/)) return;
     setPending(true);
     const r = await requestJson(`/api/v1/catalog/rates/${rate.id}`, "PATCH", { amountCents: value }, csrf);
@@ -96,7 +98,7 @@ export function PackagesManager({ session }: Readonly<{ session: AdminSession }>
     const label = rate.conditions?.label ?? rate.name;
     if (
       action === "approve" &&
-      !window.confirm(`¿Aprobar la tarifa "${label}" (${money(rate.amountCents)})? Quedará visible para el público.`)
+      !(await confirm(`¿Aprobar la tarifa "${label}" (${money(rate.amountCents)})? Quedará visible para el público.`))
     )
       return;
     setPending(true);
@@ -142,6 +144,7 @@ export function PackagesManager({ session }: Readonly<{ session: AdminSession }>
   });
   return (
     <div className="admin-users">
+      {dialog}
       <section className="admin-panel">
         <h2>Paquetes importados</h2>
         {message ? (

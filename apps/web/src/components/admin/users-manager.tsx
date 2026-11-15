@@ -3,6 +3,7 @@
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { fetchCsrfToken, requestJson } from "@/lib/auth/client";
 import type { AdminSession } from "@/lib/auth/types";
+import { useDialog } from "./use-dialog";
 
 const ROLES = ["ADVISOR", "FINANCE", "ADMIN"] as const;
 type StaffRole = (typeof ROLES)[number];
@@ -31,6 +32,7 @@ function responseMessage(status: number): string {
 }
 
 export function UsersManager({ session }: Readonly<{ session: AdminSession }>) {
+  const { confirm, prompt, dialog } = useDialog();
   const [users, setUsers] = useState<User[]>([]);
   const [query, setQuery] = useState("");
   const [status, setStatusFilter] = useState<"ALL" | User["status"]>("ALL");
@@ -94,16 +96,17 @@ export function UsersManager({ session }: Readonly<{ session: AdminSession }>) {
     setForm({ email: "", name: "", password: "", roles: ["ADVISOR"] });
   }
   async function updateUser(user: User) {
-    const name = window.prompt("Nombre del empleado", user.name);
+    const name = await prompt("Nombre del empleado", user.name);
     if (!name || name.trim() === user.name) return;
     await mutate(`/api/v1/users/${user.id}`, "PATCH", { name: name.trim() }, "Información actualizada.");
   }
   async function toggleUserStatus(user: User) {
     const disabling = user.status === "ACTIVE";
     if (
-      !window.confirm(
+      !(await confirm(
         `${disabling ? "Desactivar" : "Activar"} la cuenta de ${user.name}?${disabling ? " Se revocarán todas sus sesiones." : ""}`,
-      )
+        { danger: disabling },
+      ))
     )
       return;
     await mutate(
@@ -114,13 +117,13 @@ export function UsersManager({ session }: Readonly<{ session: AdminSession }>) {
     );
   }
   async function editRoles(user: User) {
-    const selected = window.prompt(`Roles separados por coma: ${ROLES.join(", ")}`, user.roles.join(","));
+    const selected = await prompt(`Roles separados por coma: ${ROLES.join(", ")}`, user.roles.join(","));
     if (selected === null) return;
     const roles = selected
       .split(",")
       .map((role) => role.trim().toUpperCase())
       .filter((role): role is StaffRole => ROLES.includes(role as StaffRole));
-    if (!roles.length || !window.confirm("Cambiar roles revocará las sesiones activas. ¿Continuar?")) return;
+    if (!roles.length || !(await confirm("Cambiar roles revocará las sesiones activas. ¿Continuar?"))) return;
     await mutate(`/api/v1/users/${user.id}/roles`, "PUT", { roles }, "Roles actualizados y sesiones revocadas.");
   }
   async function showActivity(user: User) {
@@ -134,6 +137,7 @@ export function UsersManager({ session }: Readonly<{ session: AdminSession }>) {
 
   return (
     <div className="admin-users">
+      {dialog}
       <section className="admin-panel" aria-labelledby="create-user">
         <h2 id="create-user">Crear empleado</h2>
         {!canAssignRoles ? (
