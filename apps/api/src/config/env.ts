@@ -12,6 +12,21 @@ const tryParse = (fn: () => unknown) => {
 
 const databaseUrl = z.url().refine((value) => value.startsWith("postgres://") || value.startsWith("postgresql://"));
 
+// Wompi SANDBOX only: each key must carry its test prefix; production keys are refused even when unused.
+const WOMPI_KEYS = {
+  WOMPI_PUBLIC_KEY: "pub_test_",
+  WOMPI_PRIVATE_KEY: "prv_test_",
+  WOMPI_EVENTS_SECRET: "test_events_",
+  WOMPI_INTEGRITY_SECRET: "test_integrity_",
+} as const;
+const wompiKey = (prefix: string) =>
+  z
+    .string()
+    .max(200)
+    .refine((value) => !/^(pub_prod_|prv_prod_|prod_)/.test(value), "production keys are refused")
+    .refine((value) => value.startsWith(prefix) && value.length > prefix.length + 8, `must start with ${prefix}`)
+    .optional();
+
 const DEV_CUSTOMER_CODE_SECRET = "development-customer-code-secret-not-for-production";
 
 const envSchema = z
@@ -62,7 +77,13 @@ const envSchema = z
     // Explicit commercial approval to deliver to a non-loopback SMTP host. Keep "false" otherwise.
     MAIL_REAL_DELIVERY_APPROVED: z.enum(["true", "false"]).default("false"),
     // Online payments. "sandbox_test" is a simulated provider (no money moves) and is refused in production.
-    PAYMENT_ADAPTER: z.enum(["disabled", "sandbox_test"]).default("disabled"),
+    // "wompi_sandbox" talks to Wompi's SANDBOX only (test keys, no real charges), so staging may run it with
+    // NODE_ENV=production. See docs/operations/WOMPI_SANDBOX.md.
+    PAYMENT_ADAPTER: z.enum(["disabled", "sandbox_test", "wompi_sandbox"]).default("disabled"),
+    WOMPI_PUBLIC_KEY: wompiKey(WOMPI_KEYS.WOMPI_PUBLIC_KEY),
+    WOMPI_PRIVATE_KEY: wompiKey(WOMPI_KEYS.WOMPI_PRIVATE_KEY),
+    WOMPI_EVENTS_SECRET: wompiKey(WOMPI_KEYS.WOMPI_EVENTS_SECRET),
+    WOMPI_INTEGRITY_SECRET: wompiKey(WOMPI_KEYS.WOMPI_INTEGRITY_SECRET),
     // In-process outbox dispatcher for development/demo (0 = off; use `notifications:dispatch` from a scheduler).
     NOTIFICATIONS_DISPATCH_INTERVAL_MS: z.coerce.number().int().min(0).max(3_600_000).default(0),
     SANDBOX_PAYMENT_EVENTS_SECRET: z.string().min(32).default("development-sandbox-events-secret-not-for-production"),
@@ -72,6 +93,11 @@ const envSchema = z
   })
   .refine((env) => env.NODE_ENV !== "production" || env.PAYMENT_ADAPTER !== "sandbox_test", {
     path: ["PAYMENT_ADAPTER"],
+  })
+  .superRefine((env, ctx) => {
+    if (env.PAYMENT_ADAPTER !== "wompi_sandbox") return;
+    for (const key of Object.keys(WOMPI_KEYS) as (keyof typeof WOMPI_KEYS)[])
+      if (!env[key]) ctx.addIssue({ code: "custom", path: [key], message: "required by wompi_sandbox" });
   })
   .refine((env) => env.MAIL_ADAPTER !== "smtp" || env.SMTP_URL !== undefined, { path: ["SMTP_URL"] });
 

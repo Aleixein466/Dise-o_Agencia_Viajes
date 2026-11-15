@@ -26,13 +26,14 @@ import { ReservationsService } from "./reservations/reservations.service";
 import { CustomerAuthController } from "./customer-auth/customer-auth.controller";
 import { PaymentsController } from "./payments/payments.controller";
 import { PaymentsService } from "./payments/payments.service";
-import { SandboxTestGateway } from "./payments/sandbox-gateway";
 import { createPaymentGateway, PAYMENT_GATEWAY } from "./payments/gateway";
 import { FinanceController } from "./finance/finance.controller";
 import { FinanceService } from "./finance/finance.service";
 import { NotificationsService } from "./notifications/notifications.service";
 import { CustomerPqrsController, PublicPqrsController, StaffPqrsController } from "./pqrs/pqrs.controller";
 import { PqrsService } from "./pqrs/pqrs.service";
+import { DashboardController } from "./dashboard/dashboard.controller";
+import { DashboardService } from "./dashboard/dashboard.service";
 
 @Module({})
 export class AppModule {
@@ -58,6 +59,7 @@ export class AppModule {
         PublicPqrsController,
         CustomerPqrsController,
         StaffPqrsController,
+        DashboardController,
       ],
       providers: [
         { provide: ENV, useValue: env },
@@ -75,12 +77,10 @@ export class AppModule {
         ReservationsService,
         PaymentsService,
         { provide: PAYMENT_GATEWAY, useValue: paymentGateway },
-        // Interim alias: ReservationsService still injects this token and only calls enabled()/checkoutUrl(), which
-        // every PaymentGateway provides. Remove once it injects PAYMENT_GATEWAY.
-        { provide: SandboxTestGateway, useValue: paymentGateway },
         FinanceService,
         NotificationsService,
         PqrsService,
+        DashboardService,
       ],
     };
   }

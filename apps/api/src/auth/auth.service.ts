@@ -197,6 +197,13 @@ export class AuthService {
     if (!principal.session.mfaVerifiedAt || !principal.permissions.includes(permission)) throw new ForbiddenException();
     return principal;
   }
+  /** Any MFA-verified staff session (never a customer); callers then scope data by principal.permissions. */
+  async requireStaff(token: string): Promise<Principal> {
+    const principal = await this.principal(token);
+    if (!principal.session.mfaVerifiedAt || principal.roles.every((role) => role === "CUSTOMER"))
+      throw new ForbiddenException();
+    return principal;
+  }
   async requireCustomer(token: string, permission: string): Promise<Principal> {
     const principal = await this.principal(token);
     if (!principal.roles.includes("CUSTOMER") || !principal.permissions.includes(permission))

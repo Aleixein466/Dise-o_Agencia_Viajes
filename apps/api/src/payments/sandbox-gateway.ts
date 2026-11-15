@@ -23,13 +23,22 @@ export type ProviderTransaction = {
   status: string;
 };
 
-/** Minimal gateway surface; the real Wompi adapter implements the same calls once sandbox keys exist (PC-5). */
+/** Database value of Payment.provider / PaymentWebhookEvent.provider for each adapter. */
+export type GatewayProvider = "SANDBOX_TEST" | "WOMPI";
+
+/**
+ * What PaymentsService needs from a provider. Every adapter goes through the same verified pipeline:
+ * intent → checkoutUrl; webhook → verify (checksum) → lookup by id at the provider → applyPaymentEvent → ledger.
+ */
 export interface PaymentGateway {
-  readonly provider: "SANDBOX_TEST";
+  readonly provider: GatewayProvider;
   enabled(): boolean;
+  /** Same-origin URL handed to the browser for a pending payment; the provider URL is built server-side. */
   checkoutUrl(reference: string): string;
+  /** Checksum (and, for real providers, freshness/environment). Receives the raw, unstripped event body. */
   verify(event: ProviderEvent): boolean;
-  lookup(client: SandboxLookupClient, transactionId: string): Promise<ProviderTransaction | null>;
+  /** The provider's own view of the transaction; null when it does not exist. */
+  lookup(transactionId: string, client: SandboxLookupClient): Promise<ProviderTransaction | null>;
 }
 
 export type SandboxLookupClient = {
@@ -109,7 +118,7 @@ export class SandboxTestGateway implements PaymentGateway {
     return body;
   }
 
-  async lookup(client: SandboxLookupClient, transactionId: string): Promise<ProviderTransaction | null> {
+  async lookup(transactionId: string, client: SandboxLookupClient): Promise<ProviderTransaction | null> {
     const row = await client.sandboxTestTransaction.findUnique({ where: { id: transactionId } });
     return row
       ? {

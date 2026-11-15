@@ -13,7 +13,8 @@ import { DbService } from "../db/db.service";
 import { NotificationsService } from "../notifications/notifications.service";
 import { notifyCustomer } from "../notifications/notify";
 import { paidCentsOf, paymentSelect, paymentSummary } from "../payments/ledger";
-import { SandboxTestGateway } from "../payments/sandbox-gateway";
+import { PAYMENT_GATEWAY } from "../payments/gateway";
+import type { PaymentGateway } from "../payments/sandbox-gateway";
 
 export type TravelerInput = { fullName: string; category: "ADULT" | "CHILD" | "INFANT"; ageYears?: number };
 export type ReservationRequest = { startsOn: string; travelers: TravelerInput[]; notes?: string };
@@ -38,7 +39,7 @@ const day = 24 * 60 * 60 * 1000;
 export class ReservationsService {
   constructor(
     @Inject(DbService) private readonly db: DbService,
-    @Optional() @Inject(SandboxTestGateway) private readonly gateway?: SandboxTestGateway,
+    @Optional() @Inject(PAYMENT_GATEWAY) private readonly gateway?: PaymentGateway,
     @Optional() @Inject(NotificationsService) private readonly notifications?: NotificationsService,
   ) {}
 

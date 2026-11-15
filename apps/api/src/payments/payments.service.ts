@@ -15,26 +15,30 @@ import { DbService } from "../db/db.service";
 import { NotificationsService } from "../notifications/notifications.service";
 import { notifyCustomer } from "../notifications/notify";
 import { isLivePending, paidCentsOf, PAYABLE_STATES, paymentSelect, PENDING_TTL_MS, settleReservation } from "./ledger";
-import { SandboxTestGateway, type ProviderEvent } from "./sandbox-gateway";
+import { PAYMENT_GATEWAY } from "./gateway";
+import { SandboxTestGateway, type GatewayProvider, type PaymentGateway, type ProviderEvent } from "./sandbox-gateway";
+import { WompiSandboxGateway } from "./wompi-gateway";
 
 type Db = Awaited<ReturnType<DbService["client"]>>;
 
-const eventSchema = z.object({
-  event: z.literal("transaction.updated"),
-  data: z.object({
-    transaction: z.object({
-      id: z.uuid(),
-      reference: z.string().min(1).max(40),
-      amount_in_cents: z.number().int().positive(),
-      currency: z.string().length(3),
-      status: z.enum(PAYMENT_STATUSES),
+// Sandbox transaction ids are our own uuids; Wompi ids look like "1234-1610641025-49201".
+const eventSchema = (provider: GatewayProvider) =>
+  z.object({
+    event: z.literal("transaction.updated"),
+    data: z.object({
+      transaction: z.object({
+        id: provider === "SANDBOX_TEST" ? z.uuid() : z.string().regex(/^[A-Za-z0-9_-]{1,120}$/),
+        reference: z.string().min(1).max(40),
+        amount_in_cents: z.number().int().positive(),
+        currency: z.string().length(3),
+        status: z.enum(PAYMENT_STATUSES),
+      }),
     }),
-  }),
-  environment: z.string().max(20).optional(),
-  signature: z.object({ properties: z.array(z.string().max(80)).max(10), checksum: z.string().max(128) }),
-  timestamp: z.number().int().positive(),
-  sent_at: z.string().max(40).optional(),
-});
+    environment: z.string().max(20).optional(),
+    signature: z.object({ properties: z.array(z.string().max(80)).max(10), checksum: z.string().max(128) }),
+    timestamp: z.number().int().positive(),
+    sent_at: z.string().max(40).optional(),
+  });
 
 const record = (value: unknown): Record<string, unknown> =>
   value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
@@ -47,7 +51,7 @@ export type WebhookOutcome = "processed" | "duplicate" | "ignored";
 export class PaymentsService {
   constructor(
     @Inject(DbService) private readonly db: DbService,
-    @Inject(SandboxTestGateway) private readonly gateway: SandboxTestGateway,
+    @Inject(PAYMENT_GATEWAY) private readonly gateway: PaymentGateway,
     @Optional() @Inject(NotificationsService) private readonly notifications?: NotificationsService,
   ) {}
 
@@ -98,7 +102,7 @@ export class PaymentsService {
             reference: `TEST-${randomBytes(8).toString("hex").toUpperCase()}`,
             customerId: owned.customerId,
             reservationId: owned.id,
-            provider: "SANDBOX_TEST",
+            provider: this.gateway.provider,
             idempotencyKey,
             amountCents,
             currency: r.currency,
@@ -115,7 +119,7 @@ export class PaymentsService {
             after: {
               reference: payment.reference,
               amountCents: payment.amountCents.toString(),
-              provider: "SANDBOX_TEST",
+              provider: this.gateway.provider,
             },
           },
         });
@@ -152,8 +156,13 @@ export class PaymentsService {
 
   // ---------- Sandbox checkout (simulated provider page) ----------
 
+  private sandboxGateway(): SandboxTestGateway {
+    if (!(this.gateway instanceof SandboxTestGateway) || !this.gateway.enabled()) throw new NotFoundException();
+    return this.gateway;
+  }
+
   private async ownedSandboxPayment(client: Db, userId: string, reference: string) {
-    if (!this.gateway.enabled()) throw new NotFoundException();
+    this.sandboxGateway();
     const row = await client.payment.findFirst({
       where: { reference, provider: "SANDBOX_TEST", customer: { userId, deletedAt: null } },
       select: {
@@ -206,7 +215,10 @@ export class PaymentsService {
     }
     if (tx.status !== outcome) throw new ConflictException("La transacción de prueba ya tiene otro resultado");
     // Delivered through the same verified pipeline a real provider event uses.
-    await this.handleEvent(this.gateway.signedEvent({ ...tx, reference: tx.paymentReference }));
+    await this.handleEvent(
+      this.sandboxGateway().signedEvent({ ...tx, reference: tx.paymentReference }),
+      "SANDBOX_TEST",
+    );
     const after = await client.payment.findUniqueOrThrow({ where: { id: row.id }, select: { status: true } });
     return { status: after.status, reservationId: row.reservationId };
   }
@@ -224,18 +236,54 @@ export class PaymentsService {
       throw new ConflictException("El valor supera el saldo pendiente");
   }
 
+  // ---------- Wompi sandbox checkout hop ----------
+
+  /**
+   * Target of the same-origin checkout URL: rebuilds the signed Web Checkout URL from the stored payment (amount,
+   * currency, expiry), or sends the customer back to the reservation when the payment can no longer be paid.
+   */
+  async wompiCheckoutTarget(userId: string, reference: string): Promise<string> {
+    const gateway = this.gateway;
+    if (!(gateway instanceof WompiSandboxGateway) || !gateway.enabled()) throw new NotFoundException();
+    const client = await this.db.client();
+    const row = await client.payment.findFirst({
+      where: { reference, provider: "WOMPI", customer: { userId, deletedAt: null } },
+      select: {
+        reference: true,
+        amountCents: true,
+        currency: true,
+        status: true,
+        reservationId: true,
+        expiresAt: true,
+      },
+    });
+    if (!row?.reservationId) throw new NotFoundException();
+    const back = gateway.returnUrl(row.reservationId);
+    if (row.status !== "PENDING" || (row.expiresAt && row.expiresAt <= new Date())) return back;
+    try {
+      await this.assertStillPayable(client, row.reservationId, row.amountCents);
+    } catch (error) {
+      if (error instanceof ConflictException) return back;
+      throw error;
+    }
+    return gateway.signedCheckoutUrl({ ...row, reservationId: row.reservationId });
+  }
+
   // ---------- Provider events ----------
 
-  async handleEvent(raw: unknown): Promise<WebhookOutcome> {
-    if (!this.gateway.enabled()) throw new NotFoundException();
-    const parsed = eventSchema.safeParse(raw);
+  /** `route` is the provider whose webhook URL was called; any other adapter answers 404. */
+  async handleEvent(raw: unknown, route: GatewayProvider = "SANDBOX_TEST"): Promise<WebhookOutcome> {
+    const provider = this.gateway.provider;
+    if (!this.gateway.enabled() || provider !== route) throw new NotFoundException();
+    const parsed = eventSchema(provider).safeParse(raw);
     if (!parsed.success) throw new BadRequestException();
-    const event = parsed.data as ProviderEvent & z.infer<typeof eventSchema>;
+    const event = parsed.data as ProviderEvent;
     const t = event.data.transaction;
     const client = await this.db.client();
-    const valid = this.gateway.verify(event);
+    // The checksum covers the raw body: the provider may sign fields the schema strips.
+    const valid = this.gateway.verify(raw as ProviderEvent);
     const base = {
-      provider: "SANDBOX_TEST" as const,
+      provider,
       eventType: event.event,
       providerTransactionId: t.id,
       reportedStatus: t.status,
@@ -261,7 +309,7 @@ export class PaymentsService {
       if (!isUnique(error)) throw error;
       // Idempotency is on completion: a retry of an event whose processing failed midway is processed again.
       const previous = await client.paymentWebhookEvent.findUnique({
-        where: { provider_providerEventId: { provider: "SANDBOX_TEST", providerEventId } },
+        where: { provider_providerEventId: { provider, providerEventId } },
         select: { id: true, processedAt: true },
       });
       if (!previous || previous.processedAt) return "duplicate";
@@ -276,7 +324,7 @@ export class PaymentsService {
     };
 
     // Never trust the event body for money: look the transaction up at the provider.
-    const looked = await this.gateway.lookup(client, t.id);
+    const looked = await this.gateway.lookup(t.id, client);
     if (!looked) return fail("TRANSACTION_NOT_FOUND");
     if (
       looked.reference !== t.reference ||
@@ -298,7 +346,7 @@ export class PaymentsService {
         provider: true,
       },
     });
-    if (!payment || payment.provider !== "SANDBOX_TEST") return fail("PAYMENT_NOT_FOUND");
+    if (!payment || payment.provider !== provider) return fail("PAYMENT_NOT_FOUND");
     await client.paymentWebhookEvent.update({ where: { id: stored.id }, data: { paymentId: payment.id } });
 
     const result = applyPaymentEvent(
@@ -378,7 +426,7 @@ export class PaymentsService {
           entity: "payment",
           entityId: payment.id,
           before: { status: payment.status },
-          after: { status: next, amountCents: payment.amountCents.toString(), provider: "SANDBOX_TEST" },
+          after: { status: next, amountCents: payment.amountCents.toString(), provider },
         },
       });
       if (review)
