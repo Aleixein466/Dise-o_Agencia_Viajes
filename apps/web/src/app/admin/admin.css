@@ -812,3 +812,23 @@ body:has(.auth-root) > .site-footer {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
+
+/* MFA enrollment */
+.admin-mfa-enroll-title {
+  margin: 0 0 8px;
+  font-size: 16px;
+}
+.admin-mfa-steps {
+  margin: 0 0 12px;
+  padding-left: 20px;
+  line-height: 1.6;
+}
+.admin-mfa-qr {
+  display: block;
+  width: 192px;
+  height: 192px;
+  margin: 0 0 12px;
+  border-radius: var(--radius-sm);
+  background: #fff;
+  image-rendering: pixelated;
+}

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useRef, useState, type FormEvent, type ReactNode } from "react";
 import { safeNextPath } from "@/lib/auth/access";
 import { fetchCsrfToken, postJson } from "@/lib/auth/client";
+import { parseTotpEnrollment, type TotpEnrollment } from "@/lib/auth/totp-enrollment";
 
 const RATE_LIMITED = "Demasiados intentos. Espera unos minutos e inténtalo de nuevo.";
 
@@ -109,7 +110,7 @@ export function LoginForm({ next }: Readonly<{ next: string }>) {
 export function MfaForm({ next }: Readonly<{ next: string }>) {
   const router = useRouter();
   const [recovery, setRecovery] = useState(false);
-  const [enrollment, setEnrollment] = useState<{ url: string; codes: string[] } | null>(null);
+  const [enrollment, setEnrollment] = useState<{ totp: TotpEnrollment; codes: string[] } | null>(null);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const target = safeNextPath(next);
@@ -163,9 +164,10 @@ export function MfaForm({ next }: Readonly<{ next: string }>) {
     }
     const result = await postJson("/api/v1/auth/mfa/setup", {}, csrf.csrfToken);
     const data = result.data as { otpauthUrl?: unknown; recoveryCodes?: unknown } | null;
-    if (result.ok && typeof data?.otpauthUrl === "string" && Array.isArray(data.recoveryCodes)) {
+    const totp = result.ok && typeof data?.otpauthUrl === "string" ? parseTotpEnrollment(data.otpauthUrl) : null;
+    if (totp && Array.isArray(data?.recoveryCodes)) {
       setEnrollment({
-        url: data.otpauthUrl,
+        totp,
         codes: data.recoveryCodes.filter((code): code is string => typeof code === "string"),
       });
     } else setError("No fue posible iniciar la configuración. Inténtalo de nuevo.");
@@ -211,13 +213,38 @@ export function MfaForm({ next }: Readonly<{ next: string }>) {
         </Field>
       )}
       {enrollment ? (
-        <div className="admin-notice" role="status">
+        <section className="admin-notice admin-mfa-enroll" aria-labelledby="mfa-enroll-title">
+          <h2 id="mfa-enroll-title" className="admin-mfa-enroll-title">
+            Configura tu aplicación de autenticación
+          </h2>
+          <ol className="admin-mfa-steps">
+            <li>
+              Abre tu aplicación de autenticación (por ejemplo, Google Authenticator, Microsoft Authenticator o Authy).
+            </li>
+            <li>Escanea el código QR o, si no puedes, escribe la clave manual.</li>
+            <li>Escribe arriba el código de 6 dígitos que muestra la aplicación y pulsa «Verificar».</li>
+          </ol>
+          {/* eslint-disable-next-line @next/next/no-img-element -- local data: URL generated in the browser */}
+          <img
+            className="admin-mfa-qr"
+            src={enrollment.totp.qrDataUrl}
+            width={192}
+            height={192}
+            alt={`Código QR para agregar la cuenta ${enrollment.totp.account} a tu aplicación de autenticación`}
+          />
+          <p id="mfa-manual-key-label">Clave manual (tipo: basada en tiempo, 6 dígitos):</p>
+          <code className="admin-code" aria-labelledby="mfa-manual-key-label" translate="no">
+            {enrollment.totp.groupedSecret}
+          </code>
           <p>
-            Agrega esta URL a tu aplicación de autenticación y guarda los códigos de recuperación en un lugar seguro.
+            Guarda estos códigos de recuperación en un lugar seguro. Cada uno sirve una sola vez y no se volverán a
+            mostrar:
           </p>
-          <code className="admin-code">{enrollment.url}</code>
-          <p className="admin-recovery-codes">{enrollment.codes.join(" · ")}</p>
-        </div>
+          <p className="admin-recovery-codes" translate="no">
+            {enrollment.codes.join(" · ")}
+          </p>
+          <p className="admin-hint">No compartas el código QR, la clave ni estos códigos con nadie.</p>
+        </section>
       ) : !recovery ? (
         <button type="button" className="admin-link-button" onClick={() => void beginEnrollment()} disabled={pending}>
           Configurar una nueva aplicación de autenticación
