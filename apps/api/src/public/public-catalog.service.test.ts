@@ -129,7 +129,9 @@ describe("PublicCatalogService pricing", () => {
       startsOn: new Date("2026-12-15T00:00:00Z"),
       endsOn: new Date("2027-01-15T00:00:00Z"),
       isFictitious: false,
+      active: true,
       destinationId: destId,
+      packageId: null as string | null,
     };
     const rules = [rule("regular", 100n), rule("high", 150n, { seasonId: "s1", season })];
     const { value } = service(rules);
@@ -147,6 +149,28 @@ describe("PublicCatalogService pricing", () => {
     expect(await fake.preview({ ...base, travelDate: "2026-12-20" })).toMatchObject({
       status: "REQUIRES_MANUAL_REVIEW",
       travelDateRequired: false,
+    });
+  });
+
+  it("ignores deactivated seasons and seasons scoped to another package", async () => {
+    const season = {
+      id: "s1",
+      startsOn: new Date("2026-12-15T00:00:00Z"),
+      endsOn: new Date("2027-01-15T00:00:00Z"),
+      isFictitious: false,
+      active: true,
+      destinationId: destId,
+      packageId: null as string | null,
+    };
+    const priced = (s: typeof season) =>
+      service([rule("regular", 100n), rule("high", 150n, { seasonId: "s1", season: s })]).value.preview({
+        ...base,
+        travelDate: "2026-12-20",
+      });
+    expect(await priced({ ...season, packageId: pkgId })).toMatchObject({ totalCents: "300" });
+    expect(await priced({ ...season, active: false })).toMatchObject({ totalCents: "200" });
+    expect(await priced({ ...season, packageId: "00000000-0000-4000-8000-000000000099" })).toMatchObject({
+      totalCents: "200",
     });
   });
 
@@ -173,8 +197,8 @@ describe("PublicCatalogService pricing", () => {
     ];
     const rules = [
       rule("adult", 1000n),
-      rule("kid", 600n, { ageRuleId: "child", ageRule: { id: "child", isFictitious: false } }),
-      rule("baby", 0n, { ageRuleId: "infant", ageRule: { id: "infant", isFictitious: false } }),
+      rule("kid", 600n, { ageRuleId: "child", ageRule: { id: "child", isFictitious: false, active: true } }),
+      rule("baby", 0n, { ageRuleId: "infant", ageRule: { id: "infant", isFictitious: false, active: true } }),
     ];
     const priced = await service(rules, { ageRules }).value.preview({ ...base, childAges: [0, 6] });
     expect(priced).toMatchObject({ status: "PRICED", totalCents: "2600" });
@@ -182,6 +206,14 @@ describe("PublicCatalogService pricing", () => {
     expect(missing).toMatchObject({
       status: "REQUIRES_MANUAL_REVIEW",
       reasons: ["Se requiere revisión manual para menores"],
+    });
+    // A rate bound to a deactivated age rule never prices a minor.
+    const inactive = [
+      rule("adult", 1000n),
+      rule("kid", 600n, { ageRuleId: "child", ageRule: { id: "child", isFictitious: false, active: false } }),
+    ];
+    expect(await service(inactive, { ageRules }).value.preview({ ...base, childAges: [6] })).toMatchObject({
+      status: "REQUIRES_MANUAL_REVIEW",
     });
   });
 

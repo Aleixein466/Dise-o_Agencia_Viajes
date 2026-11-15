@@ -85,6 +85,7 @@ Los textos públicos en español están en `publicReasons` / `publicNotices` de 
 
 ## Pendiente (fuera de alcance)
 
-- CRUD administrativo de temporadas, reglas de edad y promociones, y los campos `seasonId`, `ageRuleId`, `occupancy`,
-  `min/maxTravelers` y `priority` en el editor de reglas de precio. Hoy se cargan por base de datos/seed.
+- ~~CRUD administrativo de temporadas, reglas de edad, promociones y campos comerciales de las tarifas~~: API hecha, ver
+  `commercial-rules-admin.md` (falta la UI del panel). Desactivar una temporada/banda pone `isFictitious = true`, así
+  que los filtros de este documento la excluyen sin cambios en el cargador.
 - Unidades `PER_PERSON_NIGHT` / `PER_ROOM_NIGHT` y reparto en varias habitaciones.

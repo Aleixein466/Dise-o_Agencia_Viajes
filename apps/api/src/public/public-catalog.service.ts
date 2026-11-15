@@ -46,8 +46,10 @@ const ruleSelect = {
   occupancy: true,
   minTravelers: true,
   maxTravelers: true,
-  season: { select: { id: true, startsOn: true, endsOn: true, isFictitious: true, destinationId: true } },
-  ageRule: { select: { id: true, isFictitious: true } },
+  season: {
+    select: { id: true, startsOn: true, endsOn: true, isFictitious: true, active: true, destinationId: true, packageId: true },
+  },
+  ageRule: { select: { id: true, isFictitious: true, active: true } },
 } as const;
 const dateOnly = (value: Date) => value.toISOString().slice(0, 10);
 const publicReasons: Record<string, string> = {
@@ -246,8 +248,10 @@ export class PublicCatalogService {
       (!rule.seasonId ||
         (!!rule.season &&
           !rule.season.isFictitious &&
-          (!rule.season.destinationId || rule.season.destinationId === pkg.destinationId))) &&
-      (!rule.ageRuleId || (!!rule.ageRule && !rule.ageRule.isFictitious));
+          rule.season.active &&
+          (!rule.season.destinationId || rule.season.destinationId === pkg.destinationId) &&
+          (!rule.season.packageId || rule.season.packageId === pkg.id))) &&
+      (!rule.ageRuleId || (!!rule.ageRule && !rule.ageRule.isFictitious && rule.ageRule.active));
     const boundRoom = (rule: Row) => {
       const value =
         rule.conditions && typeof rule.conditions === "object" && !Array.isArray(rule.conditions)
@@ -298,6 +302,7 @@ export class PublicCatalogService {
       ? await client.ageRule.findMany({
           where: {
             isFictitious: false,
+            active: true,
             tourId: null,
             OR: [
               { packageId: pkg.id },

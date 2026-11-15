@@ -534,6 +534,7 @@ model TourPackage {
   components PackageComponent[]
   priceRules PriceRule[]
   ageRules AgeRule[]
+  seasons Season[]
   promotions Promotion[]
   quotes Quote[]
   reservations Reservation[]
@@ -674,12 +675,18 @@ model Season {
   startsOn DateTime @db.Date @map("starts_on")
   endsOn DateTime @db.Date @map("ends_on")
   notes String? @db.Text
+  /// Null = destination-wide (or global). When set, destinationId is the package's destination.
+  packageId String? @db.Uuid @map("package_id")
+  /// Draft = active && isFictitious; approved = active && !isFictitious; inactive = !active (never deleted).
+  active Boolean @default(true)
   isFictitious Boolean @default(true) @map("is_fictitious")
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
   destination Destination? @relation(fields: [destinationId], references: [id], onDelete: Restrict)
+  package TourPackage? @relation(fields: [packageId], references: [id], onDelete: Restrict)
   priceRules PriceRule[]
   @@index([destinationId, startsOn])
+  @@index([packageId])
   @@map("seasons")
 }
 
@@ -694,6 +701,8 @@ model AgeRule {
   destinationId String? @db.Uuid @map("destination_id")
   packageId String? @db.Uuid @map("package_id")
   tourId String? @db.Uuid @map("tour_id")
+  /// Draft = active && isFictitious; approved = active && !isFictitious; inactive = !active (never deleted).
+  active Boolean @default(true)
   isFictitious Boolean @default(true) @map("is_fictitious")
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -935,6 +944,7 @@ model Quote {
   @@index([email])
   @@index([customerId, createdAt])
   @@index([assignedToId, status])
+  @@index([createdById, createdAt])
   @@map("quotes")
 }
 

@@ -11,6 +11,8 @@ import { DestinationsService } from "./catalog/destinations.service";
 import { PortfolioImportService } from "./catalog/portfolio-import.service";
 import { CatalogAdminController } from "./catalog/catalog-admin.controller";
 import { CatalogAdminService } from "./catalog/catalog-admin.service";
+import { CommercialRulesController } from "./catalog/commercial-rules.controller";
+import { CommercialRulesService } from "./catalog/commercial-rules.service";
 import { GalleryController } from "./catalog/gallery.controller";
 import { GalleryService } from "./catalog/gallery.service";
 import { AdminQuotesController } from "./quotes/admin-quotes.controller";
@@ -48,6 +50,7 @@ export class AppModule {
         UsersController,
         DestinationsController,
         CatalogAdminController,
+        CommercialRulesController,
         GalleryController,
         AdminQuotesController,
         CrmController,
@@ -69,6 +72,7 @@ export class AppModule {
         DestinationsService,
         PortfolioImportService,
         CatalogAdminService,
+        CommercialRulesService,
         GalleryService,
         AdminQuotesService,
         CrmService,

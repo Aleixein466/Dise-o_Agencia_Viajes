@@ -49,11 +49,60 @@ const hotelInput = z
 const rateInput = z.object({
   amountCents: z
     .string()
-    .regex(/^\d+$/)
+    .regex(/^(0|[1-9]\d{0,12})$/)
     .transform((v) => BigInt(v))
     .refine((v) => v > 0n && v <= 999_999_999_999n),
 });
 const priceRuleTransition = z.object({ expectedUpdatedAt: z.string().datetime() });
+const instant = z.iso
+  .datetime()
+  .nullable()
+  .optional()
+  .transform((value) => (value == null ? value : new Date(value)));
+const priceRuleCommercial = {
+  name: z.string().trim().min(2).max(160),
+  unit: z.enum(["PER_PERSON", "PER_PERSON_NIGHT", "PER_ROOM_NIGHT", "PER_BOOKING"]),
+  amountCents: z
+    .string()
+    .regex(/^(0|[1-9]\d{0,12})$/)
+    .transform((value) => BigInt(value)),
+  priority: z.number().int().min(-1000).max(1000),
+  seasonId: z.uuid().nullable(),
+  ageRuleId: z.uuid().nullable(),
+  roomTypeId: z.uuid().nullable(),
+  occupancy: z.number().int().min(1).max(50).nullable(),
+  minTravelers: z.number().int().min(1).max(99).nullable(),
+  maxTravelers: z.number().int().min(1).max(99).nullable(),
+};
+const priceRuleCreate = z
+  .object({
+    ...priceRuleCommercial,
+    priority: priceRuleCommercial.priority.optional(),
+    seasonId: priceRuleCommercial.seasonId.optional(),
+    ageRuleId: priceRuleCommercial.ageRuleId.optional(),
+    roomTypeId: priceRuleCommercial.roomTypeId.optional(),
+    occupancy: priceRuleCommercial.occupancy.optional(),
+    minTravelers: priceRuleCommercial.minTravelers.optional(),
+    maxTravelers: priceRuleCommercial.maxTravelers.optional(),
+    validFrom: instant,
+    validTo: instant,
+    ruleSetVersion: z.string().regex(/^[A-Za-z0-9._-]{1,40}$/),
+    packageId: z.uuid().optional(),
+    tourId: z.uuid().optional(),
+    transportOptionId: z.uuid().optional(),
+    addOnId: z.uuid().optional(),
+  })
+  .strict();
+const priceRulePatch = z
+  .object({
+    ...z.object(priceRuleCommercial).partial().shape,
+    validFrom: instant,
+    validTo: instant,
+    expectedUpdatedAt: z.iso.datetime(),
+  })
+  .strict();
+const invalid = () =>
+  new BadRequestException({ statusCode: 400, code: "VALIDATION_FAILED", message: "Datos inválidos" });
 const packageCreate = z.object({
   destinationId: z.uuid(),
   slug: z
@@ -184,6 +233,31 @@ export class CatalogAdminController {
   @Get("rates/:id/history") async rateHistory(@Param("id") id: string, @Req() request: FastifyRequest) {
     await this.auth.requireReadPermission(token(request, this.auth.cookieName()), "catalog:write");
     return this.catalog.rateHistory(id);
+  }
+  @Post("price-rules") async createPriceRule(
+    @Body() body: unknown,
+    @Req() request: FastifyRequest,
+    @Headers("x-csrf-token") csrf?: string,
+    @Headers("origin") origin?: string,
+  ) {
+    const actor = await this.write(request, csrf, origin);
+    const parsed = priceRuleCreate.safeParse(body);
+    if (!parsed.success) throw invalid();
+    return this.catalog.createPriceRule(parsed.data, actor.user.id);
+  }
+  @Patch("price-rules/:id") async updatePriceRule(
+    @Param("id") id: string,
+    @Body() body: unknown,
+    @Req() request: FastifyRequest,
+    @Headers("x-csrf-token") csrf?: string,
+    @Headers("origin") origin?: string,
+  ) {
+    const actor = await this.write(request, csrf, origin);
+    const parsed = priceRulePatch.safeParse(body);
+    if (!z.uuid().safeParse(id).success || !parsed.success) throw invalid();
+    const { expectedUpdatedAt, ...patch } = parsed.data;
+    if (!Object.keys(patch).length) throw invalid();
+    return this.catalog.updatePriceRule(id, patch, new Date(expectedUpdatedAt), actor.user.id);
   }
   @Post("price-rules/:id/approve") async approvePriceRule(
     @Param("id") id: string,
