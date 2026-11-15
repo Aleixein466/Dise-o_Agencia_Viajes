@@ -241,3 +241,23 @@ Restaurar el CLI Docker de Windows, validar `docker compose config`, levantar ú
   - La configuración smoke de CI (`playwright.config.ts`) excluye las pruebas que necesitan base de datos.
 - **PR borrador #5** (`codex/continue-auth-admin` → `integration/f2`): en la primera corrida, CI falló en `database` (drift del índice) y en `e2e` (pruebas con base de datos dentro del smoke). Ambas causas están corregidas en este lote.
 - **21st.dev:** el MCP no está conectado (falta `API_KEY_21ST` y no hay herramientas disponibles). Se usaron los estilos existentes del panel y no se consumieron créditos.
+
+## Actualización: módulos Auditoría y Transporte (2026-11-14)
+
+- **Auditoría** (`/admin/auditoria`, `GET /api/v1/admin/audit` y `/facets`): solo lectura y solo `audit:read` (ADMIN) con MFA.
+  - Filtros: entidad, acción, actor y fechas (días de Bogotá). La paginación tiene un tope de 50 por página y 200 páginas.
+  - Nunca devuelve `ipHash`.
+  - `redact.ts` oculta, a cualquier profundidad, las claves que contienen password, hash, secret, token, otp, mfa, key, email, phone, document, trackingCode, recoveryCode, verificationCode o loginCode.
+  - Los identificadores `code` (promoción, reserva) quedan visibles.
+- **Transporte** (`/admin/transporte`, `/api/v1/catalog/transport-options`; contrato `contracts/transport-options-admin.md`):
+  - CRUD con `catalog:write` y concurrencia por `expectedUpdatedAt`;
+  - nombre único por destino y modo, sin distinguir mayúsculas;
+  - activar y desactivar sin borrar nunca; no se desactiva si un paquete publicado la usa;
+  - el historial queda auditado y redactado.
+- **Auditoría Codex:**
+  - _Alto, corregido:_ el cotizador público aceptaba una opción de transporte inactiva o eliminada si se enviaba directamente. Ahora la rechaza, igual que el constructor.
+  - _Corregido:_ historial de opciones eliminadas, redacción del historial de transporte, tope de paginación y sobre-redacción de `code`.
+- **Pendientes del módulo:**
+  - las limpiezas del E2E solo desactivan, por diseño (nada se borra);
+  - `facets` agrupa toda la bitácora en cada consulta; conviene un índice o caché si crece.
+- **Siguen "en construcción":** Cupos, Clientes, Contenido y Configuración.

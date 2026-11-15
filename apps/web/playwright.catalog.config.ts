@@ -5,6 +5,8 @@ export default defineConfig({
   testMatch: [
     "catalog-cartagena.spec.ts",
     "public-admin-commercial-rules.spec.ts",
+    "public-audit-log.spec.ts",
+    "public-transport-options.spec.ts",
     "public-builder.spec.ts",
     "public-crm.spec.ts",
     "public-portal.spec.ts",

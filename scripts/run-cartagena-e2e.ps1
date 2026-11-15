@@ -46,7 +46,13 @@ function Show-NewOutput($Job, [string]$Stage) {
   $Job.Read = $lines.Count
 }
 function Stop-Tree($Job) {
-  if ($Job -and -not $Job.Process.HasExited) { & taskkill.exe /PID $Job.Process.Id /T /F 2>$null | Out-Null }
+  if (-not $Job -or $Job.Process.HasExited) { return }
+  # taskkill writes to stderr when a child already exited; under ErrorActionPreference=Stop, Windows PowerShell 5.1
+  # turns that into a terminating error and the cleanup would stop half-way, orphaning the servers.
+  $previous = $ErrorActionPreference
+  $ErrorActionPreference = "Continue"
+  try { & taskkill.exe /PID $Job.Process.Id /T /F 2>&1 | Out-Null } catch { }
+  finally { $ErrorActionPreference = $previous }
 }
 function Invoke-Stage([string]$Stage, [string]$CommandLine, [int]$TimeoutSec) {
   Log $Stage "start (timeout ${TimeoutSec}s): $CommandLine"

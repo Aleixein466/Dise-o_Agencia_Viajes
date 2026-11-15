@@ -127,6 +127,8 @@ test("back-office screens are responsive and accessible", async ({ browser }) =>
     ["/admin/tarifas?tab=promociones", "tarifas-promociones"],
     ["/admin/paquetes", "paquetes"],
     ["/admin/usuarios", "usuarios"],
+    ["/admin/auditoria", "auditoria"],
+    ["/admin/transporte", "transporte"],
   ] as const)
     await check(admin, path, label);
   await adminContext.close();
