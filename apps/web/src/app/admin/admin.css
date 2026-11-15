@@ -1,4 +1,5 @@
 /* Admin panel and staff auth pages. Scoped to .admin-root / .auth-root; the public chrome is hidden there. */
+/* Tropical Premium: navy shell, turquoise focus and accents, warm sand surfaces, coral reserved for primary actions. */
 body:has(.admin-root) > .skip-link,
 body:has(.admin-root) > .site-header,
 body:has(.admin-root) > .site-footer,
@@ -11,6 +12,13 @@ body:has(.auth-root) > .site-footer {
 .auth-root {
   color-scheme: light;
   color: var(--ink);
+  font-family: var(--font-body);
+}
+.admin-root :focus-visible,
+.auth-root :focus-visible {
+  outline: 3px solid var(--teal-ink);
+  outline-offset: 2px;
+  box-shadow: var(--ring);
 }
 
 /* Shared controls */
@@ -20,11 +28,17 @@ body:has(.auth-root) > .site-footer {
   justify-content: center;
   gap: 8px;
   min-height: 44px;
-  padding: 10px 20px;
+  padding: 10px 22px;
   border: 1px solid transparent;
   border-radius: 100px;
   font-size: 14px;
   font-weight: 700;
+  letter-spacing: 0.01em;
+  transition:
+    background var(--dur-fast) var(--ease-out),
+    border-color var(--dur-fast) var(--ease-out),
+    box-shadow var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out);
 }
 .admin-btn:disabled {
   opacity: 0.65;
@@ -33,17 +47,21 @@ body:has(.auth-root) > .site-footer {
 .admin-btn-primary {
   background: var(--orange-dark);
   color: var(--white);
+  box-shadow: 0 6px 16px rgb(189 77 30 / 22%);
 }
 .admin-btn-primary:hover:not(:disabled) {
   background: #9e3e1a;
+  box-shadow: 0 8px 20px rgb(189 77 30 / 30%);
 }
 .admin-btn-quiet {
   background: var(--white);
-  border-color: var(--line);
+  border-color: #c4d2d3;
   color: var(--navy);
 }
 .admin-btn-quiet:hover:not(:disabled) {
-  border-color: var(--navy);
+  border-color: var(--teal-ink);
+  background: var(--teal-soft);
+  color: var(--navy-deep);
 }
 .admin-form-error {
   margin: 0;
@@ -51,13 +69,27 @@ body:has(.auth-root) > .site-footer {
   font-size: 14px;
   font-weight: 600;
 }
+.admin-form-error:empty {
+  display: none;
+}
+.admin-form-error:not(:empty) {
+  padding: 10px 14px;
+  border-left: 4px solid #a1260f;
+  border-radius: var(--radius-sm);
+  background: var(--coral-soft);
+}
 .admin-link-button {
   padding: 4px 0;
   border: 0;
   background: none;
-  color: var(--green);
+  color: var(--teal-ink);
   font-weight: 700;
   text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+.admin-link-button:hover {
+  color: var(--navy);
 }
 
 /* Staff auth pages */
@@ -66,19 +98,25 @@ body:has(.auth-root) > .site-footer {
   min-height: 70vh;
   padding: 48px 16px;
   place-items: center;
+  background:
+    radial-gradient(60% 50% at 85% 0%, rgb(18 163 155 / 12%), transparent 70%),
+    radial-gradient(50% 45% at 0% 100%, rgb(246 178 60 / 14%), transparent 70%), var(--cream);
 }
 .auth-card {
   width: min(100%, 440px);
-  padding: 32px 28px;
+  padding: 36px 32px;
   border: 1px solid var(--line);
+  border-top: 4px solid var(--teal);
   border-radius: var(--radius-md);
   background: var(--white);
-  box-shadow: var(--shadow);
+  box-shadow: var(--shadow-lg);
 }
 .auth-card h1 {
   margin: 0 0 12px;
   color: var(--navy);
-  font-size: 32px;
+  font-family: var(--font-display);
+  font-size: 34px;
+  font-weight: 600;
   line-height: 1.15;
 }
 .auth-intro {
@@ -109,22 +147,67 @@ body:has(.auth-root) > .site-footer {
   font-size: 14px;
   font-weight: 700;
 }
-.admin-field input {
-  min-height: 46px;
+.admin-field input,
+.admin-field select,
+.admin-field textarea,
+.admin-users-filters input,
+.admin-users-filters select {
   padding: 10px 14px;
   border: 1px solid #7b8d99;
   border-radius: var(--radius-sm);
-  background: var(--white);
+  background-color: var(--white);
   color: var(--ink);
+  transition:
+    border-color var(--dur-fast) var(--ease-out),
+    box-shadow var(--dur-fast) var(--ease-out);
+}
+.admin-field input,
+.admin-field select,
+.admin-users-filters input,
+.admin-users-filters select {
+  min-height: 46px;
 }
 .admin-field textarea {
   min-height: 96px;
-  padding: 10px 14px;
-  border: 1px solid #7b8d99;
-  border-radius: var(--radius-sm);
-  background: var(--white);
-  color: var(--ink);
   resize: vertical;
+}
+.admin-field input::placeholder,
+.admin-field textarea::placeholder,
+.admin-users-filters input::placeholder {
+  color: #5f7280;
+}
+.admin-field input:hover,
+.admin-field select:hover,
+.admin-field textarea:hover,
+.admin-users-filters input:hover,
+.admin-users-filters select:hover {
+  border-color: var(--navy-soft);
+}
+.admin-field input:focus-visible,
+.admin-field select:focus-visible,
+.admin-field textarea:focus-visible,
+.admin-users-filters input:focus-visible,
+.admin-users-filters select:focus-visible {
+  border-color: var(--teal-ink);
+}
+.admin-field select,
+.admin-users-filters select {
+  padding-right: 40px;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23102f49' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+}
+.admin-field input:disabled,
+.admin-field select:disabled,
+.admin-field textarea:disabled {
+  border-color: var(--line);
+  background-color: var(--sand-warm);
+  color: var(--muted);
+}
+.admin-root input[type="checkbox"],
+.admin-root input[type="radio"] {
+  accent-color: var(--teal-ink);
 }
 .admin-hint {
   margin: 0;
@@ -140,9 +223,10 @@ body:has(.auth-root) > .site-footer {
 }
 .admin-form-links a,
 .admin-notice a {
-  color: var(--green);
+  color: var(--teal-ink);
   font-weight: 700;
   text-decoration: underline;
+  text-underline-offset: 3px;
 }
 .admin-notice p {
   margin: 0 0 12px;
@@ -156,9 +240,10 @@ body:has(.auth-root) > .site-footer {
   line-height: 1.6;
 }
 .admin-code {
-  padding: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
   border-radius: var(--radius-sm);
-  background: var(--cream);
+  background: var(--sand-warm);
 }
 
 /* Panel shell */
@@ -172,6 +257,7 @@ body:has(.auth-root) > .site-footer {
   top: -100px;
   left: 12px;
   padding: 12px 18px;
+  border-radius: var(--radius-sm);
   background: var(--navy);
   color: var(--white);
 }
@@ -183,19 +269,27 @@ body:has(.auth-root) > .site-footer {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+  min-height: 68px;
   padding: 12px 16px;
-  background: var(--navy);
+  background: var(--gradient-ocean);
   color: var(--white);
+  box-shadow: var(--shadow-sm);
 }
 .admin-brand {
   margin: 0;
-  font-weight: 800;
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
 }
 .admin-brand span {
   display: block;
   color: #ffc58c;
-  font-size: 12px;
-  font-weight: 600;
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
 }
 .admin-user {
   display: flex;
@@ -208,8 +302,12 @@ body:has(.auth-root) > .site-footer {
 }
 .admin-header :focus-visible {
   outline-color: #ffc58c;
+  box-shadow: none;
 }
 .admin-header .admin-form-error {
+  padding: 0;
+  border: 0;
+  background: none;
   color: #ffd2c8;
 }
 .admin-user-name {
@@ -234,12 +332,16 @@ body:has(.auth-root) > .site-footer {
   align-items: center;
   gap: 8px;
   min-height: 44px;
-  padding: 8px 14px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-sm);
+  padding: 8px 16px;
+  border: 1px solid #c4d2d3;
+  border-radius: 100px;
   background: var(--white);
   color: var(--navy);
   font-weight: 700;
+}
+.admin-menu-toggle:hover {
+  border-color: var(--teal-ink);
+  background: var(--teal-soft);
 }
 .admin-nav {
   display: none;
@@ -257,64 +359,84 @@ body:has(.auth-root) > .site-footer {
 }
 .admin-nav a {
   display: block;
-  padding: 11px 12px;
+  padding: 11px 14px;
   border-radius: var(--radius-sm);
   color: var(--navy);
   font-size: 14px;
   font-weight: 600;
+  transition:
+    background var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out);
 }
 .admin-nav a:hover {
-  background: var(--mint);
+  background: var(--teal-soft);
 }
 .admin-nav a[aria-current="page"] {
   background: var(--navy);
+  box-shadow: inset 4px 0 0 var(--coral);
   color: var(--white);
+  font-weight: 700;
 }
 .admin-content {
-  padding: 24px 16px 56px;
+  width: 100%;
+  max-width: 1520px;
+  margin-inline: auto;
+  padding: 28px 16px 56px;
 }
 .admin-content:focus,
 .admin-reveal:focus,
 .admin-panel h2[tabindex="-1"]:focus {
   outline: none;
+  box-shadow: none;
 }
 .admin-title {
   margin: 0 0 8px;
   color: var(--navy);
-  font-size: 30px;
+  font-family: var(--font-display);
+  font-size: 32px;
+  font-weight: 600;
   line-height: 1.15;
 }
 .admin-lead {
-  max-width: 60ch;
-  margin: 0 0 24px;
+  max-width: 62ch;
+  margin: 0 0 28px;
   color: var(--muted);
-  line-height: 1.6;
+  line-height: 1.65;
 }
 .admin-grid {
   display: grid;
-  gap: 16px;
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr));
+  gap: 20px;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr));
 }
 .admin-panel {
-  padding: 20px;
+  padding: 22px;
   border: 1px solid var(--line);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-md);
   background: var(--white);
+  box-shadow: var(--shadow-sm);
 }
 .admin-panel h2 {
-  margin: 0 0 10px;
+  margin: 0 0 12px;
   color: var(--navy);
-  font-size: 16px;
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.3;
 }
 .admin-empty {
   margin: 0;
+  padding: 20px 16px;
+  border: 1px dashed #c4d2d3;
+  border-radius: var(--radius-sm);
+  background: var(--sand-warm);
   color: var(--muted);
+  text-align: center;
 }
 .admin-stat {
   margin: 0;
   color: var(--navy);
-  font-size: 32px;
-  font-weight: 700;
+  font-family: var(--font-display);
+  font-size: 38px;
+  font-weight: 600;
   line-height: 1.1;
 }
 .admin-stat-detail {
@@ -329,7 +451,7 @@ body:has(.auth-root) > .site-footer {
   display: grid;
   /* minmax(0, …) lets wide tables scroll inside .admin-table-wrap instead of widening the page. */
   grid-template-columns: minmax(0, 1fr);
-  gap: 18px;
+  gap: 20px;
 }
 .admin-users-form {
   max-width: 760px;
@@ -338,12 +460,13 @@ body:has(.auth-root) > .site-footer {
   display: flex;
   flex-wrap: wrap;
   gap: 12px 18px;
-  padding: 12px;
+  padding: 14px;
   border: 1px solid var(--line);
   border-radius: var(--radius-sm);
+  background: var(--sand-warm);
 }
 .admin-role-field legend {
-  padding-inline: 4px;
+  padding-inline: 6px;
   color: var(--navy);
   font-size: 14px;
   font-weight: 700;
@@ -351,7 +474,8 @@ body:has(.auth-root) > .site-footer {
 .admin-role-field label {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
+  min-height: 24px;
   font-size: 14px;
 }
 .admin-section-heading {
@@ -373,35 +497,50 @@ body:has(.auth-root) > .site-footer {
 .admin-users-filters input,
 .admin-users-filters select {
   min-height: 44px;
-  padding: 9px 12px;
-  border: 1px solid #7b8d99;
-  border-radius: var(--radius-sm);
-  background: var(--white);
-  color: var(--ink);
+  padding: 9px 14px;
+}
+.admin-users-filters select {
+  padding-right: 40px;
 }
 .admin-table-wrap {
   /* Containing block for absolutely positioned cell content (.sr-only), so it scrolls instead of widening the page. */
   position: relative;
   overflow-x: auto;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
 }
 .admin-table {
   width: 100%;
   min-width: 780px;
   border-collapse: collapse;
   font-size: 14px;
+  line-height: 1.45;
 }
 .admin-table th,
 .admin-table td {
-  padding: 13px 10px;
+  padding: 14px;
   border-bottom: 1px solid var(--line);
   text-align: left;
   vertical-align: top;
 }
 .admin-table th {
+  border-bottom: 2px solid #c9d8d6;
+  background: var(--sand-warm);
   color: var(--navy);
-  font-size: 12px;
+  font-size: 11.5px;
+  font-weight: 800;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.07em;
+  white-space: nowrap;
+}
+.admin-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+.admin-table tbody tr {
+  transition: background var(--dur-fast) var(--ease-out);
+}
+.admin-table tbody tr:hover {
+  background: rgb(224 244 241 / 45%);
 }
 .admin-table td > span {
   color: var(--muted);
@@ -411,26 +550,38 @@ body:has(.auth-root) > .site-footer {
 .admin-role {
   display: inline-block;
   margin: 0 4px 4px 0;
-  padding: 3px 8px;
+  padding: 3px 10px;
   border-radius: 100px;
   font-size: 12px;
   font-weight: 700;
+}
+.admin-status::before,
+.admin-badge::before {
+  content: "";
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-right: 6px;
+  border-radius: 50%;
+  background: currentcolor;
+  vertical-align: 1px;
 }
 .admin-status-active {
   background: #dff5e7;
   color: #176438 !important;
 }
 .admin-status-disabled {
-  background: #f7dfdb;
+  background: var(--coral-soft);
   color: #8b2918 !important;
 }
 .admin-role {
+  border: 1px solid #d3e3de;
   background: var(--mint);
   color: var(--navy) !important;
 }
 .admin-table details {
   margin-top: 6px;
-  color: var(--green);
+  color: var(--teal-ink);
 }
 .admin-table summary {
   cursor: pointer;
@@ -449,8 +600,17 @@ body:has(.auth-root) > .site-footer {
 }
 .admin-success {
   margin: 0 0 14px;
-  color: #176438;
+  color: #0b5f5a;
   font-weight: 700;
+}
+.admin-success:empty {
+  display: none;
+}
+.admin-success:not(:empty) {
+  padding: 10px 14px;
+  border-left: 4px solid var(--teal-ink);
+  border-radius: var(--radius-sm);
+  background: var(--teal-soft);
 }
 .admin-activity {
   display: grid;
@@ -480,15 +640,19 @@ body:has(.auth-root) > .site-footer {
 }
 .admin-notice-page {
   width: min(100%, 520px);
-  padding: 32px 28px;
+  padding: 36px 32px;
   border: 1px solid var(--line);
+  border-top: 4px solid var(--teal);
   border-radius: var(--radius-md);
   background: var(--white);
+  box-shadow: var(--shadow-md);
 }
 .admin-notice-page h1 {
   margin: 0 0 12px;
   color: var(--navy);
-  font-size: 26px;
+  font-family: var(--font-display);
+  font-size: 28px;
+  font-weight: 600;
 }
 .admin-notice-page p {
   margin: 0 0 12px;
@@ -496,9 +660,10 @@ body:has(.auth-root) > .site-footer {
   line-height: 1.6;
 }
 .admin-notice-page a {
-  color: var(--green);
+  color: var(--teal-ink);
   font-weight: 700;
   text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 @media (min-width: 900px) {
@@ -509,16 +674,21 @@ body:has(.auth-root) > .site-footer {
     max-width: 28ch;
   }
   .admin-body {
-    grid-template-columns: 260px minmax(0, 1fr);
+    grid-template-columns: 264px minmax(0, 1fr);
     align-items: start;
+    /* Paints the sidebar column to the full height of the page, whatever the content height. */
+    background: linear-gradient(to right, var(--white) 263px, var(--line) 263px, var(--line) 264px, transparent 264px);
   }
   .admin-sidebar {
     position: sticky;
     top: 0;
+    max-height: 100vh;
     min-height: calc(100vh - 68px);
-    padding: 20px 16px;
-    border-right: 1px solid var(--line);
+    padding: 22px 16px;
+    overflow-y: auto;
+    border-right: 0;
     border-bottom: 0;
+    background: transparent;
   }
   .admin-menu-toggle {
     display: none;
@@ -528,7 +698,10 @@ body:has(.auth-root) > .site-footer {
     margin-top: 0;
   }
   .admin-content {
-    padding: 36px 36px 72px;
+    padding: 40px 40px 80px;
+  }
+  .admin-title {
+    font-size: 36px;
   }
 }
 @media (max-width: 560px) {
@@ -539,6 +712,31 @@ body:has(.auth-root) > .site-footer {
     align-items: stretch;
     flex-direction: column;
   }
+  .auth-card {
+    padding: 28px 22px;
+  }
+  /* 360 px: brand, name and logout must fit on one row without widening the page. */
+  .admin-header {
+    gap: 8px;
+    padding-inline: 12px;
+  }
+  .admin-brand {
+    font-size: 17px;
+    white-space: nowrap;
+  }
+  .admin-header .admin-btn {
+    min-height: 40px;
+    padding: 8px 12px;
+    font-size: 13px;
+    white-space: nowrap;
+  }
+  .admin-user-name {
+    font-size: 13px;
+  }
+  .admin-user {
+    min-width: 0;
+    gap: 8px;
+  }
 }
 
 /* Record codes (RES-..., PUB-...) stay on one line inside the scrollable table. */
@@ -548,16 +746,18 @@ body:has(.auth-root) > .site-footer {
 }
 
 .admin-dialog {
-  width: min(440px, calc(100vw - 32px));
-  padding: 24px;
+  width: min(460px, calc(100vw - 32px));
+  padding: 28px;
   border: 1px solid var(--line);
+  border-top: 4px solid var(--teal);
   border-radius: var(--radius-md);
   background: var(--white);
   color: var(--ink);
-  box-shadow: var(--shadow);
+  box-shadow: var(--shadow-lg);
 }
 .admin-dialog::backdrop {
-  background: rgba(10, 20, 40, 0.5);
+  background: rgb(11 38 60 / 55%);
+  backdrop-filter: blur(3px);
 }
 .admin-dialog form {
   display: grid;
@@ -567,6 +767,29 @@ body:has(.auth-root) > .site-footer {
 .admin-dialog label {
   margin: 0;
   font-weight: 600;
+}
+.admin-dialog .field input,
+.admin-dialog .field textarea {
+  border: 1px solid #7b8d99;
+  border-radius: var(--radius-sm);
+  background: var(--white);
+  font-size: 14px;
+}
+.admin-dialog .field input:focus-visible,
+.admin-dialog .field textarea:focus-visible {
+  border-color: var(--teal-ink);
+  outline: 3px solid var(--teal-ink);
+  outline-offset: 2px;
+}
+.admin-dialog .btn {
+  min-height: 44px;
+  padding: 10px 22px;
+  border: 1px solid transparent;
+  font-size: 14px;
+  gap: 8px;
+}
+.admin-dialog .btn.admin-btn-quiet {
+  border-color: #c4d2d3;
 }
 .admin-dialog-actions {
   display: flex;
@@ -578,16 +801,11 @@ body:has(.auth-root) > .site-footer {
   background: #a1260f;
   border-color: #a1260f;
 }
+.admin-dialog-danger:hover:not(:disabled) {
+  background: #861e0c;
+}
 
 /* Commercial rules (seasons, age bands, promotions, price-rule conditions) */
-.admin-field select {
-  min-height: 46px;
-  padding: 10px 14px;
-  border: 1px solid #7b8d99;
-  border-radius: var(--radius-sm);
-  background: var(--white);
-  color: var(--ink);
-}
 .admin-field input[type="date"] {
   min-width: 0;
 }
@@ -604,7 +822,7 @@ body:has(.auth-root) > .site-footer {
   font-weight: 700;
 }
 .admin-tabs {
-  margin: 0 0 20px;
+  margin: 0 0 22px;
   border-bottom: 1px solid var(--line);
 }
 .admin-tabs ul {
@@ -619,16 +837,17 @@ body:has(.auth-root) > .site-footer {
   display: inline-flex;
   align-items: center;
   min-height: 44px;
-  padding: 8px 16px;
+  padding: 8px 18px;
   border: 1px solid transparent;
   border-bottom: 0;
   border-radius: var(--radius-sm) var(--radius-sm) 0 0;
   color: var(--navy);
   font-size: 14px;
   font-weight: 700;
+  transition: background var(--dur-fast) var(--ease-out);
 }
 .admin-tabs a:hover {
-  background: var(--mint);
+  background: var(--teal-soft);
 }
 .admin-tabs a[aria-current="page"] {
   border-color: var(--line);
@@ -648,13 +867,13 @@ body:has(.auth-root) > .site-footer {
 }
 .admin-table .admin-badge-draft,
 .admin-badge-draft {
-  background: #fff1cc;
+  background: var(--sun-soft);
   color: #5c3f00;
 }
 .admin-table .admin-badge-approved,
 .admin-badge-approved {
-  background: #dff5e7;
-  color: #176438;
+  background: var(--teal-soft);
+  color: #0a5f5a;
 }
 .admin-table .admin-badge-inactive,
 .admin-badge-inactive {
@@ -696,7 +915,7 @@ body:has(.auth-root) > .site-footer {
   font-size: 13px;
 }
 .admin-table-wrap:focus-visible {
-  outline: 3px solid var(--green);
+  outline: 3px solid var(--teal-ink);
   outline-offset: 2px;
 }
 @media (min-width: 700px) {
@@ -735,7 +954,7 @@ body:has(.auth-root) > .site-footer {
   overflow-wrap: anywhere;
 }
 .admin-audit-detail-row > td {
-  background: var(--cream);
+  background: var(--sand-warm);
 }
 .admin-audit-detail h4 {
   margin: 14px 0 6px;
@@ -767,7 +986,7 @@ body:has(.auth-root) > .site-footer {
 }
 .admin-audit-diff-changed {
   border-left-color: var(--orange-dark);
-  background: #fff1e6;
+  background: var(--sun-soft);
 }
 .admin-audit-key {
   font-weight: 700;
@@ -828,7 +1047,17 @@ body:has(.auth-root) > .site-footer {
   width: 192px;
   height: 192px;
   margin: 0 0 12px;
+  padding: 8px;
+  border: 1px solid var(--line);
   border-radius: var(--radius-sm);
   background: #fff;
   image-rendering: pixelated;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .admin-root *,
+  .auth-root * {
+    transition: none !important;
+    animation: none !important;
+  }
 }

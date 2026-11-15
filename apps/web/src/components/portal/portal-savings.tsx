@@ -56,7 +56,7 @@ export function PortalSavingsDetail({ id }: Readonly<{ id: string }>) {
       ) : null}
       <section aria-labelledby="savings-schedule-title" className="portal-section">
         <h3 id="savings-schedule-title">Cronograma</h3>
-        <div style={{ overflowX: "auto" }}>
+        <div style={{ overflowX: "auto" }} role="region" aria-label="Cronograma de cuotas" tabIndex={0}>
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
               <tr>

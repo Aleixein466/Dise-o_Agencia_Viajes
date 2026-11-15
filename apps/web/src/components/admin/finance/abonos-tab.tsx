@@ -204,7 +204,7 @@ export function AbonosTab({ session, csrf }: Readonly<{ session: AdminSession; c
         ) : null}
         {items && items.length === 0 ? <p className="admin-empty">No hay abonos para este filtro.</p> : null}
         {items && items.length > 0 ? (
-          <div className="admin-table-wrap">
+          <div className="admin-table-wrap" role="region" aria-label="Tabla de abonos" tabIndex={0}>
             <table className="admin-table">
               <thead>
                 <tr>

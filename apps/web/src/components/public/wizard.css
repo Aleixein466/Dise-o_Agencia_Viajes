@@ -270,3 +270,42 @@
 .wz-promo-row input {
   text-transform: uppercase;
 }
+
+/* Tropical Premium */
+.wizard-panel h2:focus-visible,
+.wz-choice:focus-within {
+  outline: 3px solid var(--teal-ink);
+  outline-offset: 3px;
+}
+.wz-bar {
+  background: var(--teal-soft);
+}
+.wz-bar > span {
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--teal-ink), var(--teal));
+  transition: width var(--dur-slow) var(--ease-out);
+}
+.wz-choice {
+  border-radius: var(--radius-sm);
+  background: white;
+  transition:
+    border-color var(--dur-fast) linear,
+    background var(--dur-fast) linear,
+    box-shadow var(--dur-fast) linear;
+}
+.wz-choice:hover {
+  border-color: #9fc9c4;
+  box-shadow: var(--shadow-sm);
+}
+.wz-choice-on,
+.wz-choice-on:hover {
+  border-color: var(--teal-ink);
+  background: var(--teal-soft);
+  box-shadow: inset 3px 0 0 var(--teal-ink);
+}
+.wz-choice input {
+  accent-color: var(--teal-ink);
+}
+.wz-total {
+  border-radius: var(--radius-sm);
+}

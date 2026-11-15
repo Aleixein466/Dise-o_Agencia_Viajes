@@ -25,7 +25,7 @@ function PlanSchedule({ plan }: Readonly<{ plan: PlanView }>) {
         Meta {money(plan.goalCents)} · Pagado {money(plan.paidCents)} · Saldo {money(plan.balanceCents)}
         {plan.nextDue ? ` · Próxima cuota: ${day(plan.nextDue.dueOn)} (${money(plan.nextDue.amountCents)})` : ""}
       </p>
-      <div className="admin-table-wrap">
+      <div className="admin-table-wrap" role="region" aria-label="Cuotas del plan" tabIndex={0}>
         <table className="admin-table">
           <thead>
             <tr>
@@ -231,7 +231,7 @@ export function PlansTab({ session, csrf }: Readonly<{ session: AdminSession; cs
         ) : null}
         {plans && plans.length === 0 ? <p className="admin-empty">No hay planes de ahorro.</p> : null}
         {plans && plans.length > 0 ? (
-          <div className="admin-table-wrap">
+          <div className="admin-table-wrap" role="region" aria-label="Tabla de planes de ahorro" tabIndex={0}>
             <table className="admin-table">
               <thead>
                 <tr>

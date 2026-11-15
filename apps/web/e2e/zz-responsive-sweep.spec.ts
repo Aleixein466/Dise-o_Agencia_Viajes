@@ -11,6 +11,7 @@ const viewports = [
   { name: "mobile", width: 360, height: 800 },
   { name: "tablet", width: 768, height: 1024 },
   { name: "desktop", width: 1366, height: 900 },
+  { name: "wide", width: 1920, height: 1080 },
 ];
 const shots = join(stateDir, "sweep");
 mkdirSync(shots, { recursive: true });
@@ -50,8 +51,23 @@ async function check(page: Page, path: string, label: string) {
       () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
     );
     expect.soft(overflow, `${label} ${vp.name} horizontal overflow: ${offenders.join(" | ")}`).toBeLessThanOrEqual(0);
+    // next/image loads lazily and a full-page screenshot does not scroll, so off-screen photos would stay empty and
+    // never be checked. Force every rendered image (not those inside a closed <details>) to load, then require it.
+    await page.evaluate(() => {
+      for (const img of document.images) if (img.checkVisibility() && img.loading === "lazy") img.loading = "eager";
+    });
+    await page
+      .waitForFunction(
+        () => [...document.images].filter((img) => img.checkVisibility()).every((img) => img.complete),
+        null,
+        { timeout: 20_000 },
+      )
+      .catch(() => undefined); // the assertion below names any image that never loaded
     const broken = await page.evaluate(() =>
-      [...document.images].filter((img) => img.complete && img.naturalWidth === 0).map((img) => img.currentSrc),
+      [...document.images]
+        // Any image that finished loading broken (hidden ones too), plus any rendered image that never loaded.
+        .filter((img) => (img.complete && img.naturalWidth === 0) || (img.checkVisibility() && !img.complete))
+        .map((img) => img.currentSrc || img.src),
     );
     expect.soft(broken, `${label} ${vp.name} broken images`).toEqual([]);
     await page.screenshot({ path: join(shots, `${label}-${vp.name}.png`), fullPage: true });
@@ -69,7 +85,7 @@ async function check(page: Page, path: string, label: string) {
 }
 
 test("public screens are responsive and accessible", async ({ page }) => {
-  test.setTimeout(240_000);
+  test.setTimeout(320_000);
   const detail = await firstDestination(page);
   for (const [path, label] of [
     ["/", "inicio"],
@@ -111,7 +127,7 @@ test("admin dashboard shows role-scoped indicators", async ({ browser }) => {
 });
 
 test("back-office screens are responsive and accessible", async ({ browser }) => {
-  test.setTimeout(300_000);
+  test.setTimeout(400_000);
   const adminContext = await browser.newContext({ storageState: adminStatePath });
   const admin = await adminContext.newPage();
   for (const [path, label] of [

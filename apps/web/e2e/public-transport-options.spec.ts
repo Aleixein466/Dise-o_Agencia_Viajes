@@ -81,6 +81,10 @@ test.describe("Admin transport options", () => {
 
     // Inline validation: the empty form shows field errors and focuses the first invalid field.
     await page.getByRole("button", { name: "Nueva opción" }).click();
+    // The form preselects the first destination once the list has loaded; clear it so the check is deterministic.
+    await form(page)
+      .getByLabel(/^Destino/)
+      .selectOption({ label: "Elige un destino" });
     await form(page).getByRole("button", { name: "Crear opción" }).click();
     await expect(form(page).getByLabel(/^Destino/)).toBeFocused();
     await expect(form(page).getByText("Elige un destino.")).toBeVisible();
