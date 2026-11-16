@@ -3,6 +3,7 @@ import { visibleNav } from "@/lib/auth/nav";
 import type { AdminSession } from "@/lib/auth/types";
 import { AdminNav } from "./admin-nav";
 import { LogoutButton } from "./logout-button";
+import { PublicRefreshAlert } from "./public-refresh-alert";
 
 export function AdminShell({ session, children }: Readonly<{ session: AdminSession; children: ReactNode }>) {
   const items = visibleNav(session.permissions).map(({ href, label }) => ({ href, label }));
@@ -23,6 +24,7 @@ export function AdminShell({ session, children }: Readonly<{ session: AdminSessi
       <div className="admin-body">
         <AdminNav items={items} />
         <div id="admin-contenido" tabIndex={-1} className="admin-content">
+          <PublicRefreshAlert />
           {children}
         </div>
       </div>

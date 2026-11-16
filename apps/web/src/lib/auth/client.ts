@@ -1,17 +1,30 @@
 export type ApiResult = { ok: boolean; status: number; data: unknown };
 
-/** Public pages cache the published content; tell the web app to refresh it after an admin change. Best effort. */
-async function refreshPublicContent(csrfToken?: string): Promise<void> {
-  try {
-    await fetch("/api/revalidate-content", {
-      method: "POST",
-      credentials: "same-origin",
-      cache: "no-store",
-      headers: csrfToken ? { "x-csrf-token": csrfToken } : {},
-    });
-  } catch {
-    // The 1 hour TTL is the fallback.
+/** Fired on `window` after every content/settings write: `detail.ok` says whether the public site was refreshed. */
+export const PUBLIC_REFRESH_EVENT = "public-content-refresh";
+const REFRESH_RETRY_DELAYS_MS = [400, 1200];
+
+/**
+ * Public pages cache the published content; ask the web app to expire it after an admin change. Network errors and
+ * 5xx answers are retried; a refusal (session, CSRF, permission) is final. Resolves true once the web app confirmed.
+ */
+async function refreshPublicContent(csrfToken?: string): Promise<boolean> {
+  for (let attempt = 0; attempt <= REFRESH_RETRY_DELAYS_MS.length; attempt++) {
+    if (attempt > 0) await new Promise((resolve) => setTimeout(resolve, REFRESH_RETRY_DELAYS_MS[attempt - 1]));
+    try {
+      const response = await fetch("/api/revalidate-content", {
+        method: "POST",
+        credentials: "same-origin",
+        cache: "no-store",
+        headers: csrfToken ? { "x-csrf-token": csrfToken } : {},
+      });
+      if (response.ok) return true;
+      if (response.status < 500) return false;
+    } catch {
+      // Transport error: try again.
+    }
   }
+  return false;
 }
 
 export async function requestJson(
@@ -34,7 +47,11 @@ export async function requestJson(
     });
     const data: unknown = await response.json().catch(() => null);
     if (response.ok && method !== "GET" && /^\/api\/v1\/(content|settings)(\/|$|\?)/.test(path)) {
-      await refreshPublicContent(csrfToken);
+      const refreshed = await refreshPublicContent(csrfToken);
+      // The write already succeeded; tell the editor when the public site could not be refreshed (admin shell alert).
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent(PUBLIC_REFRESH_EVENT, { detail: { ok: refreshed } }));
+      }
     }
     return { ok: response.ok, status: response.status, data };
   } catch {

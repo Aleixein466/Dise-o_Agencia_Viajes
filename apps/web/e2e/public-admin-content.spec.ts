@@ -329,6 +329,33 @@ test.describe("Admin content", () => {
     await context.close();
   });
 
+  test("a failed public refresh is shown to the editor and cleared by the next confirmed one", async ({ browser }) => {
+    const context = await browser.newContext({ storageState: adminStatePath });
+    const page = await context.newPage();
+    const title = `${PREFIX} Refresco ${stamp}`;
+    await page.goto("/admin/contenido?tab=inicio");
+    const banners = page.locator("section").filter({ has: page.getByRole("heading", { name: "Avisos y banners" }) });
+    await expect(banners).toBeVisible();
+    // The previous test leaves its banner draft in the list; "Agregar aviso" appends, so the new notice is the last.
+    await banners.getByRole("button", { name: "Agregar aviso" }).click();
+    const newTitle = banners.getByLabel(/^Título(?: \*)?$/).last();
+    await newTitle.fill(title);
+
+    // The API write succeeds but the web app cannot confirm the cache refresh: the editor must be told.
+    await page.route("**/api/revalidate-content", (route) => route.fulfill({ status: 503, body: "{}" }));
+    await banners.getByRole("button", { name: "Guardar borrador" }).click();
+    await expect(banners.getByRole("status").filter({ hasText: "Borrador guardado" })).toBeVisible();
+    const alert = page.getByRole("alert").filter({ hasText: "no confirmó la actualización" });
+    await expect(alert).toBeVisible();
+
+    // Back to normal: the next save is confirmed and the notice goes away.
+    await page.unroute("**/api/revalidate-content");
+    await newTitle.fill(`${title} b`);
+    await banners.getByRole("button", { name: "Guardar borrador" }).click();
+    await expect(alert).toBeHidden();
+    await context.close();
+  });
+
   test("finance has no access to content", async ({ browser }) => {
     const context = await browser.newContext({ storageState: financeStatePath });
     const page = await context.newPage();

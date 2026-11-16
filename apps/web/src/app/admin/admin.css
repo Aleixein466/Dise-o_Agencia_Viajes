@@ -72,6 +72,16 @@ body:has(.auth-root) > .site-footer {
 .admin-form-error:empty {
   display: none;
 }
+.admin-refresh-alert {
+  margin: 0 0 16px;
+  padding: 12px 16px;
+  border: 1px solid #e3b5a8;
+  border-radius: var(--radius-sm);
+  background: #fff4f0;
+  color: #8c2512;
+  font-size: 14px;
+  font-weight: 600;
+}
 .admin-form-error:not(:empty) {
   padding: 10px 14px;
   border-left: 4px solid #a1260f;
