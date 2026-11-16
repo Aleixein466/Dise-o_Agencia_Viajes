@@ -33,7 +33,7 @@ Desde ADR-0001 F2-a el repositorio es un monorepo pnpm + Turborepo y la aplicaci
 
 Preview verificado para `codex/continue-auth-admin`: https://agencia-viajes-q5z4chepi-alexissoto2021-4523s-projects.vercel.app
 
-La vista previa demuestra el sitio y las rutas web, pero no aloja la API NestJS ni una base de datos. Sin `API_INTERNAL_URL` de un entorno de backend autorizado, `/admin` presenta su estado de servicio no disponible; no se simula una sesión administrativa.
+La vista previa demuestra el sitio y las rutas web, pero no aloja la API NestJS ni una base de datos. Sin `API_INTERNAL_URL` de un entorno de backend autorizado, `/admin` presenta su estado de servicio no disponible; no se simula una sesión administrativa. Tampoco se lee contenido publicado: el inicio, el contacto y el pie muestran su texto estático aprobado.
 
 ## Procedimiento de lanzamiento manual (F10, con aprobación del cliente)
 

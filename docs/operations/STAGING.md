@@ -82,6 +82,9 @@ publicado; los borradores nunca llegan a la web.
   página con el contenido nuevo y nunca se vuelve a servir algo que el personal acaba de retirar.
   - La ruta exige mismo origen, sesión de personal con MFA, el permiso `content:write` o `settings:write` y el token
     CSRF de la sesión. No recibe contenido: solo invalida.
+  - Si la web no confirma la actualización (se reintenta 3 veces ante errores de red o 5xx), el panel muestra un
+    aviso persistente: el cambio ya está guardado, pero el sitio puede tardar hasta 1 hora en reflejarlo. Volver a
+    guardar o publicar lo reintenta y, al confirmarse, el aviso desaparece.
   - Un cambio hecho directamente en la base o el API, sin pasar por el panel, tarda **hasta 1 hora** en verse.
   - Si el API cae justo cuando se regenera una página, esa copia se genera con el texto estático y se queda hasta la
     siguiente invalidación o, a más tardar, 1 hora.

@@ -293,17 +293,18 @@ Restaurar el CLI Docker de Windows, validar `docker compose config`, levantar ú
 - **Contenido público conectado a la web:**
   - `apps/web/src/lib/public-content.ts` lee `/public/agency` y `/public/content`, valida con zod, rechaza enlaces no seguros (`safeHref`, `whatsappHref`, `telHref`, `mailHref`) y devuelve `null` ante cualquier fallo, de modo que cada página conserva su texto estático.
   - Inicio: titular, subtítulo y botón de la portada, avisos, destinos destacados (enlazan a `/cotizar?destino=`) y FAQ. Contacto y pie: WhatsApp, correo, teléfono, dirección, horario y redes; sin datos muestran «pendientes de confirmación».
-  - Caché: lecturas de 1 h con la etiqueta `public-content`. Cada guardado o publicación en `/admin/contenido` o `/admin/configuracion` llama desde `lib/auth/client.ts` a `POST /api/revalidate-content`, que expira la etiqueta al instante (`expire: 0`).
+  - Caché: lecturas de 1 h con la etiqueta `public-content`. Cada guardado o publicación en `/admin/contenido` o `/admin/configuracion` llama desde `lib/auth/client.ts` a `POST /api/revalidate-content`, que expira la etiqueta al instante (`expire: 0`). Si no se confirma (red o 5xx se reintentan 3 veces; un 401/403 es definitivo), `PublicRefreshAlert` (en `AdminShell`) muestra un aviso persistente hasta la siguiente actualización confirmada.
   - Seguridad de la ruta: mismo origen (un `Origin` ausente, `null` o malformado da 403), sesión de personal con MFA, permiso `content:write` o `settings:write` y token CSRF comparado en tiempo constante. No recibe ni devuelve contenido.
   - FAQ: con al menos una pregunta publicada solo se muestran las publicadas; con ninguna se mantiene el texto estático (decisión de diseño señalada por Codex; ver `BOARD.md`).
   - Imágenes: el API no expone archivos públicos, así que hero y avisos van sin imagen.
 - **Revisión visual** de 32 pantallas × 360/768/1366/1920 px en navegador real, con arreglos en portal, admin, PQRS y contacto (lista en `BOARD.md`).
 - **E2E:**
-  - Resultado de la corrida completa del 2026-11-15 (21:04–21:10): **32/32 + auth 2/2**.
+  - Resultado de la corrida completa del 2026-11-15 (21:50–21:55), tras el último cambio de código: **33/33 + auth 2/2** (una sola instancia aislada, 1 worker, compilación reutilizada y posterior a todo el código fuente). La corrida anterior (21:04–21:10) había dado 32/32 + auth 2/2, antes de la prueba del aviso de refresco.
+  - Pruebas unitarias del mismo árbol (`turbo --force`): domain 55, validation 2, API 339, web 198.
   - La prueba responsive ahora ignora las peticiones `_rsc=` al esperar reposo de red. Chromium deja sin terminar las revalidaciones en segundo plano de las respuestas `stale-while-revalidate` y `networkidle` expiraba desde la segunda navegación (demostrado con un servidor aislado).
   - Nueva prueba del barrido del portal del cliente (código por correo vía el buzón de archivos, `/mi-cuenta`, reserva, solicitud y ahorro).
   - Las pruebas de contenido y configuración comprueban la web pública, incluidos destacados, y la limpieza final también invalida la caché.
-- **Auditoría Codex** (adversarial, árbol de trabajo): ver `BOARD.md`. Hallazgo alto corregido (`expire: 0`); la decisión sobre FAQ vacía quedó documentada. Codex no volvió a revisar el código posterior.
+- **Auditoría Codex** (adversarial, 3 pasadas: árbol de trabajo, árbol corregido y diff `fdc62cf..eeda521`): ver `BOARD.md`. Hallazgos altos corregidos (`expire: 0`; fallo de invalidación visible y con reintentos); la decisión sobre FAQ vacía quedó documentada. Codex no volvió a revisar la última corrección.
 - **Demo y staging:**
   - Demo verificada con `start-demo.ps1 -SkipBuild` y detenida con `stop-demo.ps1` (el script detiene también el contenedor Mailpit; se conserva).
   - Staging local: ver `docs/operations/STAGING.md` (sección «Verificación local realizada»).
