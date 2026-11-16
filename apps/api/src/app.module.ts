@@ -4,6 +4,8 @@ import { DbService } from "./db/db.service";
 import { HealthController } from "./health/health.controller";
 import { AuthController } from "./auth/auth.controller";
 import { AuthService } from "./auth/auth.service";
+import { ProfileController } from "./auth/profile.controller";
+import { ProfileService } from "./auth/profile.service";
 import { UsersController } from "./users/users.controller";
 import { UsersService } from "./users/users.service";
 import { DestinationsController } from "./catalog/destinations.controller";
@@ -61,6 +63,7 @@ export class AppModule {
       controllers: [
         HealthController,
         AuthController,
+        ProfileController,
         UsersController,
         DestinationsController,
         CatalogAdminController,
@@ -90,6 +93,7 @@ export class AppModule {
         { provide: ENV, useValue: env },
         DbService,
         AuthService,
+        ProfileService,
         UsersService,
         DestinationsService,
         PortfolioImportService,

@@ -11,6 +11,7 @@ export default defineConfig({
     "public-admin-departures.spec.ts",
     "public-admin-content.spec.ts",
     "public-admin-settings.spec.ts",
+    "public-admin-profile.spec.ts",
     "public-builder.spec.ts",
     "public-crm.spec.ts",
     "public-portal.spec.ts",

@@ -1,4 +1,4 @@
-import { ForbiddenException, Inject, Injectable, NotFoundException } from "@nestjs/common";
+import { ConflictException, ForbiddenException, Inject, Injectable, NotFoundException } from "@nestjs/common";
 import { hash, type Algorithm } from "@node-rs/argon2";
 import { checkPasswordPolicy, isStaffRole, type RoleCode } from "@ricaurte/domain";
 import { DbService } from "../db/db.service";
@@ -73,9 +73,27 @@ export class UsersService {
     return user;
   }
 
+  /**
+   * The agency must always keep one active administrator who can sign in: disabling the last one, or taking the
+   * ADMIN role away from them, is refused with 409 LAST_ADMIN (an operator cannot act on their own account anyway).
+   */
+  private async assertNotLastActiveAdmin(client: Awaited<ReturnType<DbService["client"]>>, id: string) {
+    const target = await client.user.findUnique({
+      where: { id },
+      select: { status: true, deletedAt: true, roles: { select: { roleCode: true } } },
+    });
+    if (!target || target.status !== "ACTIVE" || target.deletedAt) return;
+    if (!target.roles.some((role) => role.roleCode === "ADMIN")) return;
+    const others = await client.user.count({
+      where: { id: { not: id }, status: "ACTIVE", deletedAt: null, roles: { some: { roleCode: "ADMIN" } } },
+    });
+    if (others === 0) throw new ConflictException({ code: "LAST_ADMIN" });
+  }
+
   async update(id: string, input: { name?: string; status?: "ACTIVE" | "DISABLED" }, actorId: string) {
     if (id === actorId) throw new ForbiddenException();
     const client = await this.db.client();
+    if (input.status === "DISABLED") await this.assertNotLastActiveAdmin(client, id);
     const user = await client.user
       .update({
         where: { id },
@@ -104,6 +122,7 @@ export class UsersService {
     const client = await this.db.client();
     const exists = await client.user.findUnique({ where: { id }, select: { id: true } });
     if (!exists) throw new NotFoundException();
+    if (!roles.includes("ADMIN")) await this.assertNotLastActiveAdmin(client, id);
     await client.$transaction([
       client.userRoleAssignment.deleteMany({ where: { userId: id } }),
       client.userRoleAssignment.createMany({

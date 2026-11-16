@@ -29,7 +29,7 @@ import { PublicRateLimiter } from "../public/public-rate-limiter";
 
 const PRODUCTION_COOKIE_NAME = "__Host-rt_session";
 const LOCAL_COOKIE_NAME = "rt_session";
-const ARGON_OPTIONS = { algorithm: 2 as Algorithm, memoryCost: 19 * 1024, timeCost: 2, parallelism: 1 };
+export const ARGON_OPTIONS = { algorithm: 2 as Algorithm, memoryCost: 19 * 1024, timeCost: 2, parallelism: 1 };
 const sha256 = (value: string) => createHash("sha256").update(value).digest("hex");
 const opaque = () => randomBytes(32).toString("base64url");
 const genericCredentials = () => new UnauthorizedException();
@@ -200,6 +200,13 @@ export class AuthService {
   /** Any MFA-verified staff session (never a customer); callers then scope data by principal.permissions. */
   async requireStaff(token: string): Promise<Principal> {
     const principal = await this.principal(token);
+    if (!principal.session.mfaVerifiedAt || principal.roles.every((role) => role === "CUSTOMER"))
+      throw new ForbiddenException();
+    return principal;
+  }
+  /** Same as requireStaff, for mutations: CSRF token and Origin are checked first (self-service profile). */
+  async requireStaffMutation(token: string, csrf: string | undefined, origin: string | undefined): Promise<Principal> {
+    const principal = await this.assertMutation(token, csrf, origin);
     if (!principal.session.mfaVerifiedAt || principal.roles.every((role) => role === "CUSTOMER"))
       throw new ForbiddenException();
     return principal;
@@ -473,30 +480,40 @@ Si no lo solicitaste, ignora este mensaje.`,
 
   async verifyTotp(token: string, code: string, csrf?: string, origin?: string): Promise<void> {
     const principal = await this.assertMutation(token, csrf, origin);
+    // A six-digit code is guessable: a few attempts per account, then 429 (the form tells the user to wait).
+    this.limiter?.check(principal.user.id, "mfa-totp-user", 10, 10 * 60_000);
     const client = await this.db.client();
     const factor = await client.mfaFactor.findFirst({
       where: { userId: principal.user.id, revokedAt: null },
       orderBy: { createdAt: "desc" },
     });
     if (!factor) throw genericCredentials();
+    const now = new Date();
     const delta = this.totp(this.decrypt(factor.secretEncrypted), principal.user.email).validate({
       token: code.trim(),
       window: 1,
+      timestamp: now.getTime(),
     });
     // OTPAuth returns 0 for the current (valid) time-step; only null means no match.
     if (delta === null) throw genericCredentials();
-    await client.$transaction([
-      client.mfaFactor.update({
-        where: { id: factor.id },
-        data: { confirmedAt: factor.confirmedAt ?? new Date(), lastUsedAt: new Date() },
-      }),
-      client.session.update({ where: { id: principal.session.id }, data: { mfaVerifiedAt: new Date() } }),
-    ]);
+    // The accepted time step is recorded: a code already used in that step (or an older one) is refused even
+    // inside the ±1 window, so a captured code cannot be replayed to confirm a second session.
+    const step = BigInt(Math.floor(now.getTime() / 30_000) + delta);
+    const accepted = await client.mfaFactor.updateMany({
+      where: { id: factor.id, OR: [{ lastUsedStep: null }, { lastUsedStep: { lt: step } }] },
+      data: { lastUsedStep: step, confirmedAt: factor.confirmedAt ?? now, lastUsedAt: now },
+    });
+    if (accepted.count !== 1) {
+      await this.audit(principal.user.id, "auth.mfa_replay_refused", undefined);
+      throw genericCredentials();
+    }
+    await client.session.update({ where: { id: principal.session.id }, data: { mfaVerifiedAt: now } });
     await this.audit(principal.user.id, "auth.mfa_verified", undefined);
   }
 
   async useRecoveryCode(token: string, code: string, csrf?: string, origin?: string): Promise<void> {
     const principal = await this.assertMutation(token, csrf, origin);
+    this.limiter?.check(principal.user.id, "mfa-recovery-user", 5, 15 * 60_000);
     const client = await this.db.client();
     const used = await client.mfaRecoveryCode.updateMany({
       where: { userId: principal.user.id, codeHash: sha256(code.trim()), usedAt: null },

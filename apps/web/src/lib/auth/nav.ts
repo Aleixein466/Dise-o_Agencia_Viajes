@@ -31,6 +31,7 @@ export const ADMIN_MODULES: readonly AdminModule[] = [
   moduleFor("pqrs", "PQRS", "pqrs"),
   moduleFor("auditoria", "Auditoría", "audit"),
   moduleFor("configuracion", "Configuración", "settings"),
+  { slug: "perfil", href: "/admin/perfil", label: "Mi perfil", permissions: null },
 ];
 
 export function findModule(slug: string): AdminModule | undefined {

@@ -2,6 +2,7 @@ import { ForbiddenException } from "@nestjs/common";
 import { describe, expect, it } from "vitest";
 import { AuthService } from "./auth.service";
 import { parseEnv } from "../config/env";
+import { PublicRateLimiter } from "../public/public-rate-limiter";
 
 describe("AuthService CSRF gate", () => {
   it("rejects a mutation before touching persistence when origin or CSRF token is invalid", async () => {
@@ -26,17 +27,21 @@ describe("AuthService CSRF gate", () => {
 });
 
 describe("AuthService TOTP verification", () => {
-  it("accepts OTPAuth delta 0, which represents a valid code in the current time step", async () => {
+  function totpService(updateMany: (args: unknown) => Promise<{ count: number }>, limiter?: PublicRateLimiter) {
     const client = {
       mfaFactor: {
-        findFirst: async () => ({ id: "factor-1", secretEncrypted: "encrypted" }),
-        update: async () => ({}),
+        findFirst: async () => ({
+          id: "factor-1",
+          secretEncrypted: "encrypted",
+          confirmedAt: null,
+          lastUsedStep: null,
+        }),
+        updateMany,
       },
       session: { update: async () => ({}) },
       auditLog: { create: async () => ({}) },
-      $transaction: async (operations: Promise<unknown>[]) => Promise.all(operations),
     };
-    const service = new AuthService({ client: async () => client } as never, parseEnv());
+    const service = new AuthService({ client: async () => client } as never, parseEnv(), undefined, limiter);
     const internals = service as unknown as {
       assertMutation: () => Promise<{ user: { id: string; email: string }; session: { id: string } }>;
       decrypt: () => string;
@@ -48,7 +53,31 @@ describe("AuthService TOTP verification", () => {
     });
     internals.decrypt = () => "secret";
     internals.totp = () => ({ validate: () => 0 });
+    return service;
+  }
 
+  it("accepts OTPAuth delta 0 and records the accepted time step on the factor", async () => {
+    const calls: unknown[] = [];
+    const service = totpService(async (args) => {
+      calls.push(args);
+      return { count: 1 };
+    });
     await expect(service.verifyTotp("token", "123456")).resolves.toBeUndefined();
+    const step = BigInt(Math.floor(Date.now() / 30_000));
+    expect(calls[0]).toMatchObject({
+      where: { id: "factor-1", OR: [{ lastUsedStep: null }, { lastUsedStep: { lt: step } }] },
+      data: { lastUsedStep: step },
+    });
+  });
+
+  it("refuses a code whose time step was already accepted (replay inside the window)", async () => {
+    const service = totpService(async () => ({ count: 0 }));
+    await expect(service.verifyTotp("token", "123456")).rejects.toMatchObject({ status: 401 });
+  });
+
+  it("rate-limits TOTP attempts per account", async () => {
+    const service = totpService(async () => ({ count: 1 }), new PublicRateLimiter());
+    for (let i = 0; i < 10; i += 1) await service.verifyTotp("token", "123456");
+    await expect(service.verifyTotp("token", "123456")).rejects.toMatchObject({ status: 429 });
   });
 });

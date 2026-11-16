@@ -652,6 +652,105 @@ body:has(.auth-root) > .site-footer {
   color: var(--muted);
   font-size: 13px;
 }
+.admin-profile {
+  display: grid;
+  gap: 20px;
+}
+.admin-profile-feedback:empty {
+  display: none;
+}
+.admin-profile-summary {
+  display: grid;
+  gap: 22px;
+  overflow: hidden;
+  border-top: 4px solid var(--teal);
+  background: radial-gradient(circle at 100% 0, rgb(18 163 155 / 13%), transparent 42%), var(--white);
+}
+.admin-profile-summary p {
+  margin: 0;
+  color: var(--muted);
+}
+.admin-profile-summary h2 {
+  margin-bottom: 5px;
+  font-family: var(--font-display);
+  font-size: 28px;
+}
+.admin-profile-summary .admin-profile-eyebrow {
+  margin-bottom: 8px;
+  color: var(--teal-ink);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+}
+.admin-profile-facts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin: 0;
+}
+.admin-profile-facts div {
+  min-width: 0;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: rgb(255 255 255 / 72%);
+}
+.admin-profile-facts dt {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.admin-profile-facts dd {
+  margin: 5px 0 0;
+  overflow-wrap: anywhere;
+  color: var(--navy);
+  font-weight: 700;
+}
+.admin-profile-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 330px), 1fr));
+  gap: 20px;
+  align-items: start;
+}
+.admin-profile-grid .admin-panel {
+  display: grid;
+  gap: 16px;
+}
+.admin-profile-grid .admin-panel > h2,
+.admin-profile-grid .admin-panel > p {
+  margin: 0;
+}
+.admin-profile-grid .admin-btn {
+  justify-self: start;
+}
+.admin-profile-codes {
+  display: grid;
+  gap: 8px;
+  padding: 14px;
+  border: 1px solid #c4d2d3;
+  border-radius: var(--radius-sm);
+  background: var(--sand-warm);
+}
+.admin-profile-codes code {
+  overflow-wrap: anywhere;
+  color: var(--navy);
+  line-height: 1.8;
+}
+.admin-profile-table {
+  min-width: 720px;
+}
+@media (min-width: 760px) {
+  .admin-profile-summary {
+    grid-template-columns: minmax(220px, 0.7fr) minmax(0, 1.3fr);
+    align-items: center;
+  }
+  .admin-profile-facts {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
 .sr-only {
   position: absolute;
   width: 1px;
