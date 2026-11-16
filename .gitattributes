@@ -1,3 +1,6 @@
 # Shell hooks must keep LF endings to run under sh on any OS.
 .husky/* text eol=lf
 *.sh text eol=lf
+
+# Font binaries must never be touched by EOL conversion.
+*.woff2 binary
