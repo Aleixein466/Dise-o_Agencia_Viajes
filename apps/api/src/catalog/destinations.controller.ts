@@ -18,7 +18,14 @@ import { AuthService } from "../auth/auth.service";
 import { DestinationsService } from "./destinations.service";
 import { PortfolioImportService } from "./portfolio-import.service";
 
-const input = z.object({
+const optionalText = (max: number) =>
+  z
+    .string()
+    .trim()
+    .max(max)
+    .transform((value) => value || null)
+    .optional();
+const fields = {
   slug: z
     .string()
     .trim()
@@ -27,11 +34,30 @@ const input = z.object({
     .max(140),
   name: z.string().trim().min(2).max(140),
   country: z.string().trim().min(2).max(100),
-  region: z.string().trim().max(100).optional(),
-  description: z.string().trim().max(20_000).optional(),
+  region: optionalText(100),
+  description: optionalText(20_000),
   category: z.enum(["NACIONAL", "INTERNACIONAL", "PASADIA", "ESPECIAL"]),
-});
-const update = input.partial().refine((value) => Object.keys(value).length > 0);
+  seoTitle: optionalText(70),
+  seoDescription: optionalText(170),
+  noindex: z.boolean().optional(),
+  sortOrder: z.number().int().min(0).max(100_000).optional(),
+};
+const input = z.object(fields).strict();
+const stamp = z.iso.datetime().transform((value) => new Date(value));
+const update = z
+  .object({
+    ...Object.fromEntries(Object.entries(fields).map(([key, value]) => [key, value.optional()])),
+    expectedUpdatedAt: stamp,
+  })
+  .strict()
+  .refine((value) => Object.keys(value).some((key) => key !== "expectedUpdatedAt"));
+const transition = z.object({ expectedUpdatedAt: stamp }).strict();
+const uuid = z.uuid();
+function uuidParam(value: string): string {
+  const result = uuid.safeParse(value);
+  if (!result.success) throw new BadRequestException();
+  return result.data;
+}
 function token(request: FastifyRequest, name: string) {
   const value = request.headers.cookie
     ?.split(";")
@@ -56,6 +82,11 @@ export class DestinationsController {
   async list(@Req() request: FastifyRequest, @Query("q") q?: string) {
     await this.auth.requireReadPermission(token(request, this.auth.cookieName()), "catalog:write");
     return this.destinations.list(q?.trim());
+  }
+  @Get(":id/history")
+  async history(@Param("id") id: string, @Req() request: FastifyRequest) {
+    await this.auth.requireReadPermission(token(request, this.auth.cookieName()), "catalog:write");
+    return this.destinations.history(uuidParam(id));
   }
   @Get("portfolio/preview")
   async portfolioPreview(@Req() request: FastifyRequest) {
@@ -94,26 +125,46 @@ export class DestinationsController {
     const parsed = update.safeParse(body);
     if (!parsed.success) throw new BadRequestException();
     const actor = await this.mutation(request, csrf, origin, "catalog:write");
-    return this.destinations.update(id, parsed.data, actor.user.id);
+    const { expectedUpdatedAt, ...patch } = parsed.data;
+    return this.destinations.update(uuidParam(id), patch, expectedUpdatedAt, actor.user.id);
   }
   @Post(":id/publish")
   async publish(
     @Param("id") id: string,
+    @Body() body: unknown,
     @Req() request: FastifyRequest,
     @Headers("x-csrf-token") csrf?: string,
     @Headers("origin") origin?: string,
   ) {
     const actor = await this.mutation(request, csrf, origin, "catalog:publish");
-    return this.destinations.setStatus(id, "PUBLISHED", actor.user.id);
+    const parsed = transition.safeParse(body);
+    if (!parsed.success) throw new BadRequestException();
+    return this.destinations.setStatus(uuidParam(id), "PUBLISHED", parsed.data.expectedUpdatedAt, actor.user.id);
+  }
+  @Post(":id/unpublish")
+  async unpublish(
+    @Param("id") id: string,
+    @Body() body: unknown,
+    @Req() request: FastifyRequest,
+    @Headers("x-csrf-token") csrf?: string,
+    @Headers("origin") origin?: string,
+  ) {
+    const parsed = transition.safeParse(body);
+    if (!parsed.success) throw new BadRequestException();
+    const actor = await this.mutation(request, csrf, origin, "catalog:publish");
+    return this.destinations.setStatus(uuidParam(id), "DRAFT", parsed.data.expectedUpdatedAt, actor.user.id);
   }
   @Post(":id/archive")
   async archive(
     @Param("id") id: string,
+    @Body() body: unknown,
     @Req() request: FastifyRequest,
     @Headers("x-csrf-token") csrf?: string,
     @Headers("origin") origin?: string,
   ) {
     const actor = await this.mutation(request, csrf, origin, "catalog:publish");
-    return this.destinations.setStatus(id, "ARCHIVED", actor.user.id);
+    const parsed = transition.safeParse(body);
+    if (!parsed.success) throw new BadRequestException();
+    return this.destinations.setStatus(uuidParam(id), "ARCHIVED", parsed.data.expectedUpdatedAt, actor.user.id);
   }
 }

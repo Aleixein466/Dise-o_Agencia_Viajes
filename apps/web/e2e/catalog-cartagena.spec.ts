@@ -31,6 +31,63 @@ test.describe("Cartagena E2E catalog", () => {
     await loginAndCompleteInitialMfa(page, adminEmail!, adminPassword!, "/admin/tarifas");
     // Later specs (public-crm) reuse this MFA-complete session; stored in %TEMP%, never in the repository.
     await page.context().storageState({ path: adminStatePath });
+
+    // Destination lifecycle: create -> edit -> reload -> publish -> public read -> withdraw -> archive.
+    const destinationSlug = `destino-e2e-${Date.now()}`;
+    const destinationName = `Destino E2E ${Date.now()}`;
+    const editedName = `${destinationName} editado`;
+    await page.goto("/admin/destinos");
+    await page.getByLabel("Nombre").fill(destinationName);
+    await page.getByLabel("Slug").fill(destinationSlug);
+    await page.getByLabel("Región").fill("Región de prueba");
+    await page.getByLabel("Descripción").first().fill("Descripción inicial autorizada solo para E2E.");
+    await page.getByLabel("Título SEO").fill("Destino de prueba E2E");
+    await page.getByRole("button", { name: "Guardar borrador" }).click();
+    await expect(page.getByRole("status")).toContainText("Destino guardado como borrador");
+
+    let destinationRow = page.getByRole("row", { name: new RegExp(destinationName) });
+    await destinationRow.getByRole("button", { name: "Editar" }).click();
+    await page.getByLabel("Nombre").fill(editedName);
+    await page.getByLabel("Descripción").first().fill("Descripción editada y persistida en PostgreSQL.");
+    await page.getByRole("button", { name: "Guardar cambios" }).click();
+    await expect(page.getByRole("status")).toContainText("Destino actualizado y persistido");
+    await page.reload();
+    destinationRow = page.getByRole("row", { name: new RegExp(editedName) });
+    await expect(destinationRow).toBeVisible();
+    await destinationRow.getByRole("button", { name: "Editar" }).click();
+    await expect(page.getByLabel("Descripción").first()).toHaveValue("Descripción editada y persistida en PostgreSQL.");
+    await page.getByRole("button", { name: "Cancelar edición" }).click();
+    await destinationRow.getByRole("button", { name: "Historial" }).click();
+    await expect(page.getByRole("heading", { name: `Historial: ${editedName}` })).toBeVisible();
+    await expect(page.getByText("Editado", { exact: true })).toBeVisible();
+    await page.getByRole("button", { name: "Cerrar historial" }).click();
+
+    await destinationRow.getByRole("button", { name: "Publicar" }).click();
+    await page.getByRole("dialog").getByRole("button", { name: "Publicar" }).click();
+    await expect(page.getByRole("status")).toContainText("Destino publicado");
+    expect(
+      await page.evaluate(async (slug) => {
+        const rows = (await (await fetch("/api/v1/public/destinations")).json()) as { slug: string }[];
+        return rows.some((item) => item.slug === slug);
+      }, destinationSlug),
+    ).toBe(true);
+
+    destinationRow = page.getByRole("row", { name: new RegExp(editedName) });
+    await destinationRow.getByRole("button", { name: "Retirar" }).click();
+    await page.getByRole("dialog").getByRole("button", { name: "Retirar del sitio" }).click();
+    await expect(page.getByRole("status")).toContainText("retirado del sitio público");
+    expect(
+      await page.evaluate(async (slug) => {
+        const rows = (await (await fetch("/api/v1/public/destinations")).json()) as { slug: string }[];
+        return rows.some((item) => item.slug === slug);
+      }, destinationSlug),
+    ).toBe(false);
+    destinationRow = page.getByRole("row", { name: new RegExp(editedName) });
+    await destinationRow.getByRole("button", { name: "Archivar" }).click();
+    await page.getByRole("dialog").getByRole("button", { name: "Archivar" }).click();
+    await expect(page.getByRole("status")).toContainText("Destino archivado");
+
+    await page.goto("/admin/tarifas");
     await page.getByPlaceholder("Nombre o referencia").fill("Cartagena E2E");
     const cartagenaRow = page.getByRole("row", { name: /Cartagena E2E/ });
     await expect(cartagenaRow).toBeVisible();

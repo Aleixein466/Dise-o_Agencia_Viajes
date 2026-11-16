@@ -1,6 +1,6 @@
 # Tablero de seguimiento — Ricaurte Tours 3.0
 
-Actualizado: 2026-11-15. Estados: **Pendiente** · **En desarrollo** · **En revisión** · **Bloqueado** · **Completado**.
+Actualizado: 2026-11-16. Estados: **Pendiente** · **En desarrollo** · **En revisión** · **Bloqueado** · **Completado**.
 "Completado" = fusionado en una rama de integración con lint, typecheck, unit, build y (si aplica) E2E en verde y revisión de un modelo distinto al autor. Nada está en `main` todavía (PR #1 y #2 sin fusionar por decisión del usuario).
 
 ## Lote 4 — cierre de la base
@@ -168,3 +168,16 @@ Leyenda: **Implementado** (código + pruebas) · **Parcial** · **Ausente** · *
 - Comparación visual: las 128 capturas del barrido frente a la línea base. Las pantallas públicas difieren en 41–175 píxeles por captura, las mismas cifras que el A/B de solo fuentes (bordes de unos pocos glifos). Las pantallas con listas del panel difieren por los datos de la base, no por la tipografía. `detalle` (móvil y tablet) cambia además en una fotografía: el A/B no la reproduce, así que no es tipográfica; no se investigó su origen.
 - Advertencia de origen cruzado de Next.js: la URL «Network» que imprime `next dev` (`169.254.83.107` en este equipo, un adaptador de red virtual) se bloquea por diseño. Se abre `http://localhost:3000`; `allowedDevOrigins` no se configura porque no hace falta.
 - Límite conocido de las E2E aisladas: las bases `ricaurte_cartagena_e2e` y `_ci` acumulan registros entre corridas (el reseed no los borra) y dos pruebas buscan su registro nuevo en la primera página de una lista. Con 25 PQRS o más (bandeja de 25) o 10 bandas de edad o más (página de 10) el registro nuevo cae en la página 2 y la prueba falla (`public-pqrs.spec.ts` y «age bands» de `public-admin-commercial-rules.spec.ts`, más 2 pruebas seriales del mismo archivo que no llegan a ejecutarse). La instancia `ci` terminó con 38 PQRS y 13 bandas (el registro nuevo quedó en la posición 34 de la bandeja y la 11 de las bandas) y dio 29 pasadas, 2 falladas y 2 sin ejecutar; la instancia por defecto tenía 16 y 6 y dio 33/33. El arreglo (que el reseed borre los restos de las pruebas, o que las pruebas busquen por nombre) queda pendiente. El CI de GitHub no corre esas pruebas.
+
+## Lote CRUD — auditoría y ciclo completo de Destinos (2026-11-16)
+
+| Área                               | Estado                    | Evidencia                                                                                                                        |
+| ---------------------------------- | ------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| Acceso ADMIN real                  | Comprobado                | Auditoría local: login correcto, MFA verificado y logout; no se leyó ni cambió la contraseña.                                    |
+| Matriz CRUD global                 | Actualizada               | `docs/orchestration/CRUD_MATRIX.md`, basada en rutas, UI, pruebas y reglas de conservación.                                      |
+| Destinos                           | Implementado y probado    | Alta, edición completa, concurrencia, SEO, orden, historial, publicación, retiro y archivo.                                      |
+| Persistencia y visibilidad pública | Comprobadas               | E2E aislada `catalog-cartagena.spec.ts`: crear → editar → recargar → publicar → `/public/destinations` → retirar → archivar.     |
+| Base local comercial               | Vacía, no bloqueada       | 0 destinos, paquetes, hoteles, tours e imágenes. No existen borradores ocultos; no se sembraron ni publicaron datos comerciales. |
+| Auditoría independiente            | Bloqueada por herramienta | El ejecutable `orca` no está instalado en esta sesión. No se declara revisión independiente.                                     |
+
+Siguiente lote: Paquetes, Hoteles y Tours (altas desde UI, edición completa, concurrencia, historial y ciclo explícito de publicación), seguido del recorrido de imágenes hasta el sitio público.

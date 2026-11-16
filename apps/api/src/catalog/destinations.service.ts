@@ -1,14 +1,39 @@
-import { ConflictException, Inject, Injectable, NotFoundException } from "@nestjs/common";
+import { Inject, Injectable } from "@nestjs/common";
+import { redact } from "../audit/redact";
+import { writeAudit } from "../content/audit";
 import { DbService } from "../db/db.service";
+import { conflict, notFound, stale } from "./commercial-rules.service";
 
 export type DestinationInput = {
   slug: string;
   name: string;
   country: string;
-  region?: string;
-  description?: string;
+  region?: string | null;
+  description?: string | null;
   category: "NACIONAL" | "INTERNACIONAL" | "PASADIA" | "ESPECIAL";
+  seoTitle?: string | null;
+  seoDescription?: string | null;
+  noindex?: boolean;
+  sortOrder?: number;
 };
+
+const ENTITY = "destination";
+const select = {
+  id: true,
+  slug: true,
+  name: true,
+  country: true,
+  region: true,
+  description: true,
+  category: true,
+  status: true,
+  seoTitle: true,
+  seoDescription: true,
+  noindex: true,
+  sortOrder: true,
+  createdAt: true,
+  updatedAt: true,
+} as const;
 
 @Injectable()
 export class DestinationsService {
@@ -24,89 +49,110 @@ export class DestinationsService {
               OR: [
                 { name: { contains: query, mode: "insensitive" } },
                 { country: { contains: query, mode: "insensitive" } },
+                { region: { contains: query, mode: "insensitive" } },
               ],
             }
           : {}),
       },
-      orderBy: [{ updatedAt: "desc" }],
-      select: {
-        id: true,
-        slug: true,
-        name: true,
-        country: true,
-        region: true,
-        category: true,
-        status: true,
-        updatedAt: true,
-      },
+      orderBy: [{ sortOrder: "asc" }, { updatedAt: "desc" }],
+      select,
     });
+  }
+
+  async history(id: string) {
+    const client = await this.db.client();
+    if (!(await client.destination.findFirst({ where: { id, deletedAt: null }, select: { id: true } })))
+      throw notFound();
+    const rows = await client.auditLog.findMany({
+      where: { entity: ENTITY, entityId: id },
+      orderBy: { createdAt: "desc" },
+      select: { id: true, actorId: true, action: true, before: true, after: true, createdAt: true },
+    });
+    return rows.map((row) => ({ ...row, before: redact(row.before), after: redact(row.after) }));
   }
 
   async create(input: DestinationInput, actorId: string) {
     const client = await this.db.client();
     try {
-      const destination = await client.destination.create({
-        data: { ...input, slug: input.slug.toLowerCase(), status: "DRAFT" },
-        select: {
-          id: true,
-          slug: true,
-          name: true,
-          country: true,
-          region: true,
-          category: true,
-          status: true,
-          updatedAt: true,
-        },
+      return await client.$transaction(async (tx) => {
+        const destination = await tx.destination.create({
+          data: { ...input, slug: input.slug.toLowerCase(), status: "DRAFT" },
+          select,
+        });
+        await writeAudit(tx, {
+          actorId,
+          action: "destinations.created",
+          entity: ENTITY,
+          entityId: destination.id,
+          after: destination,
+        });
+        return destination;
       });
-      await client.auditLog.create({
-        data: { actorId, action: "destinations.created", entity: "destination", entityId: destination.id },
-      });
-      return destination;
     } catch (error: unknown) {
-      if ((error as { code?: string }).code === "P2002") throw new ConflictException();
+      if ((error as { code?: string }).code === "P2002")
+        throw conflict("DESTINATION_SLUG_TAKEN", "Ya existe un destino con ese slug");
       throw error;
     }
   }
 
-  async update(id: string, input: Partial<DestinationInput>, actorId: string) {
+  async update(id: string, input: Partial<DestinationInput>, expectedUpdatedAt: Date, actorId: string) {
     const client = await this.db.client();
-    const previous = await client.destination.findFirst({ where: { id, deletedAt: null } });
-    if (!previous) throw new NotFoundException();
     try {
-      const destination = await client.destination.update({
-        where: { id },
-        data: { ...input, ...(input.slug ? { slug: input.slug.toLowerCase() } : {}) },
-        select: {
-          id: true,
-          slug: true,
-          name: true,
-          country: true,
-          region: true,
-          category: true,
-          status: true,
-          updatedAt: true,
-        },
+      return await client.$transaction(async (tx) => {
+        const previous = await tx.destination.findFirst({ where: { id, deletedAt: null }, select });
+        if (!previous) throw notFound();
+        if (previous.updatedAt.getTime() !== expectedUpdatedAt.getTime()) throw stale();
+        const changed = await tx.destination.updateMany({
+          where: { id, deletedAt: null, updatedAt: expectedUpdatedAt },
+          data: { ...input, ...(input.slug ? { slug: input.slug.toLowerCase() } : {}) },
+        });
+        if (changed.count !== 1) throw stale();
+        const destination = await tx.destination.findUniqueOrThrow({ where: { id }, select });
+        await writeAudit(tx, {
+          actorId,
+          action: "destinations.updated",
+          entity: ENTITY,
+          entityId: id,
+          before: previous,
+          after: destination,
+        });
+        return destination;
       });
-      await client.auditLog.create({
-        data: { actorId, action: "destinations.updated", entity: "destination", entityId: id },
-      });
-      return destination;
     } catch (error: unknown) {
-      if ((error as { code?: string }).code === "P2002") throw new ConflictException();
+      if ((error as { code?: string }).code === "P2002")
+        throw conflict("DESTINATION_SLUG_TAKEN", "Ya existe un destino con ese slug");
       throw error;
     }
   }
 
-  async setStatus(id: string, status: "PUBLISHED" | "ARCHIVED", actorId: string) {
+  async setStatus(id: string, status: "DRAFT" | "PUBLISHED" | "ARCHIVED", expectedUpdatedAt: Date, actorId: string) {
     const client = await this.db.client();
-    const destination = await client.destination
-      .update({ where: { id, deletedAt: null }, data: { status }, select: { id: true, status: true, name: true } })
-      .catch(() => {
-        throw new NotFoundException();
+    return client.$transaction(async (tx) => {
+      const previous = await tx.destination.findFirst({ where: { id, deletedAt: null }, select });
+      if (!previous) throw notFound();
+      if (previous.updatedAt.getTime() !== expectedUpdatedAt.getTime()) throw stale();
+      if (status === "PUBLISHED" && previous.status !== "DRAFT")
+        throw conflict("NOT_DRAFT", "Solo un borrador se puede publicar");
+      if (status === "DRAFT" && previous.status !== "PUBLISHED")
+        throw conflict("NOT_PUBLISHED", "Solo un destino publicado se puede retirar");
+      if (status === "ARCHIVED" && previous.status === "ARCHIVED")
+        throw conflict("ALREADY_ARCHIVED", "El destino ya estaba archivado");
+      const changed = await tx.destination.updateMany({
+        where: { id, deletedAt: null, updatedAt: expectedUpdatedAt },
+        data: { status },
       });
-    await client.auditLog.create({
-      data: { actorId, action: `destinations.${status.toLowerCase()}`, entity: "destination", entityId: id },
+      if (changed.count !== 1) throw stale();
+      const destination = await tx.destination.findUniqueOrThrow({ where: { id }, select });
+      const suffix = status === "PUBLISHED" ? "published" : status === "DRAFT" ? "unpublished" : "archived";
+      await writeAudit(tx, {
+        actorId,
+        action: `destinations.${suffix}`,
+        entity: ENTITY,
+        entityId: id,
+        before: previous,
+        after: destination,
+      });
+      return destination;
     });
-    return destination;
   }
 }
