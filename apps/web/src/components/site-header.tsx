@@ -12,6 +12,7 @@ const links = [
   { href: "/#planes", label: "Planea tu viaje" },
   { href: "/#preguntas", label: "Preguntas" },
   { href: "/contacto", label: "Contacto" },
+  { href: "/mi-cuenta", label: "Mi cuenta" },
 ];
 
 export function SiteHeader() {
@@ -56,7 +57,9 @@ export function SiteHeader() {
               href={link.href}
               key={link.href}
               aria-current={
-                link.href === pathname || (link.href === "/destinos" && pathname.startsWith("/destinos/"))
+                link.href === pathname ||
+                (link.href === "/destinos" && pathname.startsWith("/destinos/")) ||
+                (link.href === "/mi-cuenta" && pathname.startsWith("/mi-cuenta/"))
                   ? "page"
                   : undefined
               }

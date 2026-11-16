@@ -18,7 +18,7 @@ pnpm install
 pnpm dev
 ```
 
-Abrir `http://localhost:3000`. Para preparar PostgreSQL, copiar `.env.example` a `.env` **en la raíz del repositorio** (lo leen `apps/web` y `packages/db`) y reemplazar `REPLACE_WITH_LOCAL_DEV_PASSWORD` (en `POSTGRES_PASSWORD` y `DATABASE_URL`) por una contraseña local única. `docker-compose.yml` exige esa variable, publica PostgreSQL solo en `127.0.0.1` y es exclusivo para desarrollo local:
+Abrir `http://localhost:3000`. No uses la URL «Network» que imprime Next.js: suele ser la de un adaptador virtual (VPN, Tailscale, Hyper-V; p. ej. `169.254.x.x`) y el servidor de desarrollo bloquea por diseño su conexión de recarga en caliente (`Blocked cross-origin request to Next.js dev resource`). Solo si otro dispositivo de la red local debe abrir el servidor de desarrollo se añade su origen en `allowedDevOrigins` (`apps/web/next.config.ts`); hoy no hace falta y no está configurado. Las fuentes (DM Sans y Playfair Display) están autoalojadas en `apps/web/src/app/fonts` (SIL OFL 1.1): ni `pnpm dev` ni `pnpm build` descargan nada de Google Fonts, así que compilar y ver el diseño funciona sin conexión. Para preparar PostgreSQL, copiar `.env.example` a `.env` **en la raíz del repositorio** (lo leen `apps/web` y `packages/db`) y reemplazar `REPLACE_WITH_LOCAL_DEV_PASSWORD` (en `POSTGRES_PASSWORD` y `DATABASE_URL`) por una contraseña local única. `docker-compose.yml` exige esa variable, publica PostgreSQL solo en `127.0.0.1` y es exclusivo para desarrollo local:
 
 ```powershell
 docker compose up -d

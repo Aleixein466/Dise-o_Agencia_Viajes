@@ -1,9 +1,12 @@
 node_modules
 .next
+.next-ci
 .env
 .env.local
 .env.*
 !.env.example
+!.env.*.example
+docs/input/
 *.log
 .DS_Store
 **/src/generated/prisma
@@ -18,3 +21,4 @@ test-results/
 .claude/worktrees/
 .turbo/
 dist/
+.vercel

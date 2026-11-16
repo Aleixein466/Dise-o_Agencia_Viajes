@@ -1,0 +1,196 @@
+import { expect, test, type Page } from "@playwright/test";
+import { adminStatePath, financeStatePath } from "./e2e-state";
+
+const adminEmail = process.env.CARTAGENA_E2E_ADMIN_EMAIL;
+const adminPassword = process.env.CARTAGENA_E2E_ADMIN_PASSWORD;
+const restrictedEmail = process.env.CARTAGENA_E2E_RESTRICTED_EMAIL;
+const restrictedPassword = process.env.CARTAGENA_E2E_RESTRICTED_PASSWORD;
+
+async function loginAndCompleteInitialMfa(page: Page, email: string, password: string, next: string) {
+  await page.goto(`/ingresar?next=${encodeURIComponent(next)}`);
+  await page.locator("#login-email").fill(email);
+  await page.locator("#login-password").fill(password);
+  await page.getByRole("button", { name: /Ingresar/ }).click();
+  await expect(page).toHaveURL(/\/ingresar\/mfa/);
+  await page.getByRole("button", { name: /Configurar una nueva aplicación/ }).click();
+  const code = (await page.locator(".admin-recovery-codes").textContent())
+    ?.split(/(?:·|Â·)/)
+    .map((value) => value.trim())
+    .find(Boolean);
+  expect(code).toBeTruthy();
+  await page.getByRole("button", { name: /Usar un código de recuperación/ }).click();
+  await page.locator("#mfa-recovery").fill(code!);
+  await page.getByRole("button", { name: /Verificar/ }).click();
+  await expect(page).toHaveURL(new RegExp(`${next}$`));
+}
+
+test.describe("Cartagena E2E catalog", () => {
+  test("persists a draft rate and keeps catalog media private", async ({ page, browser }) => {
+    if (!adminEmail || !adminPassword || !restrictedEmail || !restrictedPassword)
+      throw new Error("Cartagena E2E credentials are required.");
+    await loginAndCompleteInitialMfa(page, adminEmail!, adminPassword!, "/admin/tarifas");
+    // Later specs (public-crm) reuse this MFA-complete session; stored in %TEMP%, never in the repository.
+    await page.context().storageState({ path: adminStatePath });
+
+    // Destination lifecycle: create -> edit -> reload -> publish -> public read -> withdraw -> archive.
+    const destinationSlug = `destino-e2e-${Date.now()}`;
+    const destinationName = `Destino E2E ${Date.now()}`;
+    const editedName = `${destinationName} editado`;
+    await page.goto("/admin/destinos");
+    await page.getByLabel("Nombre").fill(destinationName);
+    await page.getByLabel("Slug").fill(destinationSlug);
+    await page.getByLabel("Región").fill("Región de prueba");
+    await page.getByLabel("Descripción").first().fill("Descripción inicial autorizada solo para E2E.");
+    await page.getByLabel("Título SEO").fill("Destino de prueba E2E");
+    await page.getByRole("button", { name: "Guardar borrador" }).click();
+    await expect(page.getByRole("status")).toContainText("Destino guardado como borrador");
+
+    let destinationRow = page.getByRole("row", { name: new RegExp(destinationName) });
+    await destinationRow.getByRole("button", { name: "Editar" }).click();
+    await page.getByLabel("Nombre").fill(editedName);
+    await page.getByLabel("Descripción").first().fill("Descripción editada y persistida en PostgreSQL.");
+    await page.getByRole("button", { name: "Guardar cambios" }).click();
+    await expect(page.getByRole("status")).toContainText("Destino actualizado y persistido");
+    await page.reload();
+    destinationRow = page.getByRole("row", { name: new RegExp(editedName) });
+    await expect(destinationRow).toBeVisible();
+    await destinationRow.getByRole("button", { name: "Editar" }).click();
+    await expect(page.getByLabel("Descripción").first()).toHaveValue("Descripción editada y persistida en PostgreSQL.");
+    await page.getByRole("button", { name: "Cancelar edición" }).click();
+    await destinationRow.getByRole("button", { name: "Historial" }).click();
+    await expect(page.getByRole("heading", { name: `Historial: ${editedName}` })).toBeVisible();
+    await expect(page.getByText("Editado", { exact: true })).toBeVisible();
+    await page.getByRole("button", { name: "Cerrar historial" }).click();
+
+    await destinationRow.getByRole("button", { name: "Publicar" }).click();
+    await page.getByRole("dialog").getByRole("button", { name: "Publicar" }).click();
+    await expect(page.getByRole("status")).toContainText("Destino publicado");
+    expect(
+      await page.evaluate(async (slug) => {
+        const rows = (await (await fetch("/api/v1/public/destinations")).json()) as { slug: string }[];
+        return rows.some((item) => item.slug === slug);
+      }, destinationSlug),
+    ).toBe(true);
+
+    destinationRow = page.getByRole("row", { name: new RegExp(editedName) });
+    await destinationRow.getByRole("button", { name: "Retirar" }).click();
+    await page.getByRole("dialog").getByRole("button", { name: "Retirar del sitio" }).click();
+    await expect(page.getByRole("status")).toContainText("retirado del sitio público");
+    expect(
+      await page.evaluate(async (slug) => {
+        const rows = (await (await fetch("/api/v1/public/destinations")).json()) as { slug: string }[];
+        return rows.some((item) => item.slug === slug);
+      }, destinationSlug),
+    ).toBe(false);
+    destinationRow = page.getByRole("row", { name: new RegExp(editedName) });
+    await destinationRow.getByRole("button", { name: "Archivar" }).click();
+    await page.getByRole("dialog").getByRole("button", { name: "Archivar" }).click();
+    await expect(page.getByRole("status")).toContainText("Destino archivado");
+
+    await page.goto("/admin/tarifas");
+    await page.getByPlaceholder("Nombre o referencia").fill("Cartagena E2E");
+    const cartagenaRow = page.getByRole("row", { name: /Cartagena E2E/ });
+    await expect(cartagenaRow).toBeVisible();
+    await cartagenaRow.getByRole("button", { name: /Editar y previsualizar/ }).click();
+    await expect(page.getByRole("paragraph").filter({ hasText: "Hotel Cartagena E2E" })).toBeVisible();
+
+    const fixture = await page.evaluate(async () => {
+      const response = await fetch("/api/v1/catalog/packages?pageSize=50");
+      const body = (await response.json()) as {
+        items: Array<{ title: string; id: string; priceRules: Array<{ id: string; active?: boolean }> }>;
+      };
+      const pkg = body.items.find((item) => item.title.includes("Cartagena E2E"));
+      if (!pkg?.priceRules[0]) throw new Error("Cartagena E2E fixture is missing");
+      return { packageId: pkg.id, rateId: pkg.priceRules[0].id, active: pkg.priceRules[0].active };
+    });
+    expect(fixture.active).toBeFalsy();
+
+    await page.getByRole("button", { name: /Editar tarifa/ }).click();
+    await page.getByRole("dialog").getByRole("textbox").fill("123460000");
+    await page.getByRole("dialog").getByRole("button", { name: "Guardar" }).click();
+    await expect(page.getByRole("status")).toContainText(/Tarifa de borrador actualizada/);
+    await page.reload();
+    await page.getByPlaceholder("Nombre o referencia").fill("Cartagena E2E");
+    await page
+      .getByRole("row", { name: /Cartagena E2E/ })
+      .getByRole("button", { name: /Editar y previsualizar/ })
+      .click();
+    await expect(page.getByText(/1[.,]234[.,]600/)).toBeVisible();
+    await page.getByRole("button", { name: /Ver historial/ }).click();
+    const history = page.getByRole("heading", { name: /Historial:/ }).locator("..");
+    await expect(history.getByText(/Actor:/).first()).toBeVisible();
+    await expect(history.getByText(/1[.,]234[.,]500/).first()).toBeVisible();
+    await expect(history.getByText(/1[.,]234[.,]600/).first()).toBeVisible();
+
+    const csrfAndRate = await page.evaluate(async (rateId) => {
+      const session = await (await fetch("/api/v1/auth/session")).json();
+      const preview = await (await fetch("/api/v1/catalog/packages?pageSize=50")).json();
+      const pkg = preview.items.find((item: { id: string }) => item.id);
+      const rejected = await fetch(`/api/v1/catalog/rates/${rateId}`, {
+        method: "PATCH",
+        headers: { "content-type": "application/json", "x-csrf-token": "invalid" },
+        body: JSON.stringify({ amountCents: "123470000" }),
+      });
+      return { csrf: session.csrfToken as string, rejected: rejected.status, packageId: pkg.id as string };
+    }, fixture.rateId);
+    expect(csrfAndRate.rejected).toBe(403);
+
+    await page.goto("/admin/galeria");
+    await page.locator('select[name="owner"]').selectOption({ label: "Cartagena E2E" });
+    await page.locator('input[name="altText"]').fill("Cartagena E2E privada");
+    await page.locator('input[name="file"]').setInputFiles({
+      name: "cartagena-e2e.png",
+      mimeType: "image/png",
+      buffer: Buffer.from(
+        "iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAIAAAD91JpzAAAACXBIWXMAAAPoAAAD6AG1e1JrAAAAD0lEQVQImWNgCN8BQhAKABrSBD0CaYszAAAAAElFTkSuQmCC",
+        "base64",
+      ),
+    });
+    const upload = page.waitForResponse((response) => response.url().includes("/api/v1/gallery/upload/"));
+    await page.getByRole("button", { name: /Subir fotografía/ }).click();
+    expect((await upload).status()).toBe(201);
+    await expect(page.getByRole("status")).toContainText(/Fotografía privada subida/);
+    await expect(page.locator('img[alt="Cartagena E2E privada"]').first()).toBeVisible();
+
+    await page.goto("/admin/cotizaciones");
+    // Select by name, not position: other E2E packages (e.g. the public builder one) share this database.
+    await page.getByLabel(/Destino y paquete/).selectOption({ label: "Cartagena E2E · Cartagena E2E 4 días 3 noches" });
+    await expect(page.getByLabel(/Regla base de borrador/)).toBeVisible();
+    await page.getByLabel(/Hotel/).selectOption({ label: "Hotel Cartagena E2E" });
+    await page.getByLabel(/Regla base de borrador/).selectOption({ index: 1 });
+    await page.getByRole("button", { name: /Calcular desglose/ }).click();
+    await expect(page.getByText(/Total:/)).toBeVisible();
+    await page.getByRole("button", { name: /Guardar cotización/ }).click();
+    await expect(page.getByRole("status")).toContainText(/Cotización administrativa guardada/);
+    await page.reload();
+    await expect(page.getByText(/ADM-/).first()).toBeVisible();
+
+    const asset = await page.evaluate(async () => {
+      const destination = await (await fetch("/api/v1/catalog/destinations")).json();
+      const cartagena = destination.find((item: { name: string }) => item.name === "Cartagena E2E");
+      const assets = await (await fetch(`/api/v1/gallery?type=destination&ownerId=${cartagena.id}`)).json();
+      return assets.find((item: { altText: string }) => item.altText === "Cartagena E2E privada").id as string;
+    });
+
+    const restricted = await browser.newContext();
+    const restrictedPage = await restricted.newPage();
+    await loginAndCompleteInitialMfa(restrictedPage, restrictedEmail!, restrictedPassword!, "/admin");
+    await restricted.storageState({ path: financeStatePath });
+    const forbidden = await restrictedPage.evaluate(
+      async ({ rateId, assetId }) => {
+        const session = await (await fetch("/api/v1/auth/session")).json();
+        const rate = await fetch(`/api/v1/catalog/rates/${rateId}`, {
+          method: "PATCH",
+          headers: { "content-type": "application/json", "x-csrf-token": session.csrfToken },
+          body: JSON.stringify({ amountCents: "123470000" }),
+        });
+        const image = await fetch(`/api/v1/gallery/${assetId}`);
+        return { rate: rate.status, image: image.status };
+      },
+      { rateId: fixture.rateId, assetId: asset },
+    );
+    expect(forbidden.rate).toBe(403);
+    expect(forbidden.image).toBe(403);
+    await restricted.close();
+  });
+});

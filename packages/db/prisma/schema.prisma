@@ -38,12 +38,18 @@ enum BookingStatus {
   REFUNDED
 }
 enum QuoteStatus {
+  DRAFT
+  REQUIRES_MANUAL_REVIEW
   NEW
   ASSIGNED
   PROPOSAL_SENT
   ACCEPTED
   DECLINED
   CLOSED
+}
+enum QuoteSource {
+  ADMIN
+  PUBLIC
 }
 /// Legacy (payments table). Superseded by PaymentStatus. DB type name kept as "PaymentStatus".
 enum LegacyPaymentStatus {
@@ -121,6 +127,12 @@ enum AvailabilityStatus {
   AVAILABLE
   SOLD_OUT
   TO_CONFIRM
+}
+enum DepartureChangeKind {
+  CREATED
+  CAPACITY
+  HOLD
+  RELEASE
 }
 enum MediaVisibility {
   PUBLIC
@@ -206,6 +218,8 @@ enum PaymentStatus {
 enum PaymentProvider {
   WOMPI
   MANUAL
+  /// Test-only simulated provider (no money moves). Refused in production.
+  SANDBOX_TEST
 }
 enum PaymentMethod {
   CARD
@@ -287,6 +301,7 @@ model User {
   updatedAt DateTime @updatedAt @map("updated_at")
   customer Customer?
   assignedQuotes Quote[] @relation("quote_assignee")
+  createdQuotes Quote[] @relation("quote_creator")
   auditLogs AuditLog[]
   roles UserRoleAssignment[] @relation("user_role_user")
   rolesGranted UserRoleAssignment[] @relation("user_role_granter")
@@ -312,6 +327,7 @@ model User {
   tasksCreated FollowUpTask[] @relation("task_creator")
   crmNotes CrmNote[]
   mediaUploaded MediaAsset[]
+  departureSeatChanges DepartureSeatChange[]
   @@map("users")
 }
 
@@ -525,6 +541,7 @@ model TourPackage {
   components PackageComponent[]
   priceRules PriceRule[]
   ageRules AgeRule[]
+  seasons Season[]
   promotions Promotion[]
   quotes Quote[]
   reservations Reservation[]
@@ -665,12 +682,18 @@ model Season {
   startsOn DateTime @db.Date @map("starts_on")
   endsOn DateTime @db.Date @map("ends_on")
   notes String? @db.Text
+  /// Null = destination-wide (or global). When set, destinationId is the package's destination.
+  packageId String? @db.Uuid @map("package_id")
+  /// Draft = active && isFictitious; approved = active && !isFictitious; inactive = !active (never deleted).
+  active Boolean @default(true)
   isFictitious Boolean @default(true) @map("is_fictitious")
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
   destination Destination? @relation(fields: [destinationId], references: [id], onDelete: Restrict)
+  package TourPackage? @relation(fields: [packageId], references: [id], onDelete: Restrict)
   priceRules PriceRule[]
   @@index([destinationId, startsOn])
+  @@index([packageId])
   @@map("seasons")
 }
 
@@ -685,6 +708,8 @@ model AgeRule {
   destinationId String? @db.Uuid @map("destination_id")
   packageId String? @db.Uuid @map("package_id")
   tourId String? @db.Uuid @map("tour_id")
+  /// Draft = active && isFictitious; approved = active && !isFictitious; inactive = !active (never deleted).
+  active Boolean @default(true)
   isFictitious Boolean @default(true) @map("is_fictitious")
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -863,8 +888,28 @@ model Departure {
   reservations Reservation[]
   quotes Quote[]
   priceRules PriceRule[]
+  seatChanges DepartureSeatChange[]
   @@index([packageId, startsAt, published])
   @@map("departures")
+}
+
+/// Append-only history of manual seat changes (capacity typed by staff, manual holds and releases). Never inventory
+/// from a hotel or airline. delta: CREATED = initial capacity, CAPACITY = new - old, HOLD = +n, RELEASE = -n.
+model DepartureSeatChange {
+  id String @id @default(uuid()) @db.Uuid
+  departureId String @db.Uuid @map("departure_id")
+  actorId String? @db.Uuid @map("actor_id")
+  kind DepartureChangeKind
+  delta Int
+  capacityAfter Int @map("capacity_after")
+  heldAfter Int @map("held_after")
+  soldAfter Int @map("sold_after")
+  reason String? @db.VarChar(300)
+  createdAt DateTime @default(now()) @map("created_at")
+  departure Departure @relation(fields: [departureId], references: [id], onDelete: Restrict)
+  actor User? @relation(fields: [actorId], references: [id], onDelete: SetNull)
+  @@index([departureId, createdAt])
+  @@map("departure_seat_changes")
 }
 
 // ---------------------------------------------------------------------------
@@ -874,20 +919,25 @@ model Departure {
 model Quote {
   id String @id @default(uuid()) @db.Uuid
   reference String @unique @db.VarChar(24)
-  name String @db.VarChar(120)
-  email String @db.VarChar(254)
-  phone String @db.VarChar(25)
+  trackingCodeHash String? @unique @db.Char(64) @map("tracking_code_hash")
+  idempotencyKey String? @unique @db.Uuid @map("idempotency_key")
+  source QuoteSource @default(ADMIN)
+  name String? @db.VarChar(120)
+  email String? @db.VarChar(254)
+  phone String? @db.VarChar(25)
   /// Free-text destination from the v1 form. Catalog link is catalogDestination.
   destination String? @db.VarChar(120)
   travelDate DateTime? @map("travel_date")
   travelers Int
   budget String? @db.VarChar(80)
   notes String? @db.Text
-  dataConsentAt DateTime @map("data_consent_at")
+  dataConsentAt DateTime? @map("data_consent_at")
   marketingConsentAt DateTime? @map("marketing_consent_at")
   status QuoteStatus @default(NEW)
   assignedToId String? @db.Uuid @map("assigned_to_id")
+  createdById String? @db.Uuid @map("created_by_id")
   assignedTo User? @relation("quote_assignee", fields: [assignedToId], references: [id])
+  createdBy User? @relation("quote_creator", fields: [createdById], references: [id], onDelete: SetNull)
   customerId String? @db.Uuid @map("customer_id")
   destinationId String? @db.Uuid @map("destination_id")
   packageId String? @db.Uuid @map("package_id")
@@ -901,6 +951,8 @@ model Quote {
   /// Full server-side pricing output at quote time (selection, travelers, breakdown).
   priceSnapshot Json? @map("price_snapshot")
   isFictitious Boolean @default(false) @map("is_fictitious")
+  reviewReasons Json? @map("review_reasons")
+  revision Int @default(1)
   validUntil DateTime? @map("valid_until")
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -919,6 +971,7 @@ model Quote {
   @@index([email])
   @@index([customerId, createdAt])
   @@index([assignedToId, status])
+  @@index([createdById, createdAt])
   @@map("quotes")
 }
 
@@ -1155,6 +1208,8 @@ model ManualAbono {
   bankReference String? @db.VarChar(120) @map("bank_reference")
   paidAt DateTime @map("paid_at")
   receiptMediaId String @db.Uuid @map("receipt_media_id")
+  /// SHA-256 of the uploaded receipt bytes; unique among non-rejected abonos (partial index in SQL).
+  receiptSha256 String? @db.Char(64) @map("receipt_sha256")
   status ManualAbonoStatus @default(SUBMITTED)
   registeredById String @db.Uuid @map("registered_by_id")
   approvedById String? @db.Uuid @map("approved_by_id")
@@ -1236,6 +1291,9 @@ model SavingsPlan {
   packageId String? @db.Uuid @map("package_id")
   targetDate DateTime? @db.Date @map("target_date")
   completedAt DateTime? @map("completed_at")
+  cancelledAt DateTime? @map("cancelled_at")
+  cancellationReason String? @db.VarChar(300) @map("cancellation_reason")
+  createdById String? @db.Uuid @map("created_by_id")
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
   customer Customer @relation(fields: [customerId], references: [id])
@@ -1273,6 +1331,42 @@ model SavingsMovement {
   createdAt DateTime @default(now()) @map("created_at")
   savingsPlan SavingsPlan @relation(fields: [savingsPlanId], references: [id])
   @@map("savings_movements")
+}
+
+enum NotificationStatus {
+  PENDING
+  SENT
+  FAILED
+  SKIPPED
+}
+
+/// Transactional notification outbox. Never stores secrets (login codes are sent synchronously, not queued).
+model NotificationOutbox {
+  id String @id @default(uuid()) @db.Uuid
+  kind String @db.VarChar(60)
+  recipientEmail String @db.VarChar(254) @map("recipient_email")
+  templateData Json @map("template_data")
+  /// Idempotency: one notification per business event (e.g. "reservation.confirmed:<id>").
+  dedupeKey String @unique @db.VarChar(160) @map("dedupe_key")
+  status NotificationStatus @default(PENDING)
+  attempts Int @default(0)
+  nextAttemptAt DateTime @default(now()) @map("next_attempt_at")
+  sentAt DateTime? @map("sent_at")
+  lastError String? @db.VarChar(300) @map("last_error")
+  createdAt DateTime @default(now()) @map("created_at")
+  @@index([status, nextAttemptAt])
+  @@map("notification_outbox")
+}
+
+/// The simulated provider's own record of a test transaction, looked up server-side like a real gateway.
+model SandboxTestTransaction {
+  id String @id @default(uuid()) @db.Uuid
+  paymentReference String @unique @db.VarChar(40) @map("payment_reference")
+  amountCents BigInt @map("amount_cents")
+  currency String @default("COP") @db.VarChar(3)
+  status PaymentStatus
+  createdAt DateTime @default(now()) @map("created_at")
+  @@map("sandbox_test_transactions")
 }
 
 // ---------------------------------------------------------------------------
@@ -1405,6 +1499,7 @@ model ConsentRecord {
   email String? @db.VarChar(254)
   quoteId String? @db.Uuid @map("quote_id")
   reservationId String? @db.Uuid @map("reservation_id")
+  pqrsTicketId String? @db.Uuid @map("pqrs_ticket_id")
   /// Form or flow that collected the consent, e.g. "quote_form".
   source String @db.VarChar(80)
   ipHash String? @db.Char(64) @map("ip_hash")
@@ -1415,10 +1510,12 @@ model ConsentRecord {
   customer Customer? @relation(fields: [customerId], references: [id], onDelete: Restrict)
   quote Quote? @relation(fields: [quoteId], references: [id], onDelete: Restrict)
   reservation Reservation? @relation(fields: [reservationId], references: [id], onDelete: Restrict)
+  pqrsTicket PqrsTicket? @relation(fields: [pqrsTicketId], references: [id], onDelete: Restrict)
   @@index([customerId, purpose, at])
   @@index([userId, purpose, at])
   @@index([email, purpose, at])
   @@index([reservationId])
+  @@index([pqrsTicketId])
   @@map("consent_records")
 }
 
@@ -1446,6 +1543,12 @@ model PqrsTicket {
   firstRespondedAt DateTime? @map("first_responded_at")
   resolvedAt DateTime? @map("resolved_at")
   closedAt DateTime? @map("closed_at")
+  /// SHA-256 of the public tracking code (the code itself is shown once and never stored).
+  trackingCodeHash String? @db.Char(64) @map("tracking_code_hash")
+  idempotencyKey String? @unique @db.Uuid @map("idempotency_key")
+  dataConsentAt DateTime? @map("data_consent_at")
+  /// Optimistic concurrency for staff status changes.
+  version Int @default(0)
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
   customer Customer? @relation(fields: [customerId], references: [id], onDelete: Restrict)
@@ -1454,6 +1557,7 @@ model PqrsTicket {
   assignedTo User? @relation("pqrs_assignee", fields: [assignedToId], references: [id], onDelete: SetNull)
   messages PqrsMessage[]
   crmNotes CrmNote[]
+  consents ConsentRecord[]
   @@index([status, createdAt])
   @@index([customerId, createdAt])
   @@index([assignedToId, status])

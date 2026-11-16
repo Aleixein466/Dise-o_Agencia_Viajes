@@ -19,7 +19,11 @@ describe("robots", () => {
     vi.stubEnv("SITE_INDEXING", "true");
     vi.stubEnv("NEXT_PUBLIC_SITE_URL", "https://example.com");
     expect(robots()).toEqual({
-      rules: { userAgent: "*", allow: "/", disallow: ["/api/", "/admin", "/cuenta"] },
+      rules: {
+        userAgent: "*",
+        allow: "/",
+        disallow: ["/api/", "/admin", "/mi-cuenta", "/pagos", "/ingresar", "/recuperar", "/restablecer"],
+      },
       sitemap: "https://example.com/sitemap.xml",
     });
   });

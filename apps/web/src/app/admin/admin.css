@@ -1,0 +1,1206 @@
+/* Admin panel and staff auth pages. Scoped to .admin-root / .auth-root; the public chrome is hidden there. */
+/* Tropical Premium: navy shell, turquoise focus and accents, warm sand surfaces, coral reserved for primary actions. */
+body:has(.admin-root) > .skip-link,
+body:has(.admin-root) > .site-header,
+body:has(.admin-root) > .site-footer,
+body:has(.auth-root) > .site-header,
+body:has(.auth-root) > .site-footer {
+  display: none;
+}
+
+.admin-root,
+.auth-root {
+  color-scheme: light;
+  color: var(--ink);
+  font-family: var(--font-body);
+}
+.admin-root :focus-visible,
+.auth-root :focus-visible {
+  outline: 3px solid var(--teal-ink);
+  outline-offset: 2px;
+  box-shadow: var(--ring);
+}
+
+/* Shared controls */
+.admin-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 10px 22px;
+  border: 1px solid transparent;
+  border-radius: 100px;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  transition:
+    background var(--dur-fast) var(--ease-out),
+    border-color var(--dur-fast) var(--ease-out),
+    box-shadow var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out);
+}
+.admin-btn:disabled {
+  opacity: 0.65;
+  cursor: progress;
+}
+.admin-btn-primary {
+  background: var(--orange-dark);
+  color: var(--white);
+  box-shadow: 0 6px 16px rgb(189 77 30 / 22%);
+}
+.admin-btn-primary:hover:not(:disabled) {
+  background: #9e3e1a;
+  box-shadow: 0 8px 20px rgb(189 77 30 / 30%);
+}
+.admin-btn-quiet {
+  background: var(--white);
+  border-color: #c4d2d3;
+  color: var(--navy);
+}
+.admin-btn-quiet:hover:not(:disabled) {
+  border-color: var(--teal-ink);
+  background: var(--teal-soft);
+  color: var(--navy-deep);
+}
+.admin-form-error {
+  margin: 0;
+  color: #a1260f;
+  font-size: 14px;
+  font-weight: 600;
+}
+.admin-form-error:empty {
+  display: none;
+}
+.admin-refresh-alert {
+  margin: 0 0 16px;
+  padding: 12px 16px;
+  border: 1px solid #e3b5a8;
+  border-radius: var(--radius-sm);
+  background: #fff4f0;
+  color: #8c2512;
+  font-size: 14px;
+  font-weight: 600;
+}
+.admin-form-error:not(:empty) {
+  padding: 10px 14px;
+  border-left: 4px solid #a1260f;
+  border-radius: var(--radius-sm);
+  background: var(--coral-soft);
+}
+.admin-link-button {
+  padding: 4px 0;
+  border: 0;
+  background: none;
+  color: var(--teal-ink);
+  font-weight: 700;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+.admin-link-button:hover {
+  color: var(--navy);
+}
+
+/* Staff auth pages */
+.auth-root {
+  display: grid;
+  min-height: 70vh;
+  padding: 48px 16px;
+  place-items: center;
+  background:
+    radial-gradient(60% 50% at 85% 0%, rgb(18 163 155 / 12%), transparent 70%),
+    radial-gradient(50% 45% at 0% 100%, rgb(246 178 60 / 14%), transparent 70%), var(--cream);
+}
+.auth-card {
+  width: min(100%, 440px);
+  padding: 36px 32px;
+  border: 1px solid var(--line);
+  border-top: 4px solid var(--teal);
+  border-radius: var(--radius-md);
+  background: var(--white);
+  box-shadow: var(--shadow-lg);
+}
+.auth-card h1 {
+  margin: 0 0 12px;
+  color: var(--navy);
+  font-family: var(--font-display);
+  font-size: 34px;
+  font-weight: 600;
+  line-height: 1.15;
+}
+.auth-intro {
+  margin: 0 0 24px;
+  color: var(--muted);
+  line-height: 1.6;
+}
+.admin-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  /* Side-by-side forms share a row height; keep rows (and buttons) at their natural size. */
+  align-content: start;
+  gap: 18px;
+}
+.admin-field {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  /* Fields in one row share its height; without this the spare space stretches the label row and pushes the
+     input of the shorter field down, so inputs in the same row stop lining up. */
+  align-content: start;
+  gap: 6px;
+}
+.admin-field input,
+.admin-field select,
+.admin-field textarea {
+  min-width: 0;
+  max-width: 100%;
+}
+.admin-field label {
+  color: var(--navy);
+  font-size: 14px;
+  font-weight: 700;
+}
+.admin-field input,
+.admin-field select,
+.admin-field textarea,
+.admin-users-filters input,
+.admin-users-filters select {
+  padding: 10px 14px;
+  border: 1px solid #7b8d99;
+  border-radius: var(--radius-sm);
+  background-color: var(--white);
+  color: var(--ink);
+  transition:
+    border-color var(--dur-fast) var(--ease-out),
+    box-shadow var(--dur-fast) var(--ease-out);
+}
+.admin-field input,
+.admin-field select,
+.admin-users-filters input,
+.admin-users-filters select {
+  min-height: 46px;
+}
+.admin-field textarea {
+  min-height: 96px;
+  resize: vertical;
+}
+.admin-field input::placeholder,
+.admin-field textarea::placeholder,
+.admin-users-filters input::placeholder {
+  color: #5f7280;
+}
+.admin-field input:hover,
+.admin-field select:hover,
+.admin-field textarea:hover,
+.admin-users-filters input:hover,
+.admin-users-filters select:hover {
+  border-color: var(--navy-soft);
+}
+.admin-field input:focus-visible,
+.admin-field select:focus-visible,
+.admin-field textarea:focus-visible,
+.admin-users-filters input:focus-visible,
+.admin-users-filters select:focus-visible {
+  border-color: var(--teal-ink);
+}
+.admin-field select,
+.admin-users-filters select {
+  padding-right: 40px;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23102f49' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+}
+.admin-field input:disabled,
+.admin-field select:disabled,
+.admin-field textarea:disabled {
+  border-color: var(--line);
+  background-color: var(--sand-warm);
+  color: var(--muted);
+}
+.admin-root input[type="checkbox"],
+.admin-root input[type="radio"] {
+  accent-color: var(--teal-ink);
+}
+/* A check/radio inside a field keeps its natural size and sits on the text line (the text-input box rules above
+   would otherwise stretch it to 46 px and push the label off-baseline). */
+.admin-field input[type="checkbox"],
+.admin-field input[type="radio"] {
+  width: 18px;
+  height: 18px;
+  min-height: 0;
+  padding: 0;
+  margin: 0 8px 0 0;
+  vertical-align: -3px;
+}
+.admin-hint {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+.admin-form-error-slot:empty {
+  display: none;
+}
+.admin-form-links {
+  margin: 0;
+  font-size: 14px;
+}
+.admin-form-links a,
+.admin-notice a {
+  color: var(--teal-ink);
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.admin-notice p {
+  margin: 0 0 12px;
+  line-height: 1.6;
+}
+.admin-code,
+.admin-recovery-codes {
+  display: block;
+  overflow-wrap: anywhere;
+  font-size: 12px;
+  line-height: 1.6;
+}
+.admin-code {
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--sand-warm);
+}
+
+/* Panel shell */
+.admin-root {
+  min-height: 100vh;
+  background: var(--cream);
+}
+.admin-skip {
+  position: fixed;
+  z-index: 1000;
+  top: -100px;
+  left: 12px;
+  padding: 12px 18px;
+  border-radius: var(--radius-sm);
+  background: var(--navy);
+  color: var(--white);
+}
+.admin-skip:focus {
+  top: 12px;
+}
+.admin-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 68px;
+  padding: 12px 16px;
+  background: var(--gradient-ocean);
+  color: var(--white);
+  box-shadow: var(--shadow-sm);
+}
+.admin-brand {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+.admin-brand span {
+  display: block;
+  color: #ffc58c;
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.admin-user {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.admin-logout {
+  display: grid;
+  gap: 4px;
+}
+.admin-header :focus-visible {
+  outline-color: #ffc58c;
+  box-shadow: none;
+}
+.admin-header .admin-form-error {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: #ffd2c8;
+}
+.admin-user-name {
+  max-width: 14ch;
+  overflow: hidden;
+  font-size: 14px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.admin-body {
+  display: grid;
+  /* minmax(0, …): wide tables and long <select> options must not widen the page. */
+  grid-template-columns: minmax(0, 1fr);
+}
+.admin-sidebar {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--line);
+  background: var(--white);
+}
+.admin-menu-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 8px 16px;
+  border: 1px solid #c4d2d3;
+  border-radius: 100px;
+  background: var(--white);
+  color: var(--navy);
+  font-weight: 700;
+}
+.admin-menu-toggle:hover {
+  border-color: var(--teal-ink);
+  background: var(--teal-soft);
+}
+.admin-nav {
+  display: none;
+  margin-top: 8px;
+}
+.admin-nav.is-open {
+  display: block;
+}
+.admin-nav ul {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.admin-nav a {
+  display: block;
+  padding: 11px 14px;
+  border-radius: var(--radius-sm);
+  color: var(--navy);
+  font-size: 14px;
+  font-weight: 600;
+  transition:
+    background var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out);
+}
+.admin-nav a:hover {
+  background: var(--teal-soft);
+}
+.admin-nav a[aria-current="page"] {
+  background: var(--navy);
+  box-shadow: inset 4px 0 0 var(--coral);
+  color: var(--white);
+  font-weight: 700;
+}
+.admin-content {
+  width: 100%;
+  max-width: 1520px;
+  margin-inline: auto;
+  padding: 28px 16px 56px;
+}
+.admin-content:focus,
+.admin-reveal:focus,
+.admin-panel h2[tabindex="-1"]:focus {
+  outline: none;
+  box-shadow: none;
+}
+.admin-title {
+  margin: 0 0 8px;
+  color: var(--navy);
+  font-family: var(--font-display);
+  font-size: 32px;
+  font-weight: 600;
+  line-height: 1.15;
+}
+.admin-lead {
+  max-width: 62ch;
+  margin: 0 0 28px;
+  color: var(--muted);
+  line-height: 1.65;
+}
+.admin-grid {
+  display: grid;
+  gap: 20px;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr));
+}
+.admin-panel {
+  padding: 22px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--white);
+  box-shadow: var(--shadow-sm);
+}
+.admin-panel h2 {
+  margin: 0 0 12px;
+  color: var(--navy);
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.3;
+}
+.admin-empty {
+  margin: 0;
+  padding: 20px 16px;
+  border: 1px dashed #c4d2d3;
+  border-radius: var(--radius-sm);
+  background: var(--sand-warm);
+  color: var(--muted);
+  text-align: center;
+}
+.admin-stat {
+  margin: 0;
+  color: var(--navy);
+  font-family: var(--font-display);
+  font-size: 38px;
+  font-weight: 600;
+  line-height: 1.1;
+}
+.admin-stat-detail {
+  margin: 4px 0 10px;
+  color: var(--muted);
+}
+.admin-stat-alert {
+  color: #a1260f;
+  font-weight: 600;
+}
+.admin-users {
+  display: grid;
+  /* minmax(0, …) lets wide tables scroll inside .admin-table-wrap instead of widening the page. */
+  grid-template-columns: minmax(0, 1fr);
+  gap: 20px;
+}
+.admin-users-form {
+  max-width: 760px;
+}
+.admin-role-field {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 18px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--sand-warm);
+}
+.admin-role-field legend {
+  padding-inline: 6px;
+  color: var(--navy);
+  font-size: 14px;
+  font-weight: 700;
+}
+.admin-role-field label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 24px;
+  font-size: 14px;
+}
+.admin-section-heading {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.admin-section-heading h2 {
+  margin-bottom: 4px;
+}
+/* Header and row actions are short commands: never break their label across lines. */
+.admin-section-heading > .admin-btn,
+.admin-table .admin-btn {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+.admin-users-filters {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(150px, 220px);
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.admin-users-filters input,
+.admin-users-filters select {
+  min-height: 44px;
+  padding: 9px 14px;
+}
+.admin-users-filters select {
+  padding-right: 40px;
+}
+.admin-table-wrap {
+  /* Containing block for absolutely positioned cell content (.sr-only), so it scrolls instead of widening the page. */
+  position: relative;
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+}
+.admin-table {
+  width: 100%;
+  min-width: 780px;
+  border-collapse: collapse;
+  font-size: 14px;
+  line-height: 1.45;
+}
+.admin-table th,
+.admin-table td {
+  padding: 14px;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+  vertical-align: top;
+}
+.admin-table th {
+  border-bottom: 2px solid #c9d8d6;
+  background: var(--sand-warm);
+  color: var(--navy);
+  font-size: 11.5px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  white-space: nowrap;
+}
+.admin-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+.admin-table tbody tr {
+  transition: background var(--dur-fast) var(--ease-out);
+}
+.admin-table tbody tr:hover {
+  background: rgb(224 244 241 / 45%);
+}
+.admin-table td > span {
+  color: var(--muted);
+  font-size: 13px;
+}
+.admin-status,
+.admin-role {
+  display: inline-block;
+  margin: 0 4px 4px 0;
+  padding: 3px 10px;
+  border-radius: 100px;
+  font-size: 12px;
+  font-weight: 700;
+}
+.admin-status::before,
+.admin-badge::before {
+  content: "";
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-right: 6px;
+  border-radius: 50%;
+  background: currentcolor;
+  vertical-align: 1px;
+}
+.admin-status-active {
+  background: #dff5e7;
+  color: #176438 !important;
+}
+.admin-status-disabled {
+  background: var(--coral-soft);
+  color: #8b2918 !important;
+}
+.admin-role {
+  border: 1px solid #d3e3de;
+  background: var(--mint);
+  color: var(--navy) !important;
+}
+.admin-table details {
+  margin-top: 6px;
+  color: var(--teal-ink);
+}
+.admin-table summary {
+  cursor: pointer;
+  font-weight: 700;
+}
+.admin-table details p {
+  margin: 7px 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+.admin-row-actions {
+  display: grid;
+  gap: 6px;
+  min-width: 90px;
+}
+.admin-success {
+  margin: 0 0 14px;
+  color: #0b5f5a;
+  font-weight: 700;
+}
+.admin-success:empty {
+  display: none;
+}
+.admin-success:not(:empty) {
+  padding: 10px 14px;
+  border-left: 4px solid var(--teal-ink);
+  border-radius: var(--radius-sm);
+  background: var(--teal-soft);
+}
+.admin-activity {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+  padding-left: 20px;
+}
+.admin-activity time {
+  color: var(--muted);
+  font-size: 13px;
+}
+.admin-profile {
+  display: grid;
+  gap: 20px;
+}
+.admin-profile-feedback:empty {
+  display: none;
+}
+.admin-profile-summary {
+  display: grid;
+  gap: 22px;
+  overflow: hidden;
+  border-top: 4px solid var(--teal);
+  background: radial-gradient(circle at 100% 0, rgb(18 163 155 / 13%), transparent 42%), var(--white);
+}
+.admin-profile-summary p {
+  margin: 0;
+  color: var(--muted);
+}
+.admin-profile-summary h2 {
+  margin-bottom: 5px;
+  font-family: var(--font-display);
+  font-size: 28px;
+}
+.admin-profile-summary .admin-profile-eyebrow {
+  margin-bottom: 8px;
+  color: var(--teal-ink);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+}
+.admin-profile-facts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin: 0;
+}
+.admin-profile-facts div {
+  min-width: 0;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: rgb(255 255 255 / 72%);
+}
+.admin-profile-facts dt {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.admin-profile-facts dd {
+  margin: 5px 0 0;
+  overflow-wrap: anywhere;
+  color: var(--navy);
+  font-weight: 700;
+}
+.admin-profile-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 330px), 1fr));
+  gap: 20px;
+  align-items: start;
+}
+.admin-profile-grid .admin-panel {
+  display: grid;
+  gap: 16px;
+}
+.admin-profile-grid .admin-panel > h2,
+.admin-profile-grid .admin-panel > p {
+  margin: 0;
+}
+.admin-profile-grid .admin-btn {
+  justify-self: start;
+}
+.admin-profile-codes {
+  display: grid;
+  gap: 8px;
+  padding: 14px;
+  border: 1px solid #c4d2d3;
+  border-radius: var(--radius-sm);
+  background: var(--sand-warm);
+}
+.admin-profile-codes code {
+  overflow-wrap: anywhere;
+  color: var(--navy);
+  line-height: 1.8;
+}
+.admin-profile-table {
+  min-width: 720px;
+}
+@media (min-width: 760px) {
+  .admin-profile-summary {
+    grid-template-columns: minmax(220px, 0.7fr) minmax(0, 1.3fr);
+    align-items: center;
+  }
+  .admin-profile-facts {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+.admin-root-bare {
+  display: grid;
+  padding: 48px 16px;
+  place-items: center;
+}
+.admin-notice-page {
+  width: min(100%, 520px);
+  padding: 36px 32px;
+  border: 1px solid var(--line);
+  border-top: 4px solid var(--teal);
+  border-radius: var(--radius-md);
+  background: var(--white);
+  box-shadow: var(--shadow-md);
+}
+.admin-notice-page h1 {
+  margin: 0 0 12px;
+  color: var(--navy);
+  font-family: var(--font-display);
+  font-size: 28px;
+  font-weight: 600;
+}
+.admin-notice-page p {
+  margin: 0 0 12px;
+  color: var(--muted);
+  line-height: 1.6;
+}
+.admin-notice-page a {
+  color: var(--teal-ink);
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+@media (min-width: 900px) {
+  .admin-header {
+    padding-inline: 28px;
+  }
+  .admin-user-name {
+    max-width: 28ch;
+  }
+  .admin-body {
+    grid-template-columns: 264px minmax(0, 1fr);
+    align-items: start;
+    /* Paints the sidebar column to the full height of the page, whatever the content height. */
+    background: linear-gradient(to right, var(--white) 263px, var(--line) 263px, var(--line) 264px, transparent 264px);
+  }
+  .admin-sidebar {
+    position: sticky;
+    top: 0;
+    max-height: 100vh;
+    min-height: calc(100vh - 68px);
+    padding: 22px 16px;
+    overflow-y: auto;
+    border-right: 0;
+    border-bottom: 0;
+    background: transparent;
+  }
+  .admin-menu-toggle {
+    display: none;
+  }
+  .admin-nav {
+    display: block;
+    margin-top: 0;
+  }
+  .admin-content {
+    padding: 40px 40px 80px;
+  }
+  .admin-title {
+    font-size: 36px;
+  }
+}
+@media (max-width: 560px) {
+  .admin-users-filters {
+    grid-template-columns: 1fr;
+  }
+  .admin-section-heading {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .auth-card {
+    padding: 28px 22px;
+  }
+  /* 360 px: brand, name and logout must fit on one row without widening the page. */
+  .admin-header {
+    gap: 8px;
+    padding-inline: 12px;
+  }
+  .admin-brand {
+    font-size: 17px;
+    white-space: nowrap;
+  }
+  .admin-header .admin-btn {
+    min-height: 40px;
+    padding: 8px 12px;
+    font-size: 13px;
+    white-space: nowrap;
+  }
+  .admin-user-name {
+    font-size: 13px;
+  }
+  .admin-user {
+    min-width: 0;
+    gap: 8px;
+  }
+}
+
+/* Record codes (RES-..., PUB-...) stay on one line inside the scrollable table. */
+.admin-table .admin-link-button {
+  text-align: left;
+  white-space: nowrap;
+}
+
+.admin-dialog {
+  width: min(460px, calc(100vw - 32px));
+  padding: 28px;
+  border: 1px solid var(--line);
+  border-top: 4px solid var(--teal);
+  border-radius: var(--radius-md);
+  background: var(--white);
+  color: var(--ink);
+  box-shadow: var(--shadow-lg);
+}
+.admin-dialog::backdrop {
+  background: rgb(11 38 60 / 55%);
+  backdrop-filter: blur(3px);
+}
+.admin-dialog form {
+  display: grid;
+  gap: 16px;
+}
+.admin-dialog p,
+.admin-dialog label {
+  margin: 0;
+  font-weight: 600;
+}
+.admin-dialog .field input,
+.admin-dialog .field textarea {
+  border: 1px solid #7b8d99;
+  border-radius: var(--radius-sm);
+  background: var(--white);
+  font-size: 14px;
+}
+.admin-dialog .field input:focus-visible,
+.admin-dialog .field textarea:focus-visible {
+  border-color: var(--teal-ink);
+  outline: 3px solid var(--teal-ink);
+  outline-offset: 2px;
+}
+.admin-dialog .btn {
+  min-height: 44px;
+  padding: 10px 22px;
+  border: 1px solid transparent;
+  font-size: 14px;
+  gap: 8px;
+}
+.admin-dialog .btn.admin-btn-quiet {
+  border-color: #c4d2d3;
+}
+.admin-dialog-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 12px;
+}
+.admin-dialog-danger {
+  background: #a1260f;
+  border-color: #a1260f;
+}
+.admin-dialog-danger:hover:not(:disabled) {
+  background: #861e0c;
+}
+
+/* Commercial rules (seasons, age bands, promotions, price-rule conditions) */
+.admin-field input[type="date"] {
+  min-width: 0;
+}
+.admin-field input[aria-invalid="true"],
+.admin-field select[aria-invalid="true"],
+.admin-field textarea[aria-invalid="true"] {
+  border-color: #a1260f;
+  box-shadow: 0 0 0 1px #a1260f;
+}
+.admin-field-error {
+  margin: 0;
+  color: #a1260f;
+  font-size: 13px;
+  font-weight: 700;
+}
+.admin-tabs {
+  margin: 0 0 22px;
+  border-bottom: 1px solid var(--line);
+}
+.admin-tabs ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.admin-tabs a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 8px 18px;
+  border: 1px solid transparent;
+  border-bottom: 0;
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+  color: var(--navy);
+  font-size: 14px;
+  font-weight: 700;
+  transition: background var(--dur-fast) var(--ease-out);
+}
+.admin-tabs a:hover {
+  background: var(--teal-soft);
+}
+.admin-tabs a[aria-current="page"] {
+  border-color: var(--line);
+  background: var(--white);
+  box-shadow: inset 0 -3px 0 var(--orange-dark);
+}
+.admin-status-slot:empty {
+  display: none;
+}
+.admin-badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 100px;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.admin-table .admin-badge-draft,
+.admin-badge-draft {
+  background: var(--sun-soft);
+  color: #5c3f00;
+}
+.admin-table .admin-badge-approved,
+.admin-badge-approved {
+  background: var(--teal-soft);
+  color: #0a5f5a;
+}
+.admin-table .admin-badge-inactive,
+.admin-badge-inactive {
+  background: #e6eaee;
+  color: #34414b;
+}
+.admin-commercial-filters {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.admin-commercial-form {
+  grid-template-columns: minmax(0, 1fr);
+}
+.admin-form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.admin-row-actions .admin-hint {
+  max-width: 28ch;
+  font-size: 12px;
+  line-height: 1.4;
+}
+.admin-pagination {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 16px;
+  color: var(--muted);
+  font-size: 14px;
+}
+.admin-history-changes {
+  margin: 6px 0 0;
+  padding-left: 18px;
+  color: var(--ink);
+  font-size: 13px;
+}
+.admin-table-wrap:focus-visible {
+  outline: 3px solid var(--teal-ink);
+  outline-offset: 2px;
+}
+@media (min-width: 700px) {
+  .admin-commercial-form {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .admin-commercial-form .admin-field-wide,
+  .admin-commercial-form .admin-form-actions {
+    grid-column: 1 / -1;
+  }
+  /* Side-by-side fields: reserve two label lines so the inputs of one row line up even when a label wraps. */
+  .admin-commercial-form .admin-field:not(.admin-field-wide) > label {
+    display: flex;
+    align-items: flex-end;
+    min-height: 2.7em;
+    line-height: 1.35;
+  }
+}
+/* The settings form nests two-column fieldsets: stack them until there is room to set them side by side,
+   otherwise every input shrinks to ~80 px at tablet width. */
+@media (min-width: 700px) and (max-width: 1279px) {
+  .admin-settings-form {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (max-width: 560px) {
+  .admin-commercial-filters {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* Audit log viewer */
+.admin-audit-filters {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.admin-audit-actions {
+  grid-column: 1 / -1;
+}
+.admin-audit-status {
+  margin: 0 0 12px;
+}
+.admin-audit-table {
+  min-width: 860px;
+}
+.admin-audit-id {
+  color: var(--muted);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+.admin-audit-detail-row > td {
+  background: var(--sand-warm);
+}
+.admin-audit-detail h4 {
+  margin: 14px 0 6px;
+  color: var(--navy);
+  font-size: 13px;
+}
+.admin-audit-diff {
+  display: grid;
+  gap: 6px;
+}
+.admin-audit-diff-head,
+.admin-audit-diff-row {
+  display: grid;
+  grid-template-columns: minmax(120px, 0.6fr) minmax(0, 1fr) minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+}
+.admin-audit-diff-head {
+  color: var(--navy);
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.admin-audit-diff-row {
+  padding: 6px 8px;
+  border-left: 4px solid transparent;
+  border-radius: 6px;
+}
+.admin-audit-diff-changed {
+  border-left-color: var(--orange-dark);
+  background: var(--sun-soft);
+}
+.admin-audit-key {
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+.admin-audit-flag {
+  color: var(--orange-dark);
+  font-size: 12px;
+}
+.admin-audit-diff pre,
+.admin-audit-json {
+  margin: 0;
+  max-width: 100%;
+  overflow-x: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 12px;
+}
+@media (max-width: 760px) {
+  .admin-audit-filters {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .admin-audit-diff-head {
+    display: none;
+  }
+  .admin-audit-diff-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (max-width: 560px) {
+  .admin-audit-filters {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.admin-transport-filters {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+  margin-bottom: 16px;
+}
+@media (min-width: 700px) {
+  .admin-transport-filters {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+/* MFA enrollment */
+.admin-mfa-enroll-title {
+  margin: 0 0 8px;
+  font-size: 16px;
+}
+.admin-mfa-steps {
+  margin: 0 0 12px;
+  padding-left: 20px;
+  line-height: 1.6;
+}
+.admin-mfa-qr {
+  display: block;
+  width: 192px;
+  height: 192px;
+  margin: 0 0 12px;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: #fff;
+  image-rendering: pixelated;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .admin-root *,
+  .auth-root * {
+    transition: none !important;
+    animation: none !important;
+  }
+}

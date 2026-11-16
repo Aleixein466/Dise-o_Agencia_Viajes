@@ -3,7 +3,10 @@ import { loadEnvConfig } from "@next/env";
 import type { NextConfig } from "next";
 
 // The single local .env lives at the monorepo root (see .env.example); Next only reads apps/web by default.
-loadEnvConfig(resolve(process.cwd(), "../.."));
+// Next already called loadEnvConfig for apps/web before evaluating this file and @next/env caches that result, so
+// without `forceReload` this call is a no-op: API_INTERNAL_URL stays unset and the /api/v1 proxy answers 404.
+// Variables already present in the shell keep precedence over the file.
+loadEnvConfig(resolve(process.cwd(), "../.."), process.env.NODE_ENV !== "production", console, true);
 
 // Baseline security headers (ASVS V3/V14). Script/style CSP with nonces is tracked as backlog F1-09:
 // it needs a proxy-based nonce and is not safe to add blindly to statically rendered pages.
@@ -33,6 +36,8 @@ function apiRewrites() {
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
+  // A second isolated E2E instance builds into .next-ci so it never replaces files a running demo is serving.
+  distDir: process.env.NEXT_DIST_DIR || ".next",
   transpilePackages: ["@ricaurte/db"],
   async rewrites() {
     return apiRewrites();

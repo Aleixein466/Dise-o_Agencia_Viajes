@@ -4,6 +4,7 @@ import type { NestFastifyApplication } from "@nestjs/platform-fastify";
 import { AppModule } from "./app.module";
 import { configureApp, createAdapter } from "./app.factory";
 import { parseEnv } from "./config/env";
+import { NotificationsService } from "./notifications/notifications.service";
 
 // The single local .env lives at the monorepo root. Existing variables win; a missing file is fine (CI, containers).
 function loadRootEnv(): void {
@@ -24,6 +25,21 @@ async function bootstrap(): Promise<void> {
   // SIGTERM/SIGINT drain in-flight requests, close the server and disconnect the database.
   app.enableShutdownHooks();
   await app.listen(env.PORT, env.HOST);
+  if (env.NOTIFICATIONS_DISPATCH_INTERVAL_MS > 0) {
+    const notifications = app.get(NotificationsService);
+    let running = false;
+    // One pass at a time; a failed pass is reported without details (rows record their own error class).
+    setInterval(() => {
+      if (running) return;
+      running = true;
+      notifications
+        .dispatch(20)
+        .catch(() => console.error("notification dispatch pass failed"))
+        .finally(() => {
+          running = false;
+        });
+    }, env.NOTIFICATIONS_DISPATCH_INTERVAL_MS).unref();
+  }
 }
 
 bootstrap().catch((error: unknown) => {

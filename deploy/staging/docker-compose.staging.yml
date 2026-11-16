@@ -1,0 +1,102 @@
+# Reproducible staging stack: PostgreSQL + API. The web app runs on Vercel (branch `staging`) with
+# API_INTERNAL_URL pointing at this API through HTTPS. See docs/operations/STAGING.md.
+# Usage (from the repository root, on the staging host):
+#   cp deploy/staging/.env.staging.example deploy/staging/.env.staging   # fill in, never commit
+#   docker compose -f deploy/staging/docker-compose.staging.yml --env-file deploy/staging/.env.staging up -d --build
+#   docker compose -f deploy/staging/docker-compose.staging.yml --env-file deploy/staging/.env.staging run --rm migrate
+# Nothing here enables real charges or real mail: PAYMENT_ADAPTER and MAIL_ADAPTER default to "disabled".
+name: ricaurte-staging
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?set POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-ricaurte_staging}
+    # No published port: only the API container reaches the database.
+    volumes:
+      - staging_pg:/var/lib/postgresql/data
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+
+  api:
+    build:
+      context: ../..
+      dockerfile: apps/api/Dockerfile
+    image: ricaurte-api:staging
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      HOST: 0.0.0.0
+      PORT: 4000
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-ricaurte_staging}
+      APP_ORIGIN: ${APP_ORIGIN:?set APP_ORIGIN (staging web origin)}
+      WEB_ORIGIN: ${WEB_ORIGIN:?set WEB_ORIGIN (staging web origin)}
+      TRUST_PROXY_HOPS: ${TRUST_PROXY_HOPS:-1}
+      LOG_LEVEL: ${LOG_LEVEL:-warn}
+      MFA_ENCRYPTION_KEY: ${MFA_ENCRYPTION_KEY:?set MFA_ENCRYPTION_KEY}
+      CUSTOMER_CODE_SECRET: ${CUSTOMER_CODE_SECRET:?set CUSTOMER_CODE_SECRET}
+      PUBLIC_QUOTE_REQUESTS_ENABLED: ${PUBLIC_QUOTE_REQUESTS_ENABLED:-false}
+      PQRS_INTAKE_ENABLED: ${PQRS_INTAKE_ENABLED:-false}
+      PQRS_HOLIDAYS: ${PQRS_HOLIDAYS:-colombia}
+      PAYMENT_ADAPTER: ${PAYMENT_ADAPTER:-disabled}
+      WOMPI_PUBLIC_KEY: ${WOMPI_PUBLIC_KEY:-}
+      WOMPI_PRIVATE_KEY: ${WOMPI_PRIVATE_KEY:-}
+      WOMPI_EVENTS_SECRET: ${WOMPI_EVENTS_SECRET:-}
+      WOMPI_INTEGRITY_SECRET: ${WOMPI_INTEGRITY_SECRET:-}
+      MAIL_ADAPTER: ${MAIL_ADAPTER:-disabled}
+      SMTP_URL: ${SMTP_URL:-}
+      MAIL_FROM: ${MAIL_FROM:-}
+      MAIL_REAL_DELIVERY_APPROVED: ${MAIL_REAL_DELIVERY_APPROVED:-false}
+      NOTIFICATIONS_DISPATCH_INTERVAL_MS: ${NOTIFICATIONS_DISPATCH_INTERVAL_MS:-0}
+      MEDIA_STORAGE_DIR: /data/private-media
+    volumes:
+      - staging_media:/data/private-media
+    ports:
+      # Loopback only: put a TLS reverse proxy (Caddy/Nginx or the platform's) in front of it.
+      - "127.0.0.1:${API_PORT:-4000}:4000"
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
+    restart: unless-stopped
+
+  # One-off: apply migrations (never `migrate dev` / reset on staging).
+  migrate:
+    image: ricaurte-api:staging
+    profiles: ["ops"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-ricaurte_staging}
+    working_dir: /repo/packages/db
+    command: ["/repo/packages/db/node_modules/.bin/prisma", "migrate", "deploy"]
+
+  # One-off: create the first ADMIN (MFA enrolment on first login). Credentials only via the env file.
+  bootstrap:
+    image: ricaurte-api:staging
+    profiles: ["ops"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-ricaurte_staging}
+      BOOTSTRAP_ADMIN_EMAIL: ${BOOTSTRAP_ADMIN_EMAIL:-}
+      BOOTSTRAP_ADMIN_PASSWORD: ${BOOTSTRAP_ADMIN_PASSWORD:-}
+      BOOTSTRAP_ADMIN_NAME: ${BOOTSTRAP_ADMIN_NAME:-Administrador staging}
+    working_dir: /repo/apps/api
+    command: ["/repo/apps/api/node_modules/.bin/tsx", "src/auth/bootstrap.ts"]
+
+volumes:
+  staging_pg:
+  staging_media:

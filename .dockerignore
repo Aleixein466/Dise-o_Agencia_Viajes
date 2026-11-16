@@ -1,0 +1,16 @@
+**/node_modules
+**/.next
+**/.next-ci
+**/dist
+**/coverage
+**/test-results
+**/playwright-report
+.git
+.claude
+.orchestra
+.env
+.env.*
+!.env.example
+docs/input
+**/*.log
+tsconfig.tsbuildinfo

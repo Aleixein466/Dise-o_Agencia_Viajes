@@ -10,9 +10,24 @@ function statusOf(exception: unknown): number {
   return typeof status === "number" && status >= 400 && status <= 599 ? status : 500;
 }
 
+const CODE = /^[A-Z][A-Z0-9_]{1,63}$/;
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** Only a validated error code and conflicting record id pass through; messages never do. */
+function extensions(exception: unknown): { code?: string; conflictId?: string } {
+  if (!(exception instanceof HttpException)) return {};
+  const response = exception.getResponse();
+  if (!response || typeof response !== "object") return {};
+  const { code, conflictId } = response as Record<string, unknown>;
+  return {
+    ...(typeof code === "string" && CODE.test(code) ? { code } : {}),
+    ...(typeof conflictId === "string" && UUID.test(conflictId) ? { conflictId } : {}),
+  };
+}
+
 /**
- * Every error leaves as RFC 9457 problem+json. Only the status reason phrase is exposed:
- * messages, stack traces and causes stay in the server log.
+ * Every error leaves as RFC 9457 problem+json. Only the status reason phrase and a validated error code / conflict id
+ * are exposed: messages, stack traces and causes stay in the server log.
  */
 @Catch()
 export class ProblemFilter implements ExceptionFilter {
@@ -32,6 +47,7 @@ export class ProblemFilter implements ExceptionFilter {
       title: STATUS_CODES[status] ?? "Error",
       status,
       requestId: request.id,
+      ...extensions(exception),
     });
     void reply.status(status).header("content-type", PROBLEM_CONTENT_TYPE).send(body);
   }

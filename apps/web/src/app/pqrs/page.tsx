@@ -1,14 +1,23 @@
 import type { Metadata } from "next";
-export const metadata: Metadata = { alternates: { canonical: "/pqrs" }, robots: { index: false, follow: true } };
+import { PqrsIntakeForm, PqrsTrackForm } from "@/components/pqrs/pqrs-public";
+
+export const metadata: Metadata = {
+  title: "PQRS",
+  alternates: { canonical: "/pqrs" },
+  robots: { index: false, follow: true },
+};
+
 export default function PQRS() {
   return (
     <div className="shell simple-page">
       <span className="eyebrow">ATENCIÓN AL CLIENTE</span>
       <h1>PQRS</h1>
       <p>
-        El módulo de peticiones, quejas, reclamos y sugerencias se activará cuando la agencia facilite su información
-        legal, los canales oficiales y el flujo de atención. Esta página no recibe solicitudes todavía.
+        Radica una petición, queja, reclamo o sugerencia, o consulta el estado de una PQRS ya radicada con tu referencia
+        y tu código de seguimiento.
       </p>
+      <PqrsIntakeForm />
+      <PqrsTrackForm />
     </div>
   );
 }
