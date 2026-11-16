@@ -58,8 +58,12 @@ Marca cada punto al entregarlo.
 - [ ] **Dominio de correo** del remitente (p. ej. `reservas@<dominio>`) con SPF, DKIM y DMARC configurados.
 - [ ] **Proveedor transaccional** (SMTP o API) y **autorización escrita** para enviar correos reales. Activa
       `MAIL_REAL_DELIVERY_APPROVED=true`.
-- [ ] **Canales oficiales**: teléfono, WhatsApp, dirección física y horario. Aparecen en el pie, en contacto y en los
-      correos.
+- [ ] **Canales oficiales**: teléfono, WhatsApp, correo, dirección física, horario y redes. Se cargan en
+      `/admin/configuracion` (perfil de la agencia) y aparecen en el pie y en `/contacto` sin volver a desplegar; también
+      en los correos. Mientras falten, la web indica «pendientes de confirmación» y no muestra valores inventados.
+- [ ] **Contenido del inicio**: titular, botón, avisos, destinos destacados y preguntas frecuentes, publicados desde
+      `/admin/contenido` con aprobación. Las imágenes del hero y de los avisos requieren fotografías con derechos de uso
+      y el endpoint de medios públicos (hoy ausente).
 
 ## E. Técnico e infraestructura
 

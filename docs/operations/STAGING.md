@@ -18,8 +18,9 @@ Navegador ──HTTPS──> Web Next.js (Vercel, rama `staging`, protegida) ─
 ```
 
 - **Web:** el proyecto de Vercel ya existe (Root Directory `apps/web`; ver `DEPLOYMENT.md`).
-  - `API_INTERNAL_URL` debe apuntar al API de staging por HTTPS y definirse **en el build**, porque la regla de
-    reescritura se fija en `next build`.
+  - `API_INTERNAL_URL` debe apuntar al API de staging por HTTPS y definirse **en el build** (la regla de
+    reescritura se fija en `next build`) **y en tiempo de ejecución** (el servidor de Next lee el contenido público
+    desde ahí; ver «Contenido público y caché»).
   - `SITE_INDEXING=false`.
 - **API y BD:** `deploy/staging/docker-compose.staging.yml` (imagen `apps/api/Dockerfile`).
   - El API escucha solo en 127.0.0.1 del servidor.
@@ -64,6 +65,33 @@ Navegador ──HTTPS──> Web Next.js (Vercel, rama `staging`, protegida) ─
 | `PQRS_HOLIDAYS`                                                  | `colombia`                           | Ver `PQRS_PLAZOS.md`.                                                                                                  |
 | `NOTIFICATIONS_DISPATCH_INTERVAL_MS`                             | `0`                                  | Con el correo desactivado no hay nada que despachar.                                                                   |
 | Web: `API_INTERNAL_URL`, `SITE_INDEXING`, `NEXT_PUBLIC_SITE_URL` | URL del API, `false`, URL de staging | Ningún secreto en `NEXT_PUBLIC_*`.                                                                                     |
+
+## Contenido público y caché
+
+El inicio (titular y botón del hero, avisos, destinos destacados), las preguntas frecuentes, `/contacto` y el pie leen
+el contenido **publicado** del API (`GET /api/v1/public/content` y `/public/agency`). El API solo devuelve lo
+publicado; los borradores nunca llegan a la web.
+
+- **Sin API o con error:** la web muestra el texto estático aprobado (sin avisos ni destacados; contacto con la página
+  de Facebook). Ninguna página falla por esto, así que las vistas previas sin API siguen funcionando. Si el API no
+  respondía durante `next build`, las páginas se generan con ese texto estático y pasan al contenido publicado al
+  guardar algo en el panel o, a más tardar, 1 hora después de generarse: conviene compilar con el API arriba.
+- **Caché:** cada lectura se guarda 1 hora y lleva la etiqueta `public-content`. Al guardar o publicar en
+  `/admin/contenido` o `/admin/configuracion`, el navegador del administrador llama a `POST /api/revalidate-content`,
+  que **expira** la etiqueta al instante (`expire: 0`, sin «stale-while-revalidate»): la siguiente visita reconstruye la
+  página con el contenido nuevo y nunca se vuelve a servir algo que el personal acaba de retirar.
+  - La ruta exige mismo origen, sesión de personal con MFA, el permiso `content:write` o `settings:write` y el token
+    CSRF de la sesión. No recibe contenido: solo invalida.
+  - Un cambio hecho directamente en la base o el API, sin pasar por el panel, tarda **hasta 1 hora** en verse.
+  - Si el API cae justo cuando se regenera una página, esa copia se genera con el texto estático y se queda hasta la
+    siguiente invalidación o, a más tardar, 1 hora.
+- **Preguntas frecuentes:** con al menos una pregunta publicada se muestran solo las publicadas. Sin ninguna (sitio
+  nuevo o todas retiradas) se mantiene el texto estático aprobado, para no dejar la sección vacía; para ocultar una
+  pregunta estática hay que publicar las propias.
+- **Imágenes:** el API aún no expone medios públicos, así que el hero y los avisos se muestran sin imagen. Las fotos
+  quedarán disponibles cuando exista ese endpoint y haya fotografías con derechos de uso (`GO_LIVE_CHECKLIST.md`, A).
+- **Comprobación en staging:** publicar un aviso en `/admin/contenido`; el inicio debe mostrarlo en unos segundos y
+  desaparecer al retirarlo. Con el API apagado, `/` y `/contacto` responden 200 con el texto estático.
 
 ## Límites conocidos (antes de producción)
 
@@ -112,4 +140,10 @@ staging cargadas. Ninguno borra volúmenes. **No se aplican a producción** sin 
 
 - `docker compose -f deploy/staging/docker-compose.staging.yml config` es válido. Sin secretos, Compose se niega a
   iniciar.
-- `docker build -f apps/api/Dockerfile .` produce la imagen. El resultado del arranque local se anota en `CODEX_HANDOFF.md`.
+- 2026-11-15, en la máquina de desarrollo, con un proyecto Compose aparte (`ricaurte-staging-check`) y secretos de prueba desechables fuera del repositorio:
+  - `up -d --build` construyó la imagen del API y levantó PostgreSQL y el API;
+  - `run --rm migrate` aplicó todas las migraciones desde cero;
+  - los smoke tests respondieron `/health` 200, `/health/ready` 200, `/auth/session` 401, y `/public/content` y `/public/agency` 200 sin datos;
+  - la web de producción (`next start`) apuntando a ese API sirvió `/`, `/contacto`, `/ingresar`, `/pqrs` y `/destinos` con 200, con el texto estático de respaldo (sin canales inventados), y `/api/revalidate-content` respondió 401 sin sesión.
+  - Se detuvo todo con `down`, sin borrar volúmenes: quedan `ricaurte-staging-check_staging_pg` y `ricaurte-staging-check_staging_media` (datos de prueba; se borran con `docker volume rm` si no hacen falta).
+  - No se desplegó nada público ni se usaron llaves de pago ni correo reales.

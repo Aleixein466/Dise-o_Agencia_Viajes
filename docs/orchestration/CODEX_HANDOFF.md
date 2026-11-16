@@ -285,4 +285,26 @@ Restaurar el CLI Docker de Windows, validar `docker compose config`, levantar ú
 - **Defectos hallados por E2E y corregidos:** colisión de `id` entre encabezado y campo "Título" en Contenido; foco del perfil de Clientes antes del render; temporadas de corridas previas empujaban la fila a la página 2; locator ambiguo del historial de bloques (sección anidada).
 - **Runner E2E:** `-Spec "a.spec.ts,b.spec.ts"` corre lotes con la misma instancia aislada (omite auth). Cada lote debe empezar por `catalog-cartagena.spec.ts`, que crea las sesiones admin/finance que el seed invalida.
 - **Memoria:** la corrida del 2026-11-15 02:xx fue cortada por el sistema (≈1,4 GB libres; Edge, VS Code y WSL ajenos a la prueba). Se reutilizó el build vigente (`-SkipBuild`) y se validó primero por lotes. Resultado: **31/31 + auth 2/2**.
-- **Pendiente:** el sitio público aún no consume `/public/content` ni `/public/agency`; los medios públicos solo devuelven `{id, alt}`.
+- **Pendiente (resuelto en la sección siguiente, salvo los medios):** el sitio público no consumía `/public/content` ni `/public/agency`; los medios públicos solo devuelven `{id, alt}` y siguen sin endpoint de archivo.
+
+## Actualización: rediseño, contenido público y validación integral (2026-11-15) — IMPLEMENTADO Y PROBADO
+
+- **Rediseño Tropical Premium** (`95ceff7`, `fdc62cf`): sistema visual, fuentes DM Sans y Playfair, portal y admin. 21st.dev está conectado con el plan gratuito y se usó solo como referencia (sus componentes asumen Tailwind/shadcn). Las referencias de TikTok eran ilegibles y no se describe su contenido.
+- **Contenido público conectado a la web:**
+  - `apps/web/src/lib/public-content.ts` lee `/public/agency` y `/public/content`, valida con zod, rechaza enlaces no seguros (`safeHref`, `whatsappHref`, `telHref`, `mailHref`) y devuelve `null` ante cualquier fallo, de modo que cada página conserva su texto estático.
+  - Inicio: titular, subtítulo y botón de la portada, avisos, destinos destacados (enlazan a `/cotizar?destino=`) y FAQ. Contacto y pie: WhatsApp, correo, teléfono, dirección, horario y redes; sin datos muestran «pendientes de confirmación».
+  - Caché: lecturas de 1 h con la etiqueta `public-content`. Cada guardado o publicación en `/admin/contenido` o `/admin/configuracion` llama desde `lib/auth/client.ts` a `POST /api/revalidate-content`, que expira la etiqueta al instante (`expire: 0`).
+  - Seguridad de la ruta: mismo origen (un `Origin` ausente, `null` o malformado da 403), sesión de personal con MFA, permiso `content:write` o `settings:write` y token CSRF comparado en tiempo constante. No recibe ni devuelve contenido.
+  - FAQ: con al menos una pregunta publicada solo se muestran las publicadas; con ninguna se mantiene el texto estático (decisión de diseño señalada por Codex; ver `BOARD.md`).
+  - Imágenes: el API no expone archivos públicos, así que hero y avisos van sin imagen.
+- **Revisión visual** de 32 pantallas × 360/768/1366/1920 px en navegador real, con arreglos en portal, admin, PQRS y contacto (lista en `BOARD.md`).
+- **E2E:**
+  - Resultado de la corrida completa del 2026-11-15 (21:04–21:10): **32/32 + auth 2/2**.
+  - La prueba responsive ahora ignora las peticiones `_rsc=` al esperar reposo de red. Chromium deja sin terminar las revalidaciones en segundo plano de las respuestas `stale-while-revalidate` y `networkidle` expiraba desde la segunda navegación (demostrado con un servidor aislado).
+  - Nueva prueba del barrido del portal del cliente (código por correo vía el buzón de archivos, `/mi-cuenta`, reserva, solicitud y ahorro).
+  - Las pruebas de contenido y configuración comprueban la web pública, incluidos destacados, y la limpieza final también invalida la caché.
+- **Auditoría Codex** (adversarial, árbol de trabajo): ver `BOARD.md`. Hallazgo alto corregido (`expire: 0`); la decisión sobre FAQ vacía quedó documentada. Codex no volvió a revisar el código posterior.
+- **Demo y staging:**
+  - Demo verificada con `start-demo.ps1 -SkipBuild` y detenida con `stop-demo.ps1` (el script detiene también el contenedor Mailpit; se conserva).
+  - Staging local: ver `docs/operations/STAGING.md` (sección «Verificación local realizada»).
+- **Memoria de la máquina:** 12 GB con Edge, VS Code y WSL abiertos. Un `next build` en paralelo con otros procesos terminó con `0xC0000409`; compilado a solas funciona. Por eso las E2E y los builds van en serie.

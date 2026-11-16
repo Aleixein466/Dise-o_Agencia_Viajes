@@ -1,6 +1,6 @@
 # Tablero de seguimiento — Ricaurte Tours 3.0
 
-Actualizado: 2026-11-13. Estados: **Pendiente** · **En desarrollo** · **En revisión** · **Bloqueado** · **Completado**.
+Actualizado: 2026-11-15. Estados: **Pendiente** · **En desarrollo** · **En revisión** · **Bloqueado** · **Completado**.
 "Completado" = fusionado en una rama de integración con lint, typecheck, unit, build y (si aplica) E2E en verde y revisión de un modelo distinto al autor. Nada está en `main` todavía (PR #1 y #2 sin fusionar por decisión del usuario).
 
 ## Lote 4 — cierre de la base
@@ -119,8 +119,34 @@ Leyenda: **Implementado** (código + pruebas) · **Parcial** · **Ausente** · *
 | Inicio, destinos, cotizar, contacto, PQRS, acceso | Revisado en navegador (360 y 1366 px) | 0 px de desborde, 0 errores de consola; capturas en `%TEMP%\ricaurte-redesign\after` |
 | Portal y admin                                    | Implementado y probado                | `portal.css`, `admin.css`; barridos responsive y axe de la E2E                       |
 
-- E2E aislado completo: **31/31** tras corregir `scrollable-region-focusable` en el cronograma de ahorro del portal (región enfocable). Domain 55, API 339, web 179; lint, typecheck y prettier OK.
+- Historial de la E2E: 30/31 antes del arreglo (fallo `scrollable-region-focusable` en el cronograma de ahorro del portal). Con el arreglo, la suite completa dio 31/31 + auth 2/2 sobre `fdc62cf`. Los resultados vigentes están en la sección siguiente.
 - 21st.dev **conectado** (plan gratuito: búsqueda libre, 2 recuperaciones de código/día, sin generación IA). Sus componentes asumen Tailwind/shadcn; se usan como referencia y se implementan en el CSS actual.
 - Referencias TikTok: inaccesibles (página vacía sin JavaScript); no se describe su contenido.
-- Sin auditoría Codex en este lote (CLI no disponible en la máquina). Revisión independiente pendiente.
+- Auditoría independiente con Codex: ver la sección siguiente (la nota anterior de «CLI no disponible» era errónea: Codex 0.167.2 está instalado y autenticado).
 - Docker Desktop estaba apagado: se arrancaron los contenedores existentes (PostgreSQL :5433, Mailpit); volúmenes intactos.
+
+## Validación integral, contenido público y revisión visual (2026-11-15)
+
+| Área                                                                                    | Estado                                                    | Evidencia                                                                                                                                                                  |
+| --------------------------------------------------------------------------------------- | --------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Suite E2E completa (PostgreSQL aislado `ricaurte_cartagena_e2e`, 1 worker)              | **32/32 + auth 2/2** (4,8 min + 4 s; 21:04–21:10)         | Corrida única, sin otra E2E en paralelo, sobre el árbol de trabajo previo al commit de cierre; salida 0                                                                    |
+| Contenido público en la web: portada, avisos, destacados, FAQ, contacto, WhatsApp y pie | Implementado y probado en navegador                       | `lib/public-content.ts`; `public-admin-content.spec.ts` y `public-admin-settings.spec.ts` publican, comprueban la web pública y retiran                                    |
+| Invalidación de caché desde el panel                                                    | Implementado y probado                                    | `POST /api/revalidate-content` (mismo origen, MFA, permiso, CSRF; `expire: 0`): 10 pruebas unitarias, E2E y sondeo real 403/403/401/403                                    |
+| Revisión visual en navegador real                                                       | Hecha: 32 pantallas × 360/768/1366/1920 px (128 capturas) | Hojas de contacto en `%TEMP%\ricaurte-redesign\sheets`; axe y desborde dentro de la E2E                                                                                    |
+| Demo local (`start-demo.ps1 -SkipBuild`)                                                | Verificada 21:11–21:12                                    | 6 páginas públicas × 360/1366 px: 0 px de desborde, fuentes cargadas, sin errores (solo el 401 esperado de `/mi-cuenta` sin sesión); detenida con `stop-demo.ps1`          |
+| Staging local (Compose aparte, no desplegado)                                           | Verificado                                                | Imagen del API, migraciones desde cero, `/health` 200, `/auth/session` 401, `/public/*` 200 y la web de producción contra ese API; detalle en `docs/operations/STAGING.md` |
+| Auditoría independiente                                                                 | Codex 0.167.2 (adversarial, 2 pasadas)                    | Hallazgos abajo; Codex **no** revisó el código posterior a sus correcciones                                                                                                |
+
+- Defectos visuales hallados y corregidos: foco visible en el título del portal, cronograma de ahorro sin estilo, columna del portal desalineada, casilla «Solo vencidas» desalineada, botones de cabecera y de tabla que partían el texto, desalineación de entradas en Configuración (y entradas de ~80 px en tablet), tarjetas de PQRS pegadas entre sí y al texto, interlineado de los canales de contacto.
+- Hallazgos de Codex sobre este lote:
+  - Pasada 1, _Medio, corregido_: la caché de 15 s del pie obligaba a regenerar todas las rutas estáticas; ahora dura 1 h y se invalida por etiqueta.
+  - Pasada 2, _Alto, corregido_: retirar contenido seguía sirviéndose una vez por «stale-while-revalidate»; ahora `expire: 0`.
+  - Pasada 2, _Medio, decisión de diseño_: con 0 FAQ publicadas se mantiene el texto estático (sitio nuevo o todas retiradas) en vez de dejar la sección vacía. Está documentado y con prueba unitaria; el propietario puede pedir lo contrario.
+- Pruebas añadidas: ruta de revalidación (10), enlaces seguros y selección de FAQ (4), y destinos destacados con revalidación en la E2E de contenido.
+- Pruebas unitarias del repositorio (2026-11-15): domain 55, validation 2, API 339, web 193. `lint` (5 tareas), `typecheck` (6) y `prettier --check .` en verde. Revisión de secretos sobre los archivos del cambio: sin coincidencias.
+- Pendientes y límites conocidos:
+  - El API no expone medios públicos: el hero y los avisos se muestran sin imagen.
+  - Si el API cae durante una regeneración, esa copia usa el texto estático hasta la siguiente invalidación (máximo 1 h).
+  - En 1920 px el panel usa todo el ancho; es legible, pero un tope de ancho en los formularios sería un detalle de pulido.
+  - El texto del selector de archivos lo pone el navegador (inglés en Chromium sin configuración regional).
+  - Bloqueos externos sin cambios: llaves sandbox de Wompi, correo real, tarifas aprobadas, textos legales y plazos de PQRS, hosting y dominio de staging, autorización de producción.
