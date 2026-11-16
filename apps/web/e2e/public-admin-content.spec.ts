@@ -62,6 +62,8 @@ async function cleanup(page: Page) {
         if (needed && block.updatedAt)
           await post(`blocks/${block.block}/${step}`, { expectedUpdatedAt: block.updatedAt });
       }
+    // These calls went straight to the API, so the public pages (cached) are told to refresh like the admin UI does.
+    await fetch("/api/revalidate-content", { method: "POST", headers: { "x-csrf-token": session.csrfToken } });
   }, PREFIX);
 }
 
@@ -73,6 +75,13 @@ test.describe("Admin content", () => {
   });
 
   test("FAQ: draft, approval-gated publish, public visibility, edit lock and history", async ({ browser }) => {
+    test.setTimeout(180_000);
+    const visitor = await (await browser.newContext()).newPage();
+    // The public home is revalidated every few seconds, so poll instead of assuming instant freshness.
+    const homeShows = async (text: string) => {
+      await visitor.goto("/");
+      return (await visitor.locator(".faq-list").getByText(text).count()) > 0;
+    };
     const context = await browser.newContext({ storageState: adminStatePath });
     const page = await context.newPage();
     const question = `${PREFIX} ¿Cómo reservo ${stamp}?`;
@@ -115,12 +124,14 @@ test.describe("Admin content", () => {
     const entry = live.find((item) => item.question === question);
     expect(entry).toBeDefined();
     expect(entry!.answer).not.toContain("<script");
+    await expect.poll(() => homeShows(question), { timeout: 60_000, intervals: [3_000] }).toBe(true);
 
     // Unpublish returns it to draft and hides it again.
     await row.getByRole("button", { name: /^Despublicar/ }).click();
     await page.getByRole("dialog").getByRole("button", { name: "Despublicar" }).click();
     await expect(notice(page, /vuelto a borrador/)).toBeVisible();
     expect(JSON.stringify((await publicContent(page)).faq)).not.toContain(question);
+    await expect.poll(() => homeShows(question), { timeout: 60_000, intervals: [3_000] }).toBe(false);
 
     // Edit while draft, then history shows the lifecycle.
     row = await findRow(page, question);
@@ -195,6 +206,17 @@ test.describe("Admin content", () => {
     const context = await browser.newContext({ storageState: adminStatePath });
     const page = await context.newPage();
     const headline = `${PREFIX} Viaja con calma ${stamp}`;
+    const bannerTitle = `${PREFIX} Aviso ${stamp}`;
+    // The public home is cached; saving from the admin refreshes it, so poll instead of assuming instant freshness.
+    const visitor = await (await browser.newContext()).newPage();
+    const homeHas = async (selector: string, text: string) => {
+      await visitor.goto("/");
+      return ((await visitor.locator(selector).first().textContent()) ?? "").includes(text);
+    };
+    const bannerShown = async () => {
+      await visitor.goto("/");
+      return (await visitor.locator(".home-banners").getByText(bannerTitle).count()) > 0;
+    };
     await page.goto("/admin/contenido?tab=inicio");
     const hero = page.locator("section").filter({ has: page.getByRole("heading", { name: "Portada del inicio" }) });
     await expect(hero).toBeVisible();
@@ -223,6 +245,9 @@ test.describe("Admin content", () => {
     await dialog.getByRole("button", { name: "Publicar" }).click();
     await expect(hero.getByRole("status").filter({ hasText: "Publicado: ya se muestra" })).toBeVisible();
     expect((await publicContent(page)).home.hero).toMatchObject({ headline, ctaHref: "/cotizar" });
+    await expect.poll(() => homeHas("h1", headline), { timeout: 60_000, intervals: [3_000] }).toBe(true);
+    await expect(visitor.locator(".hero-actions a.btn-primary")).toHaveAttribute("href", "/cotizar");
+    await expect(visitor.locator(".hero-actions a.btn-primary")).toContainText("Cotizar");
 
     // A later draft stays private.
     await hero.getByLabel(/^Titular/).fill(`${headline} SIN APROBAR`);
@@ -240,16 +265,63 @@ test.describe("Admin content", () => {
     await banners.getByRole("button", { name: "Agregar aviso" }).click();
     await banners.getByRole("button", { name: "Guardar borrador" }).click();
     await expect(banners.getByText("El título debe tener al menos 2 caracteres.")).toBeVisible();
-    await banners.getByLabel(/^Título(?: \*)?$/).fill(`${PREFIX} Aviso ${stamp}`);
+    await banners.getByLabel(/^Título(?: \*)?$/).fill(bannerTitle);
     await banners.getByRole("button", { name: "Guardar borrador" }).click();
     await expect(banners.getByRole("status").filter({ hasText: "Borrador guardado" })).toBeVisible();
     expect((await publicContent(page)).home.banners).toBeNull();
+    expect(await bannerShown()).toBe(false);
+
+    // Publish the banner (approval dialog), see it on the home page, then retire it again.
+    await banners.getByRole("button", { name: /^Publicar Avisos/ }).click();
+    await page.getByRole("dialog").getByRole("button", { name: "Publicar" }).click();
+    await expect(banners.getByRole("status").filter({ hasText: "Publicado: ya se muestra" })).toBeVisible();
+    expect(JSON.stringify((await publicContent(page)).home.banners)).toContain(bannerTitle);
+    await expect.poll(bannerShown, { timeout: 60_000, intervals: [3_000] }).toBe(true);
+    await banners.getByRole("button", { name: /^Retirar Avisos/ }).click();
+    await page.getByRole("dialog").getByRole("button", { name: "Retirar" }).click();
+    await expect(banners.getByRole("status").filter({ hasText: "Retirado del sitio" })).toBeVisible();
+    expect((await publicContent(page)).home.banners).toBeNull();
+    await expect.poll(bannerShown, { timeout: 60_000, intervals: [3_000] }).toBe(false);
+
+    // Featured destinations: only a published destination can be featured; the home links it to the quote builder.
+    const catalog = await page.evaluate(
+      async () => (await (await fetch("/api/v1/catalog/destinations")).json()) as { name: string; status: string }[],
+    );
+    const published = catalog.find(
+      (item) => item.status === "PUBLISHED" && catalog.filter((other) => other.name === item.name).length === 1,
+    );
+    expect(published, "the seeded instance has a uniquely named published destination").toBeTruthy();
+    const featured = page
+      .locator("section")
+      .filter({ has: page.getByRole("heading", { name: "Destinos destacados" }) });
+    const featuredShown = async () => {
+      await visitor.goto("/");
+      return (await visitor.locator(".home-featured").getByRole("link", { name: published!.name }).count()) > 0;
+    };
+    await featured.getByRole("checkbox", { name: published!.name, exact: true }).check();
+    await featured.getByRole("button", { name: "Guardar borrador" }).click();
+    await expect(featured.getByRole("status").filter({ hasText: "Borrador guardado" })).toBeVisible();
+    expect(await featuredShown()).toBe(false);
+    await featured.getByRole("button", { name: /^Publicar Destinos destacados/ }).click();
+    await page.getByRole("dialog").getByRole("button", { name: "Publicar" }).click();
+    await expect(featured.getByRole("status").filter({ hasText: "Publicado: ya se muestra" })).toBeVisible();
+    await expect.poll(featuredShown, { timeout: 60_000, intervals: [3_000] }).toBe(true);
+    await expect(visitor.locator(".home-featured").getByRole("link", { name: published!.name })).toHaveAttribute(
+      "href",
+      `/cotizar?destino=${encodeURIComponent(published!.name)}`,
+    );
+    await featured.getByRole("button", { name: /^Retirar Destinos destacados/ }).click();
+    await page.getByRole("dialog").getByRole("button", { name: "Retirar" }).click();
+    await expect(featured.getByRole("status").filter({ hasText: "Retirado del sitio" })).toBeVisible();
+    await expect.poll(featuredShown, { timeout: 60_000, intervals: [3_000] }).toBe(false);
 
     // Retire the hero: the site stops showing it; history lists the lifecycle.
     await hero.getByRole("button", { name: /^Retirar Portada/ }).click();
     await page.getByRole("dialog").getByRole("button", { name: "Retirar" }).click();
     await expect(hero.getByRole("status").filter({ hasText: "Retirado del sitio" })).toBeVisible();
     expect((await publicContent(page)).home.hero).toBeNull();
+    await expect.poll(() => homeHas("h1", headline), { timeout: 60_000, intervals: [3_000] }).toBe(false);
+    expect(await homeHas("h1", "historias.")).toBe(true);
     await hero.getByRole("button", { name: /^Historial de Portada/ }).click();
     const history = page.getByRole("region", { name: /^Historial: Portada/ });
     await expect(history).toContainText("Borrador guardado");

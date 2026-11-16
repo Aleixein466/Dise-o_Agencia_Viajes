@@ -21,6 +21,7 @@ import { historicalTrips, postSources, type TripPhoto } from "@/content/historic
 import { HeroSlider } from "@/components/hero-slider";
 import { PhotoGallery } from "@/components/photo-gallery";
 import { TripCard } from "@/components/trip-card";
+import { faqItemsFor, getPublicContent, safeHref } from "@/lib/public-content";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = { alternates: { canonical: "/" } };
@@ -124,7 +125,13 @@ const archivePosts = [
   { image: "/images/archive/guatape-2021.jpg", title: "Guatapé · anuncio 2021", source: postSources.guatapeArchivo },
 ];
 
-export default function Home() {
+export default async function Home() {
+  const content = await getPublicContent();
+  const hero = content?.home.hero ?? null;
+  const heroCta = hero && hero.ctaLabel ? { label: hero.ctaLabel, href: safeHref(hero.ctaHref) } : null;
+  const banners = content?.home.banners?.items ?? [];
+  const featured = content?.home.featuredDestinations ?? null;
+  const faqItems = faqItemsFor(content, faqs);
   return (
     <>
       <section className="hero" aria-labelledby="hero-title">
@@ -132,15 +139,21 @@ export default function Home() {
           <div className="hero-copy">
             <span className="eyebrow">RICAURTE TOURS · AGENCIA DE VIAJES Y TURISMO</span>
             <h1 id="hero-title">
-              Viajes que se convierten en <em>historias.</em>
+              {hero ? (
+                hero.headline
+              ) : (
+                <>
+                  Viajes que se convierten en <em>historias.</em>
+                </>
+              )}
             </h1>
             <p>
-              Hay lugares que nos sorprenden y momentos que se quedan. Recorre las experiencias que hemos compartido e
-              imagina la siguiente.
+              {hero?.subheadline ??
+                "Hay lugares que nos sorprenden y momentos que se quedan. Recorre las experiencias que hemos compartido e imagina la siguiente."}
             </p>
             <div className="hero-actions">
-              <Link href="/destinos" className="btn btn-primary">
-                Explorar destinos <ArrowUpRight size={18} />
+              <Link href={heroCta?.href ?? "/destinos"} className="btn btn-primary">
+                {heroCta?.href ? heroCta.label : "Explorar destinos"} <ArrowUpRight size={18} />
               </Link>
               <Link href="/cotizar" className="btn btn-text">
                 Preparar mi viaje <ArrowRight size={18} />
@@ -154,6 +167,40 @@ export default function Home() {
           <HeroSlider />
         </div>
       </section>
+
+      {banners.length > 0 ? (
+        <section className="shell home-banners" aria-label="Avisos de la agencia">
+          {banners.map((banner) => {
+            const href = safeHref(banner.href);
+            return (
+              <article className="home-banner" key={banner.title}>
+                <strong>{banner.title}</strong>
+                {banner.text ? <p>{banner.text}</p> : null}
+                {href ? (
+                  <Link href={href} className="text-link">
+                    Ver más <ArrowUpRight size={16} />
+                  </Link>
+                ) : null}
+              </article>
+            );
+          })}
+        </section>
+      ) : null}
+
+      {featured && featured.items.length > 0 ? (
+        <section className="shell home-featured" aria-labelledby="featured-title">
+          <h2 id="featured-title">{featured.title ?? "Destinos destacados"}</h2>
+          <ul>
+            {featured.items.map((destination) => (
+              <li key={destination.id}>
+                <Link href={`/cotizar?destino=${encodeURIComponent(destination.name)}`}>
+                  {destination.name} <ArrowUpRight size={16} />
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
 
       <section className="search-section" aria-label="Explora ideas de viaje">
         <form className="shell discovery-search" action="/destinos">
@@ -474,7 +521,7 @@ export default function Home() {
           <p className="heading-aside">Lo que puedes hacer hoy y lo que aún está en preparación.</p>
         </div>
         <div className="faq-list">
-          {faqs.map((faq) => (
+          {faqItems.map((faq) => (
             <details key={faq.q}>
               <summary>{faq.q}</summary>
               <p>{faq.a}</p>

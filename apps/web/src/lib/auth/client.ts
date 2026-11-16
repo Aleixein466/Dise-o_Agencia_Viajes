@@ -1,5 +1,19 @@
 export type ApiResult = { ok: boolean; status: number; data: unknown };
 
+/** Public pages cache the published content; tell the web app to refresh it after an admin change. Best effort. */
+async function refreshPublicContent(csrfToken?: string): Promise<void> {
+  try {
+    await fetch("/api/revalidate-content", {
+      method: "POST",
+      credentials: "same-origin",
+      cache: "no-store",
+      headers: csrfToken ? { "x-csrf-token": csrfToken } : {},
+    });
+  } catch {
+    // The 1 hour TTL is the fallback.
+  }
+}
+
 export async function requestJson(
   path: string,
   method: "GET" | "POST" | "PATCH" | "PUT",
@@ -19,6 +33,9 @@ export async function requestJson(
       ...(body === undefined ? {} : { body: JSON.stringify(body) }),
     });
     const data: unknown = await response.json().catch(() => null);
+    if (response.ok && method !== "GET" && /^\/api\/v1\/(content|settings)(\/|$|\?)/.test(path)) {
+      await refreshPublicContent(csrfToken);
+    }
     return { ok: response.ok, status: response.status, data };
   } catch {
     return { ok: false, status: 0, data: null };

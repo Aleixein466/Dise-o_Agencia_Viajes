@@ -166,7 +166,11 @@ export function AgencyForm({ session }: Readonly<{ session: AdminSession }>) {
         ) : null}
         {!loaded && !loadError ? <p className="admin-empty">Cargando…</p> : null}
         {loaded ? (
-          <form className="admin-form admin-commercial-form" noValidate onSubmit={(event) => void submit(event)}>
+          <form
+            className="admin-form admin-commercial-form admin-settings-form"
+            noValidate
+            onSubmit={(event) => void submit(event)}
+          >
             {(Object.keys(GROUP_TITLES) as (keyof typeof GROUP_TITLES)[]).map((group) => (
               <fieldset key={group} className="admin-form admin-commercial-form">
                 <legend>{GROUP_TITLES[group]}</legend>

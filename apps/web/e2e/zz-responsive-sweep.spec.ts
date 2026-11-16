@@ -1,8 +1,8 @@
-import { mkdirSync } from "node:fs";
+import { mkdirSync, readdirSync, readFileSync } from "node:fs";
 
 import { join } from "node:path";
 import AxeBuilder from "@axe-core/playwright";
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Page, type Request } from "@playwright/test";
 import { adminStatePath, financeStatePath, stateDir } from "./e2e-state";
 
 // Milestone 6 sweep: every main screen at phone, tablet and desktop widths must not scroll horizontally, must pass
@@ -23,7 +23,43 @@ async function firstDestination(page: Page): Promise<string> {
   return href!;
 }
 
+/**
+ * "Network idle" that ignores Next's RSC prefetches (`?_rsc=`). Cached pages carry `stale-while-revalidate`, and
+ * Chromium reports those background refreshes as requests that never finish, so Playwright's own `networkidle`
+ * times out on every revisit even though the server answers at once (reproduced in isolation with a bare HTTP
+ * server). Every other request, including API calls and images, must still finish, and a stuck one is named.
+ */
+function trackRequests(page: Page) {
+  const pending = new Set<Request>();
+  const start = (request: Request) => {
+    if (!request.url().includes("_rsc=")) pending.add(request);
+  };
+  const end = (request: Request) => pending.delete(request);
+  page.on("request", start);
+  page.on("requestfinished", end);
+  page.on("requestfailed", end);
+  return {
+    async idle(timeoutMs = 30_000) {
+      await page.waitForLoadState("load");
+      const deadline = Date.now() + timeoutMs;
+      let quietSince = Date.now();
+      while (Date.now() < deadline) {
+        if (pending.size > 0) quietSince = Date.now();
+        else if (Date.now() - quietSince >= 500) return;
+        await page.waitForTimeout(100);
+      }
+      throw new Error(`Network never went idle; pending: ${[...pending].map((r) => r.url()).join(", ")}`);
+    },
+    stop() {
+      page.off("request", start);
+      page.off("requestfinished", end);
+      page.off("requestfailed", end);
+    },
+  };
+}
+
 async function check(page: Page, path: string, label: string) {
+  const network = trackRequests(page);
   const errors: string[] = [];
   const onConsole = (m: { type(): string; text(): string }) => {
     if (m.type() === "error") errors.push(m.text());
@@ -33,7 +69,7 @@ async function check(page: Page, path: string, label: string) {
     await page.setViewportSize({ width: vp.width, height: vp.height });
     const response = await page.goto(path);
     expect(response?.status(), `${label} ${vp.name} status`).toBeLessThan(400);
-    await page.waitForLoadState("networkidle");
+    await network.idle();
     await expect(page.locator("h1").first(), `${label} ${vp.name} h1`).toBeVisible();
     // Deepest elements sticking out of the viewport, so a failure names its culprit.
     const offenders = await page.evaluate(() => {
@@ -75,6 +111,7 @@ async function check(page: Page, path: string, label: string) {
   const axe = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"]).analyze();
   expect.soft(axe.violations.map((v) => `${label}: ${v.id} (${v.nodes.length})`)).toEqual([]);
   page.off("console", onConsole);
+  network.stop();
   // 401/403 probes for anonymous session checks are expected network noise, not app errors.
   expect
     .soft(
@@ -127,7 +164,7 @@ test("admin dashboard shows role-scoped indicators", async ({ browser }) => {
 });
 
 test("back-office screens are responsive and accessible", async ({ browser }) => {
-  test.setTimeout(400_000);
+  test.setTimeout(600_000);
   const adminContext = await browser.newContext({ storageState: adminStatePath });
   const admin = await adminContext.newPage();
   for (const [path, label] of [
@@ -145,6 +182,10 @@ test("back-office screens are responsive and accessible", async ({ browser }) =>
     ["/admin/usuarios", "usuarios"],
     ["/admin/auditoria", "auditoria"],
     ["/admin/transporte", "transporte"],
+    ["/admin/clientes", "clientes"],
+    ["/admin/cupos", "cupos"],
+    ["/admin/contenido", "contenido"],
+    ["/admin/configuracion", "configuracion"],
   ] as const)
     await check(admin, path, label);
   await adminContext.close();
@@ -152,4 +193,76 @@ test("back-office screens are responsive and accessible", async ({ browser }) =>
   const finance = await financeContext.newPage();
   await check(finance, "/admin/finanzas", "finanzas");
   await financeContext.close();
+});
+
+type SinkMail = { to: string; text: string; kind: string; createdAt: string };
+const sinkMails = (): SinkMail[] => {
+  const dir = process.env.E2E_MAIL_SINK_DIR ?? "";
+  return readdirSync(dir)
+    .filter((name) => name.endsWith(".json"))
+    .map((name) => JSON.parse(readFileSync(join(dir, name), "utf8")) as SinkMail);
+};
+
+// Customer portal: signs in as the customer of the reservation confirmed by public-portal.spec.ts (the same chain
+// public-savings-finance.spec.ts relies on, so run it after those specs), then sweeps the portal screens.
+test("customer portal screens are responsive and accessible", async ({ browser }) => {
+  test.setTimeout(400_000);
+  const origin = new URL(test.info().project.use.baseURL ?? "http://127.0.0.1:3201").origin;
+  const adminContext = await browser.newContext({ storageState: adminStatePath });
+  const list = (await (await adminContext.request.get("/api/v1/reservations?status=CONFIRMED")).json()) as {
+    items: Array<{ id: string }>;
+  };
+  expect(list.items.length, "needs the CONFIRMED reservation created by public-portal.spec.ts").toBeGreaterThan(0);
+  const reservationId = list.items[0].id;
+  const detail = (await (await adminContext.request.get(`/api/v1/reservations/${reservationId}`)).json()) as {
+    customer: { email: string };
+  };
+  await adminContext.close();
+  const email = detail.customer.email;
+
+  const customerContext = await browser.newContext();
+  const customer = await customerContext.newPage();
+  const since = Date.now() - 1000;
+  expect(
+    (
+      await customer.request.post("/api/v1/customer-auth/request-code", {
+        headers: { Origin: origin },
+        data: { email },
+      })
+    ).status(),
+  ).toBe(202);
+  let code: string | undefined;
+  await expect
+    .poll(() => {
+      const mail = sinkMails()
+        .filter((m) => m.to === email && m.kind === "customer_login_code" && Date.parse(m.createdAt) >= since)
+        .pop();
+      code = mail ? /(\d{8})/.exec(mail.text)?.[1] : undefined;
+      return code;
+    })
+    .toMatch(/^\d{8}$/);
+  expect(
+    (
+      await customer.request.post("/api/v1/customer-auth/verify", {
+        headers: { Origin: origin },
+        data: { email, code },
+      })
+    ).ok(),
+  ).toBe(true);
+
+  const quotes = (await (await customer.request.get("/api/v1/me/quotes")).json()) as Array<{ id: string }>;
+  const plans = (await (await customer.request.get("/api/v1/me/savings-plans")).json()) as Array<{ id: string }>;
+  const pqrs = (await (await customer.request.get("/api/v1/me/pqrs")).json()) as { items: Array<{ id: string }> };
+  expect(quotes.length, "the customer has a quote").toBeGreaterThan(0);
+  expect(plans.length, "needs the savings plan created by public-savings-finance.spec.ts").toBeGreaterThan(0);
+  const routes: Array<[string, string]> = [
+    ["/mi-cuenta", "portal-inicio"],
+    [`/mi-cuenta/reservas/${reservationId}`, "portal-reserva"],
+    [`/mi-cuenta/solicitudes/${quotes[0].id}`, "portal-solicitud"],
+    [`/mi-cuenta/ahorro/${plans[0].id}`, "portal-ahorro"],
+  ];
+  // A PQRS is filed by other customers in public-pqrs-portal.spec.ts; sweep it only when this customer has one.
+  if (pqrs.items[0]) routes.push([`/mi-cuenta/pqrs/${pqrs.items[0].id}`, "portal-pqrs"]);
+  for (const [path, label] of routes) await check(customer, path, label);
+  await customerContext.close();
 });

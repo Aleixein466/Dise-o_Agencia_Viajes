@@ -46,6 +46,8 @@ async function restore(page: Page) {
         headers: { "content-type": "application/json", "x-csrf-token": session.csrfToken },
         body: JSON.stringify({ ...body, expectedUpdatedAt: current.updatedAt }),
       });
+      // This writes through the API directly, so refresh the cached public pages the way the admin UI does.
+      await fetch("/api/revalidate-content", { method: "POST", headers: { "x-csrf-token": session.csrfToken } });
     },
     { snapshot: original, fields: FIELDS },
   );
@@ -87,6 +89,8 @@ test.describe("Admin agency settings", () => {
     await form.getByLabel(/^Correo de contacto/).fill("Info@Example.com");
     await form.getByLabel(/^Correo de reservas/).fill("reservas-interno@example.com");
     await form.getByLabel(/^Facebook/).fill("https://facebook.com/agencia-e2e");
+    await form.getByLabel(/^WhatsApp/).fill("+57 301 555 0100");
+    await form.getByLabel(/^Horario de atención/).fill("Lunes a viernes E2E");
     await form.getByRole("button", { name: "Guardar configuración" }).click();
     await expect(page.getByRole("status").filter({ hasText: "Configuración guardada." })).toBeVisible();
     await expect(form.getByLabel(/^Teléfono/)).toHaveValue("+573001234567");
@@ -103,6 +107,24 @@ test.describe("Admin agency settings", () => {
     expect(profile).toMatchObject({ tradeName: name, phone: "+573001234567", contactEmail: "info@example.com" });
     expect(JSON.stringify(profile)).not.toContain("reservas-interno@example.com");
     expect(profile).not.toHaveProperty("bookingsEmail");
+
+    // The public site shows the saved channels (the cache is refreshed on save) and never the internal mailbox.
+    const visitor = await (await browser.newContext()).newPage();
+    await expect
+      .poll(
+        async () => {
+          await visitor.goto("/contacto");
+          return visitor.locator('a[href="https://wa.me/573015550100"]').count();
+        },
+        { timeout: 60_000, intervals: [3_000] },
+      )
+      .toBeGreaterThan(0);
+    await expect(visitor.locator('a[href="mailto:info@example.com"]').first()).toBeVisible();
+    await expect(visitor.locator('a[href="tel:+573001234567"]').first()).toBeVisible();
+    await expect(visitor.getByText("Lunes a viernes E2E").first()).toBeVisible();
+    await expect(visitor.locator("footer").locator('a[href="https://facebook.com/agencia-e2e"]')).toBeVisible();
+    expect(await visitor.content()).not.toContain("reservas-interno@example.com");
+    await visitor.context().close();
 
     // History lists which fields changed, without exposing contact values.
     await page.getByRole("button", { name: "Historial" }).click();

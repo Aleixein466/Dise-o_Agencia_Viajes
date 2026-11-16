@@ -59,17 +59,21 @@
   line-height: 1.15;
   letter-spacing: -0.01em;
 }
-.portal-title:focus {
+/* The heading only receives focus from script, so screen readers land on the new screen. It is not a control, and
+   Chrome would otherwise draw a full-width box around it on every page load. Every interactive element keeps its ring. */
+.portal-title:focus,
+.portal-title:focus-visible {
   outline: none;
 }
-.portal-title:focus-visible {
-  outline: 3px solid var(--teal-ink);
-  outline-offset: 4px;
-}
+/* One left-aligned reading column, in line with the page heading above it. */
+.portal-bar,
 .portal-dashboard,
 .portal-detail {
   max-width: 900px;
-  margin-inline: auto;
+}
+.portal-dashboard,
+.portal-detail {
+  margin-inline: 0;
 }
 .portal-section {
   margin-bottom: 36px;
@@ -280,4 +284,45 @@
   .portal-btn-quiet {
     transition: none;
   }
+}
+
+.portal-stats {
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+}
+.wz-summary .portal-stats dd {
+  color: var(--navy);
+  font-size: 18px;
+  font-weight: 700;
+}
+.portal-table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+}
+.portal-table-wrap:focus-visible {
+  outline: 3px solid var(--teal-ink);
+  outline-offset: 2px;
+}
+.portal-table {
+  width: 100%;
+  min-width: 460px;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+.portal-table th,
+.portal-table td {
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+  white-space: nowrap;
+}
+.portal-table th {
+  background: var(--sand-warm);
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+.portal-table tbody tr:last-child td {
+  border-bottom: 0;
 }

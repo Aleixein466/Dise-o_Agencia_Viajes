@@ -38,43 +38,53 @@ export function PortalSavingsDetail({ id }: Readonly<{ id: string }>) {
     <div className="portal-dashboard">
       <p>
         <Link href="/mi-cuenta" className="wz-link">
-          Volver a mi cuenta
+          ← Volver a mi cuenta
         </Link>
       </p>
       <h2 ref={headingRef} tabIndex={-1} className="portal-title">
         {plan.name}
       </h2>
-      <p className="portal-meta">Estado: {planStatusLabel(plan.status)}</p>
-      <p className="portal-meta">
-        Meta: {formatCop(plan.goalCents) ?? "—"} · Pagado: {formatCop(plan.paidCents) ?? "—"} · Saldo:{" "}
-        {formatCop(plan.balanceCents) ?? "—"}
+      <p>
+        <span className="portal-badge" data-status={plan.status}>
+          {planStatusLabel(plan.status)}
+        </span>
       </p>
-      {next ? (
-        <p className="portal-meta">
-          Próxima cuota: {formatDay(next.dueOn) ?? "—"} · {formatCop(next.amountCents) ?? "—"}
-        </p>
-      ) : null}
-      <section aria-labelledby="savings-schedule-title" className="portal-section">
+      <section className="wz-summary portal-panel" aria-labelledby="savings-summary-title">
+        <h3 id="savings-summary-title">Resumen del plan</h3>
+        <dl className="portal-stats">
+          <div>
+            <dt>Meta</dt>
+            <dd>{formatCop(plan.goalCents) ?? "—"}</dd>
+          </div>
+          <div>
+            <dt>Pagado</dt>
+            <dd>{formatCop(plan.paidCents) ?? "—"}</dd>
+          </div>
+          <div>
+            <dt>Saldo</dt>
+            <dd>{formatCop(plan.balanceCents) ?? "—"}</dd>
+          </div>
+          {next ? (
+            <div>
+              <dt>Próxima cuota</dt>
+              <dd>
+                {formatDay(next.dueOn) ?? "—"} · {formatCop(next.amountCents) ?? "—"}
+              </dd>
+            </div>
+          ) : null}
+        </dl>
+      </section>
+      <section aria-labelledby="savings-schedule-title" className="portal-panel">
         <h3 id="savings-schedule-title">Cronograma</h3>
-        <div style={{ overflowX: "auto" }} role="region" aria-label="Cronograma de cuotas" tabIndex={0}>
-          <table style={{ width: "100%", borderCollapse: "collapse" }}>
+        <div className="portal-table-wrap" role="region" aria-label="Cronograma de cuotas" tabIndex={0}>
+          <table className="portal-table">
             <thead>
               <tr>
-                <th scope="col" style={{ textAlign: "left" }}>
-                  Cuota
-                </th>
-                <th scope="col" style={{ textAlign: "left" }}>
-                  Vence
-                </th>
-                <th scope="col" style={{ textAlign: "left" }}>
-                  Valor
-                </th>
-                <th scope="col" style={{ textAlign: "left" }}>
-                  Pagado
-                </th>
-                <th scope="col" style={{ textAlign: "left" }}>
-                  Estado
-                </th>
+                <th scope="col">Cuota</th>
+                <th scope="col">Vence</th>
+                <th scope="col">Valor</th>
+                <th scope="col">Pagado</th>
+                <th scope="col">Estado</th>
               </tr>
             </thead>
             <tbody>

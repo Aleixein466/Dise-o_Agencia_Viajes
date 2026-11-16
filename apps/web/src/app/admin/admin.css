@@ -134,6 +134,9 @@ body:has(.auth-root) > .site-footer {
 .admin-field {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
+  /* Fields in one row share its height; without this the spare space stretches the label row and pushes the
+     input of the shorter field down, so inputs in the same row stop lining up. */
+  align-content: start;
   gap: 6px;
 }
 .admin-field input,
@@ -208,6 +211,17 @@ body:has(.auth-root) > .site-footer {
 .admin-root input[type="checkbox"],
 .admin-root input[type="radio"] {
   accent-color: var(--teal-ink);
+}
+/* A check/radio inside a field keeps its natural size and sits on the text line (the text-input box rules above
+   would otherwise stretch it to 46 px and push the label off-baseline). */
+.admin-field input[type="checkbox"],
+.admin-field input[type="radio"] {
+  width: 18px;
+  height: 18px;
+  min-height: 0;
+  padding: 0;
+  margin: 0 8px 0 0;
+  vertical-align: -3px;
 }
 .admin-hint {
   margin: 0;
@@ -487,6 +501,12 @@ body:has(.auth-root) > .site-footer {
 }
 .admin-section-heading h2 {
   margin-bottom: 4px;
+}
+/* Header and row actions are short commands: never break their label across lines. */
+.admin-section-heading > .admin-btn,
+.admin-table .admin-btn {
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 .admin-users-filters {
   display: grid;
@@ -925,6 +945,20 @@ body:has(.auth-root) > .site-footer {
   .admin-commercial-form .admin-field-wide,
   .admin-commercial-form .admin-form-actions {
     grid-column: 1 / -1;
+  }
+  /* Side-by-side fields: reserve two label lines so the inputs of one row line up even when a label wraps. */
+  .admin-commercial-form .admin-field:not(.admin-field-wide) > label {
+    display: flex;
+    align-items: flex-end;
+    min-height: 2.7em;
+    line-height: 1.35;
+  }
+}
+/* The settings form nests two-column fieldsets: stack them until there is room to set them side by side,
+   otherwise every input shrinks to ~80 px at tablet width. */
+@media (min-width: 700px) and (max-width: 1279px) {
+  .admin-settings-form {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 @media (max-width: 560px) {

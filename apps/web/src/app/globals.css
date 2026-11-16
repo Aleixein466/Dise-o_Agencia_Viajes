@@ -1846,6 +1846,13 @@ button:disabled {
 .simple-page .btn {
   margin-top: 20px;
 }
+/* PQRS stacks two form cards under the intro: give them air instead of letting the edges touch. */
+.simple-page > p + .form-panel {
+  margin-top: 36px;
+}
+.simple-page .form-panel + .form-panel {
+  margin-top: 28px;
+}
 .inline-link {
   color: var(--green);
   text-decoration: underline;
@@ -2828,4 +2835,71 @@ body {
     animation-duration: 0.01ms !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+/* Published content blocks (home banners, featured destinations) and contact channels. */
+.home-banners {
+  display: grid;
+  gap: 14px;
+  padding-block: 18px 6px;
+}
+.home-banner {
+  display: grid;
+  gap: 6px;
+  padding: 18px 22px;
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--teal);
+  border-radius: var(--radius-sm);
+  background: var(--teal-soft);
+  color: var(--ink);
+}
+.home-banner p {
+  margin: 0;
+  color: var(--muted);
+}
+.home-featured {
+  padding-block: 18px 6px;
+}
+.home-featured h2 {
+  margin: 0 0 12px;
+  font-size: clamp(1.25rem, 2.4vw, 1.6rem);
+}
+.home-featured ul,
+.contact-channels {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.home-featured a {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 0 18px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--white);
+  color: var(--navy);
+  font-weight: 600;
+  text-decoration: none;
+  transition: border-color var(--dur-fast) var(--ease-out);
+}
+.home-featured a:hover {
+  border-color: var(--teal-ink);
+}
+.contact-channels {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 14px;
+  margin-block: 24px;
+  color: var(--ink);
+  font-size: 15px;
+  line-height: 1.6;
+}
+.contact-channels a:not(.btn) {
+  color: var(--teal-ink);
+  font-weight: 600;
 }
